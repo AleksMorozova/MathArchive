@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: matharchive-postgres
+    environment:
+      POSTGRES_DB: matharchive
+      POSTGRES_USER: matharchive
+      POSTGRES_PASSWORD: matharchive
+    ports:
+      - "5433:5432"
+    volumes:
+      - matharchive-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  matharchive-postgres-data:

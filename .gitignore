@@ -1,0 +1,44 @@
+# Build outputs
+**/bin/
+**/obj/
+**/dist/
+**/.vite/
+**/coverage/
+**/TestResults/
+**/*.tsbuildinfo
+
+# Frontend dependencies and package-manager noise
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# .NET and IDE user files
+.vs/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.rsuser
+_ReSharper*/
+*.DotSettings.user
+
+# Local runtime storage
+backend/src/MathArchive.Api/storage/
+backend/src/MathArchive.Api/logs/
+
+# Local configuration and secrets
+backend/src/MathArchive.Api/appsettings.Local.json
+backend/src/MathArchive.Api/appsettings.*.local.json
+.env
+.env.*
+!.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
