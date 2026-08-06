@@ -1,5 +1,5 @@
 import { Box, Container, Grid, Pagination, Stack, Typography } from '@mui/material';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DocumentCard } from '../components/DocumentCard';
 import { EmptyState, ErrorState, LoadingState } from '../components/StateView';
@@ -9,10 +9,9 @@ import type { DocumentFilters } from '../types/documents';
 
 export function MaterialsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [searchDraft, setSearchDraft] = useState(searchParams.get('search') ?? '');
   const filters = useMemo<DocumentFilters>(() => ({
-    search: searchParams.get('search') ?? '',
-    grade: searchParams.get('grade') ?? '',
+    search: '',
+    grade: '',
     topic: searchParams.get('topic') ?? '',
     documentType: searchParams.get('documentType') ?? '',
     page: Number(searchParams.get('page') ?? 1),
@@ -22,34 +21,28 @@ export function MaterialsPage() {
   const documents = useDocuments(filters);
   const topics = useTopics();
 
-  useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      if (searchDraft !== filters.search) {
-        updateFilters({ search: searchDraft, page: 1 });
-      }
-    }, 350);
-    return () => window.clearTimeout(timeout);
-  }, [searchDraft]);
-
   const updateFilters = (next: Partial<DocumentFilters>) => {
     const merged = { ...filters, ...next };
     const params = new URLSearchParams();
-    Object.entries(merged).forEach(([key, value]) => {
-      if (value && key !== 'pageSize') {
-        params.set(key, String(value));
-      }
-    });
+    if (merged.topic) {
+      params.set('topic', merged.topic);
+    }
+    if (merged.documentType) {
+      params.set('documentType', merged.documentType);
+    }
+    if (merged.page && merged.page > 1) {
+      params.set('page', String(merged.page));
+    }
     setSearchParams(params);
   };
 
   const clearFilters = () => {
-    setSearchDraft('');
     setSearchParams(new URLSearchParams());
   };
 
   return (
     <Container maxWidth="lg" className="page-section materials-page">
-      <Stack gap={3}>
+      <Stack gap={2.5}>
         <Box className="materials-hero">
           <Stack gap={1.25}>
             <Typography variant="h3">Навчальні матеріали</Typography>
@@ -58,27 +51,24 @@ export function MaterialsPage() {
             </Typography>
           </Stack>
           <FiltersBar
-            filters={{ ...filters, search: searchDraft }}
+            filters={filters}
             topics={topics.data ?? []}
-            onChange={(next) => {
-              if ('search' in next) {
-                setSearchDraft(next.search ?? '');
-              } else {
-                updateFilters({ ...next, page: 1 });
-              }
-            }}
+            onChange={(next) => updateFilters({ ...next, page: 1 })}
             onClear={clearFilters}
+            showSearch={false}
+            showGrade={false}
+            compact
           />
         </Box>
         {documents.isLoading && <LoadingState />}
         {documents.isError && <ErrorState />}
         {documents.data && (
           <>
-            <Typography color="text.secondary">Знайдено матеріалів: {documents.data.totalCount}</Typography>
+            <Typography color="text.secondary" className="materials-count">Знайдено матеріалів: {documents.data.totalCount}</Typography>
             {documents.data.items.length === 0 ? (
               <EmptyState />
             ) : (
-              <Grid container spacing={2} alignItems="stretch">
+              <Grid container spacing={2.25} alignItems="flex-start" className="materials-grid">
                 {documents.data.items.map((document) => (
                   <Grid key={document.id} size={{ xs: 12, md: 6, lg: 4 }} sx={{ display: 'flex' }}>
                     <DocumentCard document={document} />
