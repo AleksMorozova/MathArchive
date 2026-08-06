@@ -6,11 +6,13 @@ on:
       - main
       - master
       - develop
+      - stage
   pull_request:
     branches:
       - main
       - master
       - develop
+      - stage
   workflow_dispatch:
 
 permissions:
@@ -47,6 +49,7 @@ jobs:
       Jwt__SigningKey: ci-signing-key-for-matharchive-at-least-32-characters
       Admin__Username: admin
       Admin__PasswordHash: PBKDF2-SHA256$100000$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      AllowedOrigins__0: http://localhost:5173
 
     steps:
       - name: Checkout
@@ -81,6 +84,9 @@ jobs:
     defaults:
       run:
         working-directory: frontend/math-archive-web
+
+    env:
+      VITE_API_BASE_URL: https://example-render-api.onrender.com
 
     steps:
       - name: Checkout

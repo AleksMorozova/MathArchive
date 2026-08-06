@@ -2,7 +2,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DownloadIcon from '@mui/icons-material/Download';
 import { Box, Button, Chip, Container, Stack, Typography } from '@mui/material';
 import { Link, useParams } from 'react-router-dom';
-import { apiBaseUrl } from '../api/apiConfig';
+import { buildApiUrl } from '../api/apiConfig';
 import { downloadDocument } from '../api/documentsApi';
 import { ErrorState, LoadingState } from '../components/StateView';
 import { documentTypeLabels } from '../constants/documentTypes';
@@ -47,9 +47,9 @@ export function DocumentDetailsPage() {
         {canPreview && (
           <Box className="preview-frame">
             {document.contentType === 'application/pdf' ? (
-              <iframe title={document.title} src={`${apiBaseUrl}/api/documents/${document.id}/download`} />
+              <iframe title={document.title} src={buildApiUrl(`/api/documents/${document.id}/download`)} />
             ) : (
-              <img alt={document.title} src={`${apiBaseUrl}/api/documents/${document.id}/download`} />
+              <img alt={document.title} src={buildApiUrl(`/api/documents/${document.id}/download`)} />
             )}
           </Box>
         )}
