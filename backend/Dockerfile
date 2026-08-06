@@ -22,3 +22,4 @@ ENV ASPNETCORE_ENVIRONMENT=Production
 EXPOSE 8080
 COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "MathArchive.Api.dll"]
+
