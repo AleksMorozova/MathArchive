@@ -1,4 +1,5 @@
 import type { DocumentDto, DocumentFilters, PagedResult } from '../types/documents';
+import { buildApiUrl } from './apiConfig';
 import { httpClient } from './httpClient';
 
 export async function getDocuments(filters: DocumentFilters) {
@@ -26,7 +27,7 @@ export async function getDocument(id: string) {
 }
 
 export function downloadDocument(id: string) {
-  window.location.assign(`${httpClient.defaults.baseURL}/api/documents/${id}/download`);
+  window.location.assign(buildApiUrl(`/api/documents/${id}/download`));
 }
 
 export async function createDocument(formData: FormData, onUploadProgress?: (progress: number) => void) {

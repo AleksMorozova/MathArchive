@@ -5,6 +5,8 @@ using MathArchive.Application;
 using MathArchive.Infrastructure;
 using MathArchive.Infrastructure.Auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Net.Http.Headers;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
@@ -16,8 +18,32 @@ if (args is ["hash-password", var password])
 
 var builder = WebApplication.CreateBuilder(args);
 
+var renderPort = Environment.GetEnvironmentVariable("PORT");
+var aspNetCoreUrls = Environment.GetEnvironmentVariable("ASPNETCORE_URLS");
+if (!string.IsNullOrWhiteSpace(renderPort))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{renderPort}");
+}
+else if (string.IsNullOrWhiteSpace(aspNetCoreUrls))
+{
+    builder.WebHost.UseUrls("http://0.0.0.0:5293");
+}
+
+var allowedOrigins = GetAllowedOrigins(builder.Configuration, builder.Environment.IsDevelopment());
+if (!builder.Environment.IsDevelopment() && allowedOrigins.Count == 0)
+{
+    throw new InvalidOperationException("AllowedOrigins must contain at least one production frontend origin.");
+}
+
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 builder.Services.AddProblemDetails();
 builder.Services
@@ -31,25 +57,9 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
     {
-        var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-            ?? ["http://localhost:5173"];
-
-        if (builder.Environment.IsDevelopment())
-        {
-            policy.SetIsOriginAllowed(origin =>
-                Uri.TryCreate(origin, UriKind.Absolute, out var uri) &&
-                (string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase) ||
-                 string.Equals(uri.Host, "127.0.0.1", StringComparison.OrdinalIgnoreCase) ||
-                 string.Equals(uri.Host, "::1", StringComparison.OrdinalIgnoreCase)))
-                .AllowAnyHeader()
-                .AllowAnyMethod();
-
-            return;
-        }
-
-        policy.WithOrigins(origins)
-            .AllowAnyHeader()
-            .AllowAnyMethod();
+        policy.WithOrigins(allowedOrigins.ToArray())
+            .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+            .WithHeaders(HeaderNames.Authorization, HeaderNames.ContentType);
     });
 });
 
@@ -126,6 +136,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseForwardedHeaders();
 app.UseExceptionHandler();
 app.UseCors("Frontend");
 
@@ -139,3 +150,43 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+static List<string> GetAllowedOrigins(IConfiguration configuration, bool isDevelopment)
+{
+    var configuredOrigins = configuration.GetSection("AllowedOrigins").Get<string[]>()
+        ?? configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+        ?? [];
+
+    var origins = configuredOrigins
+        .Select(NormalizeOrigin)
+        .Where(origin => origin is not null)
+        .Select(origin => origin!)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToList();
+
+    if (isDevelopment && origins.Count == 0)
+    {
+        origins.Add("http://localhost:5173");
+        origins.Add("http://127.0.0.1:5173");
+    }
+
+    return origins;
+}
+
+static string? NormalizeOrigin(string? origin)
+{
+    var trimmed = origin?.Trim().TrimEnd('/');
+    if (string.IsNullOrWhiteSpace(trimmed))
+    {
+        return null;
+    }
+
+    if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri) ||
+        (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) ||
+        !string.IsNullOrWhiteSpace(uri.PathAndQuery.Trim('/')))
+    {
+        throw new InvalidOperationException($"Allowed origin '{origin}' must be an absolute HTTP(S) origin without a path.");
+    }
+
+    return uri.GetLeftPart(UriPartial.Authority).TrimEnd('/');
+}
