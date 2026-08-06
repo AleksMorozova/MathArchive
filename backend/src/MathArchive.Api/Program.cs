@@ -147,6 +147,12 @@ if (!app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapGet("/health", () => Results.Ok(new
+{
+    status = "healthy",
+    service = "MathArchive.Api",
+    timestamp = DateTimeOffset.UtcNow
+})).AllowAnonymous();
 app.MapControllers();
 
 app.Run();
@@ -190,3 +196,4 @@ static string? NormalizeOrigin(string? origin)
 
     return uri.GetLeftPart(UriPartial.Authority).TrimEnd('/');
 }
+
