@@ -4,28 +4,27 @@ import { useSearchParams } from 'react-router-dom';
 import { DocumentCard } from '../components/DocumentCard';
 import { EmptyState, ErrorState, LoadingState } from '../components/StateView';
 import { FiltersBar } from '../components/FiltersBar';
-import { useDocuments, useTopics } from '../hooks/useDocuments';
+import { useDocuments } from '../hooks/useDocuments';
 import type { DocumentFilters } from '../types/documents';
 
 export function MaterialsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const filters = useMemo<DocumentFilters>(() => ({
     search: '',
-    grade: '',
-    topic: searchParams.get('topic') ?? '',
+    grade: searchParams.get('grade') ?? '',
+    topic: '',
     documentType: searchParams.get('documentType') ?? '',
     page: Number(searchParams.get('page') ?? 1),
     pageSize: 12
   }), [searchParams]);
 
   const documents = useDocuments(filters);
-  const topics = useTopics();
 
   const updateFilters = (next: Partial<DocumentFilters>) => {
     const merged = { ...filters, ...next };
     const params = new URLSearchParams();
-    if (merged.topic) {
-      params.set('topic', merged.topic);
+    if (merged.grade) {
+      params.set('grade', String(merged.grade));
     }
     if (merged.documentType) {
       params.set('documentType', merged.documentType);
@@ -52,11 +51,12 @@ export function MaterialsPage() {
           </Stack>
           <FiltersBar
             filters={filters}
-            topics={topics.data ?? []}
+            topics={[]}
             onChange={(next) => updateFilters({ ...next, page: 1 })}
             onClear={clearFilters}
             showSearch={false}
-            showGrade={false}
+            showGrade
+            showTopic={false}
             compact
           />
         </Box>
