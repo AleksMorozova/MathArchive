@@ -1,13 +1,30 @@
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import DownloadIcon from '@mui/icons-material/Download';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import { Box, Button, Card, CardContent, Chip, Stack, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, Chip, Stack, Typography } from '@mui/material';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getApiErrorMessage } from '../api/apiErrors';
 import { downloadDocument } from '../api/documentsApi';
 import { documentTypeLabels } from '../constants/documentTypes';
 import type { DocumentDto } from '../types/documents';
 
 export function DocumentCard({ document }: { document: DocumentDto }) {
+  const [downloadError, setDownloadError] = useState('');
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    setDownloadError('');
+    setIsDownloading(true);
+    try {
+      await downloadDocument(document.id);
+    } catch (error) {
+      setDownloadError(getApiErrorMessage(error, 'Не вдалося завантажити файл.'));
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <Card className="document-card">
       <CardContent className="document-card-content">
@@ -21,8 +38,9 @@ export function DocumentCard({ document }: { document: DocumentDto }) {
             <Chip label={document.topic} size="small" />
             <Chip label={documentTypeLabels[document.documentType]} size="small" />
           </Stack>
+          {downloadError && <Alert severity="error">{downloadError}</Alert>}
           <Stack direction="row" gap={1} className="card-actions">
-            <Button startIcon={<DownloadIcon />} variant="text" onClick={() => downloadDocument(document.id)}>
+            <Button startIcon={<DownloadIcon />} variant="text" onClick={handleDownload} disabled={isDownloading}>
               Завантажити
             </Button>
             <Button startIcon={<VisibilityIcon />} variant="text" component={Link} to={`/materials/${document.id}`}>

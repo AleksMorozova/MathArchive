@@ -1,6 +1,7 @@
 import { Box, Container, Grid, Pagination, Stack, Typography } from '@mui/material';
 import { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { getApiErrorMessage } from '../api/apiErrors';
 import { DocumentCard } from '../components/DocumentCard';
 import { EmptyState, ErrorState, LoadingState } from '../components/StateView';
 import { FiltersBar } from '../components/FiltersBar';
@@ -61,7 +62,7 @@ export function MaterialsPage() {
           />
         </Box>
         {documents.isLoading && <LoadingState />}
-        {documents.isError && <ErrorState />}
+        {documents.isError && <ErrorState message={getApiErrorMessage(documents.error)} />}
         {documents.data && (
           <>
             <Typography color="text.secondary" className="materials-count">Знайдено матеріалів: {documents.data.totalCount}</Typography>

@@ -22,10 +22,15 @@ public sealed class LocalFileStorage(IOptions<LocalStorageOptions> options) : IF
         return new StoredFileResult(Path.GetFileName(originalFileName), storedFileName, contentType, length);
     }
 
-    public Task<Stream> OpenReadAsync(string storedFileName, CancellationToken cancellationToken)
+    public Task<Stream?> TryOpenReadAsync(string storedFileName, CancellationToken cancellationToken)
     {
-        var stream = File.OpenRead(GetSafePath(storedFileName));
-        return Task.FromResult<Stream>(stream);
+        var path = GetSafePath(storedFileName);
+        if (!File.Exists(path))
+        {
+            return Task.FromResult<Stream?>(null);
+        }
+
+        return Task.FromResult<Stream?>(File.OpenRead(path));
     }
 
     public Task DeleteAsync(string storedFileName, CancellationToken cancellationToken)

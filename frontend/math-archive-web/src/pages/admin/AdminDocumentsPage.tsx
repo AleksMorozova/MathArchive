@@ -6,6 +6,7 @@ import { Box, Button, Card, CardContent, Dialog, DialogActions, DialogContent, D
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getApiErrorMessage } from '../../api/apiErrors';
 import { deleteDocument } from '../../api/documentsApi';
 import { queryKeys } from '../../api/queryKeys';
 import { FiltersBar } from '../../components/FiltersBar';
@@ -41,9 +42,10 @@ export function AdminDocumentsPage() {
         <Button component={Link} to="/admin/documents/new" startIcon={<AddIcon />} variant="contained">Додати матеріал</Button>
       </Stack>
       {message && <Box className="success-message">{message}</Box>}
+      {deleteMutation.isError && <Box className="error-message">{getApiErrorMessage(deleteMutation.error, 'Не вдалося видалити матеріал.')}</Box>}
       <FiltersBar filters={filters} topics={topics.data ?? []} onChange={updateFilters} onClear={() => setFilters({ page: 1, pageSize: 12, search: '', grade: '', topic: '', documentType: '' })} />
       {documents.isLoading && <LoadingState />}
-      {documents.isError && <ErrorState />}
+      {documents.isError && <ErrorState message={getApiErrorMessage(documents.error)} />}
       {documents.data && documents.data.items.length === 0 && <EmptyState />}
       {documents.data && documents.data.items.length > 0 && (
         <>

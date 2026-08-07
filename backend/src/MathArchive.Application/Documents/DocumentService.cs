@@ -2,6 +2,7 @@ using FluentValidation;
 using MathArchive.Application.Common;
 using MathArchive.Application.Files;
 using MathArchive.Domain.Documents;
+using Microsoft.Extensions.Logging;
 
 namespace MathArchive.Application.Documents;
 
@@ -10,7 +11,8 @@ public sealed class DocumentService(
     IFileStorage fileStorage,
     IClock clock,
     IValidator<DocumentMetadata> metadataValidator,
-    IValidator<UploadedFile> fileValidator)
+    IValidator<UploadedFile> fileValidator,
+    ILogger<DocumentService> logger)
 {
     public async Task<PagedResult<DocumentDto>> SearchAsync(DocumentQueryParameters parameters, CancellationToken cancellationToken)
     {
@@ -41,22 +43,30 @@ public sealed class DocumentService(
         await fileValidator.ValidateAndThrowAsync(command.File, cancellationToken);
 
         var storedFile = await fileStorage.SaveAsync(command.File.Stream, command.File.FileName, command.File.ContentType, cancellationToken);
-        var document = new Document(
-            command.Metadata.Title,
-            command.Metadata.Description,
-            command.Metadata.Grade,
-            command.Metadata.Topic,
-            command.Metadata.DocumentType,
-            storedFile.OriginalFileName,
-            storedFile.StoredFileName,
-            storedFile.ContentType,
-            storedFile.FileSize,
-            clock.UtcNow);
+        try
+        {
+            var document = new Document(
+                command.Metadata.Title,
+                command.Metadata.Description,
+                command.Metadata.Grade,
+                command.Metadata.Topic,
+                command.Metadata.DocumentType,
+                storedFile.OriginalFileName,
+                storedFile.StoredFileName,
+                storedFile.ContentType,
+                storedFile.FileSize,
+                clock.UtcNow);
 
-        documentRepository.Add(document);
-        await documentRepository.SaveChangesAsync(cancellationToken);
+            documentRepository.Add(document);
+            await documentRepository.SaveChangesAsync(cancellationToken);
 
-        return DocumentMapper.ToDto(document);
+            return DocumentMapper.ToDto(document);
+        }
+        catch (Exception exception)
+        {
+            await TryDeleteCompensationAsync(storedFile.StoredFileName, "created material file after database persistence failed", exception);
+            throw;
+        }
     }
 
     public async Task<DocumentDto?> UpdateAsync(Guid id, UpdateDocumentCommand command, CancellationToken cancellationToken)
@@ -74,16 +84,48 @@ public sealed class DocumentService(
         }
 
         var oldStoredFileName = document.StoredFileName;
-        document.UpdateMetadata(command.Metadata.Title, command.Metadata.Description, command.Metadata.Grade, command.Metadata.Topic, command.Metadata.DocumentType, clock.UtcNow);
-
+        StoredFileResult? replacementFile = null;
         if (command.ReplacementFile is not null)
         {
-            var storedFile = await fileStorage.SaveAsync(command.ReplacementFile.Stream, command.ReplacementFile.FileName, command.ReplacementFile.ContentType, cancellationToken);
-            document.ReplaceFile(storedFile.OriginalFileName, storedFile.StoredFileName, storedFile.ContentType, storedFile.FileSize, clock.UtcNow);
-            await fileStorage.DeleteAsync(oldStoredFileName, cancellationToken);
+            replacementFile = await fileStorage.SaveAsync(command.ReplacementFile.Stream, command.ReplacementFile.FileName, command.ReplacementFile.ContentType, cancellationToken);
         }
 
-        await documentRepository.SaveChangesAsync(cancellationToken);
+        try
+        {
+            document.UpdateMetadata(command.Metadata.Title, command.Metadata.Description, command.Metadata.Grade, command.Metadata.Topic, command.Metadata.DocumentType, clock.UtcNow);
+
+            if (replacementFile is not null)
+            {
+                document.ReplaceFile(replacementFile.OriginalFileName, replacementFile.StoredFileName, replacementFile.ContentType, replacementFile.FileSize, clock.UtcNow);
+            }
+
+            await documentRepository.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            if (replacementFile is not null)
+            {
+                await TryDeleteCompensationAsync(replacementFile.StoredFileName, "replacement material file after database update failed", exception);
+            }
+
+            throw;
+        }
+
+        if (replacementFile is not null)
+        {
+            try
+            {
+                await fileStorage.DeleteAsync(oldStoredFileName, CancellationToken.None);
+            }
+            catch (Exception exception)
+            {
+                logger.LogWarning(
+                    exception,
+                    "Old material file cleanup failed after document {DocumentId} was updated to a replacement file.",
+                    document.Id);
+            }
+        }
+
         return DocumentMapper.ToDto(document);
     }
 
@@ -95,9 +137,21 @@ public sealed class DocumentService(
             return false;
         }
 
+        var storedFileName = document.StoredFileName;
         documentRepository.Remove(document);
         await documentRepository.SaveChangesAsync(cancellationToken);
-        await fileStorage.DeleteAsync(document.StoredFileName, cancellationToken);
+
+        try
+        {
+            await fileStorage.DeleteAsync(storedFileName, CancellationToken.None);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(
+                exception,
+                "Material file cleanup failed after document {DocumentId} was deleted from the database.",
+                id);
+        }
 
         return true;
     }
@@ -110,11 +164,40 @@ public sealed class DocumentService(
             return null;
         }
 
-        document.IncrementDownloadCount();
-        await documentRepository.SaveChangesAsync(cancellationToken);
+        var stream = await fileStorage.TryOpenReadAsync(document.StoredFileName, cancellationToken);
+        if (stream is null)
+        {
+            logger.LogWarning("Material file is missing for document {DocumentId}.", document.Id);
+            throw new MaterialFileNotFoundException(document.Id);
+        }
 
-        var stream = await fileStorage.OpenReadAsync(document.StoredFileName, cancellationToken);
-        return new DocumentDownload(stream, document.OriginalFileName, document.ContentType);
+        try
+        {
+            document.IncrementDownloadCount();
+            await documentRepository.SaveChangesAsync(cancellationToken);
+            return new DocumentDownload(stream, document.OriginalFileName, document.ContentType);
+        }
+        catch
+        {
+            await stream.DisposeAsync();
+            throw;
+        }
+    }
+
+    private async Task TryDeleteCompensationAsync(string storedFileName, string cleanupReason, Exception primaryException)
+    {
+        try
+        {
+            await fileStorage.DeleteAsync(storedFileName, CancellationToken.None);
+        }
+        catch (Exception cleanupException)
+        {
+            logger.LogError(
+                cleanupException,
+                "Compensation failed while deleting {CleanupReason}. The original operation failed with {PrimaryExceptionType}.",
+                cleanupReason,
+                primaryException.GetType().Name);
+        }
     }
 
     private static DocumentQueryParameters Normalize(DocumentQueryParameters parameters)

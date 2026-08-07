@@ -1,4 +1,3 @@
-using FluentValidation;
 using MathArchive.Api.Contracts.Documents;
 using MathArchive.Application.Documents;
 using MathArchive.Application.Files;
@@ -23,44 +22,30 @@ public sealed class AdminDocumentsController(DocumentService documentService) : 
             return ValidationProblem(ModelState);
         }
 
-        try
-        {
-            var document = await documentService.CreateAsync(
-                new CreateDocumentCommand(ToMetadata(request), ToUploadedFile(request.File)),
-                cancellationToken);
+        var document = await documentService.CreateAsync(
+            new CreateDocumentCommand(ToMetadata(request), ToUploadedFile(request.File)),
+            cancellationToken);
 
-            return CreatedAtAction(nameof(DocumentsController.GetDocument), "Documents", new { id = document.Id }, document);
-        }
-        catch (ValidationException exception)
-        {
-            return ValidationProblem(ToModelState(exception));
-        }
+        return CreatedAtAction(nameof(DocumentsController.GetDocument), "Documents", new { id = document.Id }, document);
     }
 
     [HttpPut("{id:guid}")]
     [RequestSizeLimit(FileValidationRules.MaximumFileSize + 1024 * 1024)]
     public async Task<ActionResult<DocumentDto>> Update(Guid id, [FromForm] DocumentFormRequest request, CancellationToken cancellationToken)
     {
-        try
-        {
-            var document = await documentService.UpdateAsync(
-                id,
-                new UpdateDocumentCommand(ToMetadata(request), request.File is null ? null : ToUploadedFile(request.File)),
-                cancellationToken);
+        var document = await documentService.UpdateAsync(
+            id,
+            new UpdateDocumentCommand(ToMetadata(request), request.File is null ? null : ToUploadedFile(request.File)),
+            cancellationToken);
 
-            return document is null ? NotFound() : Ok(document);
-        }
-        catch (ValidationException exception)
-        {
-            return ValidationProblem(ToModelState(exception));
-        }
+        return document is null ? MaterialNotFound() : Ok(document);
     }
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         var deleted = await documentService.DeleteAsync(id, cancellationToken);
-        return deleted ? NoContent() : NotFound();
+        return deleted ? NoContent() : MaterialNotFound();
     }
 
     private static DocumentMetadata ToMetadata(DocumentFormRequest request)
@@ -73,14 +58,11 @@ public sealed class AdminDocumentsController(DocumentService documentService) : 
         return new UploadedFile(file.OpenReadStream(), file.FileName, file.ContentType, file.Length);
     }
 
-    private static Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary ToModelState(ValidationException exception)
+    private ObjectResult MaterialNotFound()
     {
-        var modelState = new Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary();
-        foreach (var error in exception.Errors)
-        {
-            modelState.AddModelError(error.PropertyName, error.ErrorMessage);
-        }
-
-        return modelState;
+        return Problem(
+            title: "Material not found",
+            detail: "The requested material was not found.",
+            statusCode: StatusCodes.Status404NotFound);
     }
 }

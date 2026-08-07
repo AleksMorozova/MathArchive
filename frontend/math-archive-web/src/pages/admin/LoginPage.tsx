@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
+import { getApiErrorMessage, isApiError } from '../../api/apiErrors';
 import { login } from '../../api/authApi';
 
 const schema = z.object({
@@ -14,19 +15,19 @@ const schema = z.object({
 type LoginForm = z.infer<typeof schema>;
 
 export function LoginPage() {
-  const [error, setError] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
   const form = useForm<LoginForm>({ resolver: zodResolver(schema), defaultValues: { username: '', password: '' } });
 
   const submit = form.handleSubmit(async (values) => {
-    setError(false);
+    setError('');
     try {
       await login(values.username, values.password);
       const next = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? '/admin/documents';
       navigate(next, { replace: true });
-    } catch {
-      setError(true);
+    } catch (error) {
+      setError(isApiError(error) && error.status === 401 ? 'Неправильний логін або пароль' : getApiErrorMessage(error));
     }
   });
 
@@ -35,7 +36,7 @@ export function LoginPage() {
       <Box component="form" className="content-panel" onSubmit={submit}>
         <Stack gap={2}>
           <Typography variant="h4">Вхід до панелі керування</Typography>
-          {error && <Alert severity="error">Неправильний логін або пароль</Alert>}
+          {error && <Alert severity="error">{error}</Alert>}
           <TextField label="Логін" {...form.register('username')} error={!!form.formState.errors.username} helperText={form.formState.errors.username?.message} />
           <TextField label="Пароль" type="password" {...form.register('password')} error={!!form.formState.errors.password} helperText={form.formState.errors.password?.message} />
           <Button type="submit" variant="contained">Увійти</Button>

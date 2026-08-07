@@ -672,3 +672,11 @@ a {
     padding: 20px;
   }
 }
+
+.error-message {
+  padding: 12px 16px;
+  border: 1px solid rgba(169, 100, 92, 0.24);
+  border-radius: 16px;
+  background: rgba(169, 100, 92, 0.1);
+  color: #8A3E38;
+}
