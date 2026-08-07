@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json.Serialization;
 using FluentValidation;
+using MathArchive.Api.Errors;
 using MathArchive.Application;
 using MathArchive.Infrastructure;
 using MathArchive.Infrastructure.Auth;
@@ -45,6 +46,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownProxies.Clear();
 });
 
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services
     .AddControllers()
@@ -92,6 +94,26 @@ builder.Services
             ValidAudience = jwtOptions.Audience,
             IssuerSigningKey = new SymmetricSecurityKey(signingKey),
             ClockSkew = TimeSpan.FromMinutes(1)
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnChallenge = async context =>
+            {
+                context.HandleResponse();
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                await Results.Problem(
+                    title: "Unauthorized",
+                    detail: "Authentication is required to access this resource.",
+                    statusCode: StatusCodes.Status401Unauthorized).ExecuteAsync(context.HttpContext);
+            },
+            OnForbidden = async context =>
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                await Results.Problem(
+                    title: "Forbidden",
+                    detail: "You do not have permission to access this resource.",
+                    statusCode: StatusCodes.Status403Forbidden).ExecuteAsync(context.HttpContext);
+            }
         };
     });
 
@@ -192,5 +214,9 @@ static string? NormalizeOrigin(string? origin)
     }
 
     return uri.GetLeftPart(UriPartial.Authority).TrimEnd('/');
+}
+
+public partial class Program
+{
 }
 

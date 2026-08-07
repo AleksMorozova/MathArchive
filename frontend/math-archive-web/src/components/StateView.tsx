@@ -18,12 +18,12 @@ export function EmptyState() {
   );
 }
 
-export function ErrorState() {
+export function ErrorState({ title = 'Не вдалося завантажити матеріали', message = 'Спробуйте оновити сторінку.' }: { title?: string; message?: string }) {
   return (
     <Alert severity="error">
-      <strong>Не вдалося завантажити матеріали</strong>
+      <strong>{title}</strong>
       <br />
-      Спробуйте оновити сторінку.
+      {message}
     </Alert>
   );
 }

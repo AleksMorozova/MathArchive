@@ -34,7 +34,7 @@ public sealed class DocumentsController(DocumentService documentService) : Contr
     public async Task<ActionResult<DocumentDto>> GetDocument(Guid id, CancellationToken cancellationToken)
     {
         var document = await documentService.GetByIdAsync(id, cancellationToken);
-        return document is null ? NotFound() : Ok(document);
+        return document is null ? MaterialNotFound() : Ok(document);
     }
 
     [HttpGet("{id:guid}/download")]
@@ -42,7 +42,15 @@ public sealed class DocumentsController(DocumentService documentService) : Contr
     {
         var download = await documentService.PrepareDownloadAsync(id, cancellationToken);
         return download is null
-            ? NotFound()
+            ? MaterialNotFound()
             : File(download.Stream, download.ContentType, download.FileName);
+    }
+
+    private ObjectResult MaterialNotFound()
+    {
+        return Problem(
+            title: "Material not found",
+            detail: "The requested material was not found.",
+            statusCode: StatusCodes.Status404NotFound);
     }
 }

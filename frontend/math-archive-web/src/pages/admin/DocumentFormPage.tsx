@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { z } from 'zod';
+import { fieldNameFromProblemDetails, getApiErrorMessage, hasValidationErrors, isApiError } from '../../api/apiErrors';
 import { createDocument, updateDocument } from '../../api/documentsApi';
 import { queryKeys } from '../../api/queryKeys';
 import { documentTypeOptions } from '../../constants/documentTypes';
@@ -96,6 +97,16 @@ export function DocumentFormPage({ mode }: DocumentFormPageProps) {
       setMessage(mode === 'create' ? 'Матеріал успішно додано' : 'Матеріал успішно оновлено');
       await queryClient.invalidateQueries({ queryKey: ['documents'] });
       window.setTimeout(() => navigate('/admin/documents'), 600);
+    },
+    onError: (error) => {
+      if (isApiError(error) && hasValidationErrors(error.problem)) {
+        for (const [propertyName, messages] of Object.entries(error.problem.errors)) {
+          form.setError(fieldNameFromProblemDetails(propertyName) as keyof DocumentForm, {
+            type: 'server',
+            message: messages[0]
+          });
+        }
+      }
     }
   });
 
@@ -104,7 +115,7 @@ export function DocumentFormPage({ mode }: DocumentFormPageProps) {
       <Stack gap={2}>
         <Typography variant="h3">{mode === 'create' ? 'Новий матеріал' : 'Редагування матеріалу'}</Typography>
         {message && <Alert severity="success">{message}</Alert>}
-        {mutation.isError && <Alert severity="error">Не вдалося зберегти матеріал</Alert>}
+        {mutation.isError && <Alert severity="error">{getApiErrorMessage(mutation.error, 'Не вдалося зберегти матеріал.')}</Alert>}
         {mode === 'edit' && existing && <Typography color="text.secondary">Поточний файл: {existing.originalFileName}</Typography>}
         <TextField label="Назва" {...form.register('title')} error={!!form.formState.errors.title} helperText={form.formState.errors.title?.message} />
         <TextField label="Опис" multiline minRows={4} {...form.register('description')} error={!!form.formState.errors.description} helperText={form.formState.errors.description?.message} />
