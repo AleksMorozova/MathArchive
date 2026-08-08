@@ -2,14 +2,17 @@ using System.Text;
 using System.Text.Json.Serialization;
 using FluentValidation;
 using MathArchive.Api.Errors;
+using MathArchive.Api.Health;
 using MathArchive.Application;
 using MathArchive.Infrastructure;
 using MathArchive.Infrastructure.Auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Net.Http.Headers;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 if (args is ["hash-password", var password])
 {
@@ -78,6 +81,8 @@ if (string.IsNullOrWhiteSpace(jwtOptions.SigningKey))
     }
 }
 
+ValidateAdminConfiguration(builder.Configuration, builder.Environment.IsDevelopment());
+
 var signingKey = Encoding.UTF8.GetBytes(jwtOptions.SigningKey);
 
 builder.Services
@@ -121,6 +126,10 @@ builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
 });
+
+builder.Services.AddHealthChecks()
+    .AddCheck<DatabaseHealthCheck>("database")
+    .AddCheck<FileStorageHealthCheck>("file_storage");
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -166,16 +175,83 @@ if (!app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapGet("/health", () => Results.Ok(new
+app.MapHealthChecks("/health", new HealthCheckOptions
 {
-    status = "healthy",
-    service = "MathArchive.Api",
-    timestamp = DateTimeOffset.UtcNow
-})).AllowAnonymous();
+    ResponseWriter = WriteHealthResponseAsync
+}).AllowAnonymous();
 app.MapControllers();
 
 app.Run();
 
+static void ValidateAdminConfiguration(IConfiguration configuration, bool isDevelopment)
+{
+    if (isDevelopment)
+    {
+        return;
+    }
+
+    var adminOptions = configuration.GetSection("Admin").Get<AdminOptions>() ?? new AdminOptions();
+    if (string.IsNullOrWhiteSpace(adminOptions.Username))
+    {
+        throw new InvalidOperationException("Admin:Username must be configured.");
+    }
+
+    if (!IsValidAdminPasswordHash(adminOptions.PasswordHash))
+    {
+        throw new InvalidOperationException("Admin:PasswordHash must be configured with a valid PBKDF2-SHA256 hash.");
+    }
+}
+
+static bool IsValidAdminPasswordHash(string? passwordHash)
+{
+    if (string.IsNullOrWhiteSpace(passwordHash))
+    {
+        return false;
+    }
+
+    var parts = passwordHash.Split('$');
+    if (parts is not ["PBKDF2-SHA256", var iterationsText, var saltText, var keyText])
+    {
+        return false;
+    }
+
+    if (!int.TryParse(iterationsText, out var iterations) || iterations <= 0)
+    {
+        return false;
+    }
+
+    try
+    {
+        return Convert.FromBase64String(saltText).Length == 16
+            && Convert.FromBase64String(keyText).Length == 32;
+    }
+    catch (FormatException)
+    {
+        return false;
+    }
+}
+
+static Task WriteHealthResponseAsync(HttpContext context, HealthReport report)
+{
+    context.Response.ContentType = "application/json";
+
+    var response = new
+    {
+        status = report.Status.ToString(),
+        service = "MathArchive.Api",
+        timestamp = DateTimeOffset.UtcNow,
+        checks = report.Entries.ToDictionary(
+            entry => entry.Key,
+            entry => new
+            {
+                status = entry.Value.Status.ToString(),
+                description = entry.Value.Description,
+                duration = entry.Value.Duration.TotalMilliseconds
+            })
+    };
+
+    return context.Response.WriteAsJsonAsync(response);
+}
 static List<string> GetAllowedOrigins(IConfiguration configuration, bool isDevelopment)
 {
     var configuredOrigins = configuration.GetSection("AllowedOrigins").Get<string[]>()

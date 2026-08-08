@@ -154,6 +154,8 @@ public sealed class ExceptionHandlingTests
         Environment.SetEnvironmentVariable("Jwt__Issuer", "MathArchive");
         Environment.SetEnvironmentVariable("Jwt__Audience", "MathArchive");
         Environment.SetEnvironmentVariable("Jwt__SigningKey", TestSigningKey);
+        Environment.SetEnvironmentVariable("Admin__Username", "admin");
+        Environment.SetEnvironmentVariable("Admin__PasswordHash", TestAdminPasswordHash);
         Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", "Host=localhost;Port=5432;Database=matharchive;Username=matharchive;Password=matharchive");
 
         return new WebApplicationFactory<Program>()
@@ -188,6 +190,7 @@ public sealed class ExceptionHandlingTests
     }
 
     private const string TestSigningKey = "test-signing-key-for-matharchive-at-least-32-chars";
+    private const string TestAdminPasswordHash = "PBKDF2-SHA256$100000$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
 
     private sealed class RecordingProblemDetailsService : IProblemDetailsService
     {
