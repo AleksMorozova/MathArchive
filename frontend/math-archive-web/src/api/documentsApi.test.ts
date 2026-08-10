@@ -25,6 +25,24 @@ describe('documentsApi', () => {
     await expect(getDocuments({ page: 1, pageSize: 12 })).resolves.toMatchObject({ totalCount: 0 });
   });
 
+
+  it('sends generalOnly instead of a fake grade for general materials', async () => {
+    let requestConfig: InternalAxiosRequestConfig | undefined;
+    httpClient.defaults.adapter = async (config) => {
+      requestConfig = config as InternalAxiosRequestConfig;
+      return {
+        data: { items: [], page: 1, pageSize: 12, totalCount: 0, totalPages: 0 },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: config as InternalAxiosRequestConfig
+      };
+    };
+
+    await getDocuments({ page: 1, pageSize: 12, grade: 'general' });
+
+    expect(requestConfig?.params).toMatchObject({ generalOnly: true, grade: undefined });
+  });
   it('downloads binary file content on success', async () => {
     const blob = new Blob(['file-content'], { type: 'application/pdf' });
     Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn() });

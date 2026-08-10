@@ -21,7 +21,11 @@ public sealed class DocumentRepository(MathArchiveDbContext dbContext) : IDocume
                 EF.Functions.ILike(x.Topic, pattern));
         }
 
-        if (parameters.Grade.HasValue)
+        if (parameters.GeneralOnly)
+        {
+            query = query.Where(x => x.Grade == null);
+        }
+        else if (parameters.Grade.HasValue)
         {
             query = query.Where(x => x.Grade == parameters.Grade.Value);
         }
@@ -41,7 +45,9 @@ public sealed class DocumentRepository(MathArchiveDbContext dbContext) : IDocume
 
         var items = await query
             .AsNoTracking()
-            .OrderByDescending(x => x.CreatedAt)
+            .OrderBy(x => x.Grade == null)
+            .ThenBy(x => x.Grade)
+            .ThenByDescending(x => x.CreatedAt)
             .Skip((parameters.Page - 1) * parameters.PageSize)
             .Take(parameters.PageSize)
             .ToListAsync(cancellationToken);

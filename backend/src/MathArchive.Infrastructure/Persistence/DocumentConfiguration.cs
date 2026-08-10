@@ -15,7 +15,7 @@ public sealed class DocumentConfiguration : IEntityTypeConfiguration<Document>
         builder.Property(x => x.Id).HasColumnName("id");
         builder.Property(x => x.Title).HasColumnName("title").HasMaxLength(200).IsRequired();
         builder.Property(x => x.Description).HasColumnName("description").HasMaxLength(2000);
-        builder.Property(x => x.Grade).HasColumnName("grade").IsRequired();
+        builder.Property(x => x.Grade).HasColumnName("grade");
         builder.Property(x => x.Topic).HasColumnName("topic").HasMaxLength(150).IsRequired();
         builder.Property(x => x.DocumentType).HasColumnName("document_type").HasConversion<string>().HasMaxLength(60).IsRequired();
         builder.Property(x => x.OriginalFileName).HasColumnName("original_file_name").HasMaxLength(260).IsRequired();

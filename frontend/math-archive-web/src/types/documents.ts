@@ -11,7 +11,7 @@ export interface DocumentDto {
   id: string;
   title: string;
   description?: string | null;
-  grade: number;
+  grade: number | null;
   topic: string;
   documentType: DocumentType;
   originalFileName: string;

@@ -15,6 +15,15 @@ public sealed class DocumentMetadataValidatorTests
         Assert.True(result.IsValid);
     }
 
+
+    [Fact]
+    public void Valid_general_metadata_passes()
+    {
+        var result = validator.Validate(new DocumentMetadata("Критерії оцінювання", null, null, "Оцінювання", DocumentType.MethodicalMaterial));
+
+        Assert.True(result.IsValid);
+    }
+
     [Fact]
     public void Rejects_invalid_grade()
     {
