@@ -34,7 +34,7 @@ export function DocumentCard({ document }: { document: DocumentDto }) {
             <Typography variant="h6" className="card-title">{document.title}</Typography>
           </Stack>
           <Stack direction="row" gap={0.75} flexWrap="wrap" className="document-tags">
-            <Chip label={`${document.grade} клас`} size="small" />
+            <Chip label={document.grade === null ? 'Загальний матеріал' : `${document.grade} клас`} size="small" />
             <Chip label={document.topic} size="small" />
             <Chip label={documentTypeLabels[document.documentType]} size="small" />
           </Stack>

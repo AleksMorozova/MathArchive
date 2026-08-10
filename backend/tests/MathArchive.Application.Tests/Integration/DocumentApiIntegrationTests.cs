@@ -39,6 +39,31 @@ public sealed class DocumentApiIntegrationTests(ApiIntegrationFixture fixture) :
         Assert.True(File.Exists(Path.Combine(fixture.StorageRoot, persisted.StoredFileName)));
     }
 
+
+    [Fact]
+    public async Task GetDocuments_WhenUnfiltered_SortsByGradeBeforeCreatedDate()
+    {
+        using var client = await fixture.CreateAuthorizedClientAsync();
+        using var gradeNine = CreateDocumentForm(title: "Grade 9 item", grade: 9);
+        using var general = CreateDocumentForm(title: "General sorted item", grade: null);
+        using var gradeFive = CreateDocumentForm(title: "Grade 5 item", grade: 5);
+        await client.PostAsync("/api/admin/documents", gradeNine);
+        await client.PostAsync("/api/admin/documents", general);
+        await client.PostAsync("/api/admin/documents", gradeFive);
+
+        var response = await client.GetAsync("/api/documents?page=1&pageSize=12");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var page = await ReadJsonAsync<PagedResult<DocumentDto>>(response);
+        var sortedItems = page.Items
+            .Where(x => x.Title is "Grade 5 item" or "Grade 9 item" or "General sorted item")
+            .ToList();
+        Assert.Collection(
+            sortedItems,
+            item => Assert.Equal(5, item.Grade),
+            item => Assert.Equal(9, item.Grade),
+            item => Assert.Null(item.Grade));
+    }
     [Fact]
     public async Task GetDocuments_WhenFilteredAndPaged_ReturnsExpectedPage()
     {
@@ -59,6 +84,107 @@ public sealed class DocumentApiIntegrationTests(ApiIntegrationFixture fixture) :
         Assert.Equal(7, page.Items[0].Grade);
     }
 
+
+    [Fact]
+    public async Task UploadDocument_WhenGradeIsOmitted_CreatesGeneralMaterial()
+    {
+        using var client = await fixture.CreateAuthorizedClientAsync();
+        using var content = CreateDocumentForm(title: "General assessment criteria", grade: null, topic: "Оцінювання", documentType: DocumentType.MethodicalMaterial);
+
+        var response = await client.PostAsync("/api/admin/documents", content);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var document = await ReadJsonAsync<DocumentDto>(response);
+        Assert.Null(document.Grade);
+        Assert.Equal("Оцінювання", document.Topic);
+
+        var persisted = await fixture.FindDocumentAsync(document.Id);
+        Assert.NotNull(persisted);
+        Assert.Null(persisted.Grade);
+    }
+
+    [Fact]
+    public async Task UpdateDocument_WhenGradeSpecificBecomesGeneral_ClearsGrade()
+    {
+        using var client = await fixture.CreateAuthorizedClientAsync();
+        using var upload = CreateDocumentForm(title: "Grade specific", grade: 7);
+        var uploadResponse = await client.PostAsync("/api/admin/documents", upload);
+        var document = await ReadJsonAsync<DocumentDto>(uploadResponse);
+        using var update = CreateDocumentForm(title: "Now general", grade: null, topic: "Довідка", documentType: DocumentType.Theory, includeFile: false);
+
+        var response = await client.PutAsync($"/api/admin/documents/{document.Id}", update);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var updated = await ReadJsonAsync<DocumentDto>(response);
+        Assert.Null(updated.Grade);
+        Assert.Equal("Now general", updated.Title);
+        Assert.Null((await fixture.FindDocumentAsync(document.Id))?.Grade);
+    }
+
+    [Fact]
+    public async Task UpdateDocument_WhenGeneralBecomesGradeSpecific_SetsGrade()
+    {
+        using var client = await fixture.CreateAuthorizedClientAsync();
+        using var upload = CreateDocumentForm(title: "General material", grade: null);
+        var uploadResponse = await client.PostAsync("/api/admin/documents", upload);
+        var document = await ReadJsonAsync<DocumentDto>(uploadResponse);
+        using var update = CreateDocumentForm(title: "Grade material", grade: 9, topic: "Геометрія", documentType: DocumentType.Test, includeFile: false);
+
+        var response = await client.PutAsync($"/api/admin/documents/{document.Id}", update);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var updated = await ReadJsonAsync<DocumentDto>(response);
+        Assert.Equal(9, updated.Grade);
+        Assert.Equal(9, (await fixture.FindDocumentAsync(document.Id))?.Grade);
+    }
+
+    [Fact]
+    public async Task GetDocuments_WhenUnfiltered_IncludesGradeSpecificAndGeneralMaterials()
+    {
+        using var client = await fixture.CreateAuthorizedClientAsync();
+        using var gradeSpecific = CreateDocumentForm(title: "Grade item", grade: 7);
+        using var general = CreateDocumentForm(title: "General item", grade: null, topic: "Довідка");
+        await client.PostAsync("/api/admin/documents", gradeSpecific);
+        await client.PostAsync("/api/admin/documents", general);
+
+        var response = await client.GetAsync("/api/documents?page=1&pageSize=12");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var page = await ReadJsonAsync<PagedResult<DocumentDto>>(response);
+        Assert.Contains(page.Items, x => x.Grade == 7);
+        Assert.Contains(page.Items, x => x.Grade is null);
+    }
+
+    [Fact]
+    public async Task GetDocuments_WhenGeneralOnly_ReturnsGeneralMaterials()
+    {
+        using var client = await fixture.CreateAuthorizedClientAsync();
+        using var gradeSpecific = CreateDocumentForm(title: "Grade item", grade: 7);
+        using var general = CreateDocumentForm(title: "General item", grade: null, topic: "Довідка");
+        await client.PostAsync("/api/admin/documents", gradeSpecific);
+        await client.PostAsync("/api/admin/documents", general);
+
+        var response = await client.GetAsync("/api/documents?generalOnly=true&page=1&pageSize=12");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var page = await ReadJsonAsync<PagedResult<DocumentDto>>(response);
+        Assert.NotEmpty(page.Items);
+        Assert.All(page.Items, item => Assert.Null(item.Grade));
+    }
+
+    [Fact]
+    public async Task GetDocuments_WhenSearchMatchesGeneralMaterial_ReturnsIt()
+    {
+        using var client = await fixture.CreateAuthorizedClientAsync();
+        using var content = CreateDocumentForm(title: "Загальні критерії оцінювання", grade: null, topic: "Оцінювання");
+        await client.PostAsync("/api/admin/documents", content);
+
+        var response = await client.GetAsync("/api/documents?search=критерії&page=1&pageSize=12");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var page = await ReadJsonAsync<PagedResult<DocumentDto>>(response);
+        Assert.Contains(page.Items, x => x.Title == "Загальні критерії оцінювання" && x.Grade is null);
+    }
     [Fact]
     public async Task DownloadDocument_WhenFileExists_ReturnsContentAndIncrementsDownloadCount()
     {
@@ -203,7 +329,7 @@ public sealed class DocumentApiIntegrationTests(ApiIntegrationFixture fixture) :
     public async Task UploadDocument_WhenDatabaseFailsAfterFileCreation_RemovesNewlyCreatedFile()
     {
         var failureStorageRoot = Path.Combine(Path.GetTempPath(), $"matharchive-db-failure-{Guid.NewGuid():N}");
-        await using var factory = fixture.CreateFactoryWithConnectionString("Host=127.0.0.1;Port=1;Database=missing;Username=missing;Password=missing", failureStorageRoot);
+        await using var factory = fixture.CreateFactoryWithConnectionString("Host=127.0.0.1;Port=1;Database=missing;Username=missing;Password=missing", failureStorageRoot, applyMigrationsOnStartup: false);
         using var client = await CreateAuthorizedClientAsync(factory);
         using var content = CreateDocumentForm(title: "Database failure after file");
 
@@ -248,7 +374,7 @@ public sealed class DocumentApiIntegrationTests(ApiIntegrationFixture fixture) :
 
     private static MultipartFormDataContent CreateDocumentForm(
         string title = "Integration material",
-        int grade = 7,
+        int? grade = 7,
         string topic = "Алгебра",
         DocumentType documentType = DocumentType.Formula,
         byte[]? fileBytes = null,
@@ -258,10 +384,14 @@ public sealed class DocumentApiIntegrationTests(ApiIntegrationFixture fixture) :
         {
             { new StringContent(title), "Title" },
             { new StringContent("Integration description"), "Description" },
-            { new StringContent(grade.ToString()), "Grade" },
             { new StringContent(topic), "Topic" },
             { new StringContent(documentType.ToString()), "DocumentType" }
         };
+
+        if (grade.HasValue)
+        {
+            content.Add(new StringContent(grade.Value.ToString()), "Grade");
+        }
 
         if (includeFile)
         {

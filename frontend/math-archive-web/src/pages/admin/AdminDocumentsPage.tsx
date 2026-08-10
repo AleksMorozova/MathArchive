@@ -16,6 +16,10 @@ import { useDocuments, useTopics } from '../../hooks/useDocuments';
 import type { DocumentDto, DocumentFilters } from '../../types/documents';
 import { formatDate } from '../../utils/format';
 
+function formatGradeLabel(grade: number | null) {
+  return grade === null ? 'Загальний матеріал' : `${grade} клас`;
+}
+
 export function AdminDocumentsPage() {
   const [filters, setFilters] = useState<DocumentFilters>({ page: 1, pageSize: 12, search: '', grade: '', topic: '', documentType: '' });
   const [deleteTarget, setDeleteTarget] = useState<DocumentDto | null>(null);
@@ -70,7 +74,7 @@ export function AdminDocumentsPage() {
                 {documents.data.items.map((document) => (
                   <TableRow key={document.id}>
                     <TableCell>{document.title}</TableCell>
-                    <TableCell>{document.grade}</TableCell>
+                    <TableCell>{formatGradeLabel(document.grade)}</TableCell>
                     <TableCell>{document.topic}</TableCell>
                     <TableCell>{documentTypeLabels[document.documentType]}</TableCell>
                     <TableCell>{formatDate(document.createdAt)}</TableCell>
@@ -106,7 +110,7 @@ function AdminCard({ document, onDelete }: { document: DocumentDto; onDelete: (d
       <CardContent>
         <Stack gap={1}>
           <Typography variant="h6">{document.title}</Typography>
-          <Typography color="text.secondary">{document.grade} клас · {document.topic} · {documentTypeLabels[document.documentType]}</Typography>
+          <Typography color="text.secondary">{formatGradeLabel(document.grade)} · {document.topic} · {documentTypeLabels[document.documentType]}</Typography>
           <Actions document={document} onDelete={onDelete} />
         </Stack>
       </CardContent>

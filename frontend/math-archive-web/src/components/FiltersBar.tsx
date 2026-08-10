@@ -46,6 +46,7 @@ export function FiltersBar({
       {showGrade && (
         <TextField select label="Клас" value={filters.grade ?? ''} onChange={(event) => onChange({ grade: event.target.value })}>
           <MenuItem value="">{compact ? 'Оберіть клас' : 'Усі класи'}</MenuItem>
+          <MenuItem value="general">Загальні матеріали</MenuItem>
           {Array.from({ length: 11 }, (_, index) => index + 1).map((grade) => (
             <MenuItem key={grade} value={grade}>{grade} клас</MenuItem>
           ))}

@@ -6,7 +6,7 @@ public sealed record DocumentDto(
     Guid Id,
     string Title,
     string? Description,
-    int Grade,
+    int? Grade,
     string Topic,
     DocumentType DocumentType,
     string OriginalFileName,

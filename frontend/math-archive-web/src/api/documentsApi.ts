@@ -1,11 +1,14 @@
 import type { DocumentDto, DocumentFilters, PagedResult } from '../types/documents';
 import { httpClient } from './httpClient';
 
+const generalGradeFilterValue = 'general';
+
 export async function getDocuments(filters: DocumentFilters) {
   const response = await httpClient.get<PagedResult<DocumentDto>>('/api/documents', {
     params: {
       search: filters.search || undefined,
-      grade: filters.grade || undefined,
+      grade: filters.grade && filters.grade !== generalGradeFilterValue ? filters.grade : undefined,
+      generalOnly: filters.grade === generalGradeFilterValue ? true : undefined,
       topic: filters.topic || undefined,
       documentType: filters.documentType || undefined,
       page: filters.page,

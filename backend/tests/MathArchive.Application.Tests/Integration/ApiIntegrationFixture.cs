@@ -133,9 +133,9 @@ public sealed class ApiIntegrationFixture : IAsyncLifetime
         });
     }
 
-    public WebApplicationFactory<Program> CreateFactoryWithConnectionString(string connectionString, string fileStorageRoot)
+    public WebApplicationFactory<Program> CreateFactoryWithConnectionString(string connectionString, string fileStorageRoot, bool applyMigrationsOnStartup = true)
     {
-        return CreateFactory(connectionString, fileStorageRoot);
+        return CreateFactory(connectionString, fileStorageRoot, applyMigrationsOnStartup: applyMigrationsOnStartup);
     }
 
     private WebApplicationFactory<Program> Factory => factory ?? throw new InvalidOperationException("Fixture is not initialized.");
@@ -143,9 +143,10 @@ public sealed class ApiIntegrationFixture : IAsyncLifetime
     private static WebApplicationFactory<Program> CreateFactory(
         string connectionString,
         string fileStorageRoot,
-        Action<IServiceCollection>? configureServices = null)
+        Action<IServiceCollection>? configureServices = null,
+        bool applyMigrationsOnStartup = true)
     {
-        SetRequiredEnvironment(connectionString, fileStorageRoot);
+        SetRequiredEnvironment(connectionString, fileStorageRoot, applyMigrationsOnStartup);
 
         return new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
@@ -155,7 +156,7 @@ public sealed class ApiIntegrationFixture : IAsyncLifetime
             });
     }
 
-    private static void SetRequiredEnvironment(string connectionString, string fileStorageRoot)
+    private static void SetRequiredEnvironment(string connectionString, string fileStorageRoot, bool applyMigrationsOnStartup)
     {
         Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", connectionString);
         Environment.SetEnvironmentVariable("AllowedOrigins__0", "https://example.com");
@@ -165,6 +166,7 @@ public sealed class ApiIntegrationFixture : IAsyncLifetime
         Environment.SetEnvironmentVariable("Jwt__SigningKey", JwtSigningKey);
         Environment.SetEnvironmentVariable("Admin__Username", "admin");
         Environment.SetEnvironmentVariable("Admin__PasswordHash", new AdminPasswordHasher().Hash(AdminPassword));
+        Environment.SetEnvironmentVariable("Database__ApplyMigrationsOnStartup", applyMigrationsOnStartup ? "true" : "false");
     }
 
     private static string GetBaseConnectionString()

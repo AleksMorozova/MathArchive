@@ -78,7 +78,7 @@ export function DocumentDetailsPage() {
             <Typography variant="h3">{document.title}</Typography>
             {document.description && <Typography color="text.secondary">{document.description}</Typography>}
             <Stack direction="row" gap={1} flexWrap="wrap">
-              <Chip label={`Клас: ${document.grade}`} />
+              <Chip label={document.grade === null ? 'Загальний матеріал' : `Клас: ${document.grade}`} />
               <Chip label={`Тема: ${document.topic}`} />
               <Chip label={`Тип матеріалу: ${documentTypeLabels[document.documentType]}`} />
               <Chip label={`Формат: ${fileExtension(document.originalFileName)}`} />

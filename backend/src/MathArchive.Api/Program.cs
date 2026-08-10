@@ -6,6 +6,7 @@ using MathArchive.Api.Health;
 using MathArchive.Application;
 using MathArchive.Infrastructure;
 using MathArchive.Infrastructure.Auth;
+using MathArchive.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -13,6 +14,7 @@ using Microsoft.Net.Http.Headers;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.EntityFrameworkCore;
 
 if (args is ["hash-password", var password])
 {
@@ -161,6 +163,11 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+if (builder.Configuration.GetValue("Database:ApplyMigrationsOnStartup", true))
+{
+    await MigrateDatabaseAsync(app);
+}
+
 app.UseSwagger();
 app.UseSwaggerUI();
 
@@ -182,6 +189,13 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 app.MapControllers();
 
 app.Run();
+
+static async Task MigrateDatabaseAsync(WebApplication app)
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<MathArchiveDbContext>();
+    await dbContext.Database.MigrateAsync();
+}
 
 static void ValidateAdminConfiguration(IConfiguration configuration, bool isDevelopment)
 {

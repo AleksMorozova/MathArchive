@@ -9,7 +9,7 @@ public sealed class Document
     public Document(
         string title,
         string? description,
-        int grade,
+        int? grade,
         string topic,
         DocumentType documentType,
         string originalFileName,
@@ -35,7 +35,7 @@ public sealed class Document
     public Guid Id { get; private set; }
     public string Title { get; private set; } = string.Empty;
     public string? Description { get; private set; }
-    public int Grade { get; private set; }
+    public int? Grade { get; private set; }
     public string Topic { get; private set; } = string.Empty;
     public DocumentType DocumentType { get; private set; }
     public string OriginalFileName { get; private set; } = string.Empty;
@@ -46,7 +46,7 @@ public sealed class Document
     public DateTimeOffset UpdatedAt { get; private set; }
     public int DownloadCount { get; private set; }
 
-    public void UpdateMetadata(string title, string? description, int grade, string topic, DocumentType documentType, DateTimeOffset updatedAt)
+    public void UpdateMetadata(string title, string? description, int? grade, string topic, DocumentType documentType, DateTimeOffset updatedAt)
     {
         Title = title.Trim();
         Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();

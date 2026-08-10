@@ -157,6 +157,7 @@ public sealed class ExceptionHandlingTests
         Environment.SetEnvironmentVariable("Admin__Username", "admin");
         Environment.SetEnvironmentVariable("Admin__PasswordHash", TestAdminPasswordHash);
         Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", "Host=localhost;Port=5432;Database=matharchive;Username=matharchive;Password=matharchive");
+        Environment.SetEnvironmentVariable("Database__ApplyMigrationsOnStartup", "false");
 
         return new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder => builder.UseEnvironment("Production"));

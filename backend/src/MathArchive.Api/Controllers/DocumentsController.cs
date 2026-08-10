@@ -13,6 +13,7 @@ public sealed class DocumentsController(DocumentService documentService) : Contr
     public Task<PagedResult<DocumentDto>> GetDocuments(
         [FromQuery] string? search,
         [FromQuery] int? grade,
+        [FromQuery] bool generalOnly,
         [FromQuery] string? topic,
         [FromQuery] DocumentType? documentType,
         [FromQuery] int page = 1,
@@ -20,7 +21,7 @@ public sealed class DocumentsController(DocumentService documentService) : Contr
         CancellationToken cancellationToken = default)
     {
         return documentService.SearchAsync(
-            new DocumentQueryParameters(search, grade, topic, documentType, page, pageSize),
+            new DocumentQueryParameters(search, grade, generalOnly, topic, documentType, page, pageSize),
             cancellationToken);
     }
 
