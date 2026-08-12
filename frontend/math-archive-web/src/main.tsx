@@ -77,7 +77,22 @@ const theme = createTheme({
       }
     },
     MuiTextField: {
-      defaultProps: { variant: 'outlined' }
+      defaultProps: {
+        variant: 'outlined',
+        slotProps: {
+          inputLabel: { shrink: true }
+        }
+      }
+    },
+    MuiInputLabel: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#FFFCF8',
+          paddingInline: 6,
+          lineHeight: 1.2,
+          zIndex: 1
+        }
+      }
     },
     MuiOutlinedInput: {
       styleOverrides: {

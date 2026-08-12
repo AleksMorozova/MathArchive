@@ -5,7 +5,8 @@ export type DocumentType =
   | 'Homework'
   | 'Theory'
   | 'MethodicalMaterial'
-  | 'Other';
+  | 'Other'
+  | 'Memo';
 
 export interface DocumentDto {
   id: string;
