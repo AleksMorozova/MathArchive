@@ -8,5 +8,6 @@ public enum DocumentType
     Homework = 4,
     Theory = 5,
     MethodicalMaterial = 6,
-    Other = 7
+    Other = 7,
+    Memo = 8
 }

@@ -10,5 +10,6 @@ describe('documentTypeLabels', () => {
     expect(documentTypeLabels.Theory).toBe('Теоретичний матеріал');
     expect(documentTypeLabels.MethodicalMaterial).toBe('Методичний матеріал');
     expect(documentTypeLabels.Other).toBe('Інше');
+    expect(documentTypeLabels.Memo).toBe('Пам’ятка');
   });
 });
