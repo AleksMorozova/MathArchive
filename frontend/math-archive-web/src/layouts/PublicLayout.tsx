@@ -2,7 +2,8 @@ import CalculateOutlinedIcon from '@mui/icons-material/CalculateOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
 import { AppBar, Box, Button, Container, Drawer, IconButton, Stack, Toolbar, Typography } from '@mui/material';
 import { useState } from 'react';
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { MathBackground } from '../components/MathBackground';
 
 const links = [
   { to: '/', label: 'Головна' },
@@ -12,6 +13,8 @@ const links = [
 
 export function PublicLayout() {
   const [open, setOpen] = useState(false);
+  const location = useLocation();
+  const mathBackgroundVariant = location.pathname === '/about' ? 'about' : 'default';
 
   const navigation = (
     <Stack direction={{ xs: 'column', sm: 'row' }} gap={1}>
@@ -45,7 +48,8 @@ export function PublicLayout() {
       <Drawer anchor="right" open={open} onClose={() => setOpen(false)}>
         <Box sx={{ width: 260, p: 2 }}>{navigation}</Box>
       </Drawer>
-      <Box component="main" className="main-content">
+      <Box component="main" className="main-content public-main-content">
+        <MathBackground variant={mathBackgroundVariant} />
         <Outlet />
       </Box>
       <Box component="footer" className="footer">
@@ -56,3 +60,4 @@ export function PublicLayout() {
     </Box>
   );
 }
+
