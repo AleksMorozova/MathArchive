@@ -100,6 +100,33 @@ a {
   flex: 1;
 }
 
+.public-main-content {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 10% 10%, rgba(217, 196, 165, 0.30), transparent 24rem),
+    radial-gradient(circle at 92% 42%, rgba(241, 231, 216, 0.42), transparent 30rem),
+    linear-gradient(180deg, rgba(255, 252, 248, 0.70), rgba(248, 245, 241, 0.76));
+}
+
+.public-main-content::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    linear-gradient(rgba(138, 106, 82, 0.040) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(138, 106, 82, 0.036) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(180deg, transparent 0, black 120px, black calc(100% - 80px), transparent 100%);
+  pointer-events: none;
+}
+
+.public-main-content > :not(.public-math-background) {
+  position: relative;
+  z-index: 2;
+}
 .footer {
   border-top: 1px solid var(--line);
   padding: 28px 0;
@@ -114,32 +141,6 @@ a {
   align-items: center;
   padding: 70px 0 46px;
   overflow: hidden;
-}
-
-.hero::before {
-  content: '';
-  position: absolute;
-  inset: 28px 0 18px auto;
-  width: min(430px, 42vw);
-  border-radius: 42px;
-  background:
-    linear-gradient(135deg, rgba(241, 231, 216, 0.88), rgba(244, 235, 221, 0.84)),
-    repeating-linear-gradient(135deg, rgba(138, 106, 82, 0.10) 0 1px, transparent 1px 28px);
-  opacity: 0.78;
-  transform: rotate(-2deg);
-  z-index: -1;
-}
-
-.hero::after {
-  content: '∑  π  √  ∞';
-  position: absolute;
-  right: 54px;
-  bottom: 54px;
-  color: rgba(138, 106, 82, 0.18);
-  font-size: clamp(2.25rem, 5vw, 4.75rem);
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  z-index: -1;
 }
 
 .hero-copy {
@@ -237,27 +238,13 @@ a {
   position: relative;
   padding: 76px 0 88px;
   background:
-    radial-gradient(circle at 12% 16%, rgba(217, 196, 165, 0.28), transparent 22rem),
-    linear-gradient(145deg, #F6EFE5 0%, #FFFCF8 100%);
+    radial-gradient(circle at 12% 16%, rgba(217, 196, 165, 0.18), transparent 22rem),
+    linear-gradient(145deg, rgba(246, 239, 229, 0.76) 0%, rgba(255, 252, 248, 0.72) 100%);
   overflow: hidden;
 }
 
 .about-page-section {
   min-height: calc(100vh - 162px);
-}
-
-.about-archive-section::before {
-  content: '';
-  position: absolute;
-  inset: 34px 7% auto auto;
-  width: 320px;
-  height: 320px;
-  border-radius: 38px;
-  background:
-    repeating-linear-gradient(90deg, rgba(138, 106, 82, 0.10) 0 1px, transparent 1px 32px),
-    repeating-linear-gradient(0deg, rgba(138, 106, 82, 0.09) 0 1px, transparent 1px 32px);
-  opacity: 0.42;
-  transform: rotate(8deg);
 }
 
 .about-feature {
@@ -573,11 +560,6 @@ a {
 }
 
 @media (max-width: 900px) {
-  .hero::before {
-    width: 56vw;
-    opacity: 0.42;
-  }
-
   .materials-list {
     grid-template-columns: 1fr;
   }
@@ -599,18 +581,6 @@ a {
   .hero {
     min-height: 380px;
     padding-top: 46px;
-  }
-
-  .hero::before {
-    inset: 34px -44px auto auto;
-    width: 240px;
-    height: 240px;
-  }
-
-  .hero::after {
-    right: 18px;
-    bottom: 28px;
-    font-size: 2.5rem;
   }
 
   .content-panel {
@@ -680,3 +650,546 @@ a {
   background: rgba(169, 100, 92, 0.1);
   color: #8A3E38;
 }
+
+.teacher-profile-card {
+  gap: 22px;
+}
+
+.teacher-name {
+  margin-top: 10px !important;
+  color: var(--primary-hover);
+  font-weight: 750 !important;
+  line-height: 1.16 !important;
+}
+
+.teacher-meta {
+  align-items: stretch;
+}
+
+.teacher-meta-item {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(217, 196, 165, 0.56);
+  border-radius: 16px;
+  background: rgba(241, 231, 216, 0.54);
+  color: var(--text);
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.teacher-meta-item .MuiSvgIcon-root {
+  flex: 0 0 auto;
+  color: var(--primary-hover);
+}
+
+.teacher-copy {
+  max-width: 68ch;
+}
+
+.teacher-copy strong {
+  color: var(--text);
+  font-weight: 750;
+}
+
+.credo-card {
+  overflow: hidden;
+  background:
+    linear-gradient(145deg, rgba(255, 252, 248, 0.94), rgba(241, 231, 216, 0.72));
+}
+
+.credo-card::after {
+  content: '“';
+  position: absolute;
+  right: 22px;
+  top: 4px;
+  color: rgba(138, 106, 82, 0.10);
+  font-family: Georgia, serif;
+  font-size: 8rem;
+  line-height: 1;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.credo-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.credo-quote {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(1.18rem, 2vw, 1.48rem);
+  font-weight: 760;
+  line-height: 1.38;
+}
+
+.archive-summary-card {
+  gap: 16px;
+}
+
+.about-materials-list {
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-top: 0;
+}
+
+.about-materials-list li {
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 760px) {
+  .teacher-profile-card {
+    gap: 18px;
+  }
+
+  .teacher-name {
+    font-size: 1.55rem !important;
+  }
+
+  .teacher-meta-item {
+    padding: 11px 12px;
+  }
+
+  .credo-quote {
+    font-size: 1.12rem;
+  }
+}
+
+
+
+.public-math-background {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+  color: var(--primary);
+}
+
+.math-sketch {
+  position: absolute;
+  width: clamp(150px, 18vw, 280px);
+  height: auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.65;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.24;
+  filter: drop-shadow(0 10px 18px rgba(78, 60, 43, 0.035));
+}
+
+.math-sketch text {
+  fill: currentColor;
+  stroke: none;
+  font-family: "Segoe Print", "Comic Sans MS", "Inter", sans-serif;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.math-sketch-graph {
+  top: 38px;
+  left: max(18px, calc((100vw - 1180px) / 2 - 130px));
+  width: clamp(185px, 19vw, 292px);
+  transform: rotate(-4deg);
+  opacity: 0.26;
+}
+
+.math-sketch-linear {
+  top: min(520px, 36%);
+  right: max(26px, calc((100vw - 1180px) / 2 - 118px));
+  width: clamp(170px, 17vw, 258px);
+  transform: rotate(4deg);
+  opacity: 0.22;
+}
+
+.math-sketch-sine {
+  top: 720px;
+  left: max(18px, calc((100vw - 1180px) / 2 - 122px));
+  width: clamp(190px, 20vw, 310px);
+  transform: rotate(2deg);
+  opacity: 0.21;
+}
+
+.math-sketch-triangle {
+  right: max(18px, calc((100vw - 1180px) / 2 - 112px));
+  top: 118px;
+  width: clamp(150px, 16vw, 248px);
+  transform: rotate(5deg);
+  opacity: 0.24;
+}
+
+.math-sketch-circle {
+  left: max(20px, calc((100vw - 1180px) / 2 - 98px));
+  top: 1040px;
+  width: clamp(150px, 15vw, 235px);
+  transform: rotate(3deg);
+  opacity: 0.23;
+}
+
+.math-sketch-solids {
+  right: max(18px, calc((100vw - 1180px) / 2 - 110px));
+  top: 980px;
+  width: clamp(170px, 17vw, 262px);
+  transform: rotate(-3deg);
+  opacity: 0.22;
+}
+
+.math-sketch-sphere {
+  left: 50%;
+  top: 410px;
+  width: clamp(145px, 14vw, 218px);
+  transform: translateX(-50%) rotate(-5deg);
+  opacity: 0.18;
+}
+
+.math-sketch-tools {
+  right: max(22px, calc((100vw - 1180px) / 2 - 96px));
+  top: 1440px;
+  width: clamp(180px, 18vw, 280px);
+  transform: rotate(3deg);
+  opacity: 0.22;
+}
+
+.math-sketch-algebra {
+  left: max(20px, calc((100vw - 1180px) / 2 - 130px));
+  top: 1500px;
+  width: clamp(230px, 25vw, 360px);
+  transform: rotate(-2deg);
+  opacity: 0.21;
+}
+
+@media (max-width: 1100px) {
+  .math-sketch-graph {
+    left: -72px;
+    top: 36px;
+  }
+
+  .math-sketch-triangle {
+    right: -54px;
+    top: 96px;
+  }
+
+  .math-sketch-sine {
+    left: -92px;
+  }
+
+  .math-sketch-circle {
+    left: -58px;
+  }
+
+  .math-sketch-linear,
+  .math-sketch-solids,
+  .math-sketch-tools {
+    right: -72px;
+  }
+}
+
+@media (max-width: 900px) {
+  .public-math-background {
+    opacity: 0.84;
+  }
+
+  .math-sketch-triangle,
+  .math-sketch-solids,
+  .math-sketch-tools,
+  .math-sketch-algebra {
+    display: none;
+  }
+
+  .math-sketch-graph {
+    top: 26px;
+    left: -78px;
+    width: 232px;
+  }
+
+  .math-sketch-linear {
+    top: 450px;
+    right: -84px;
+    width: 220px;
+  }
+
+  .math-sketch-sine {
+    top: 860px;
+    left: -116px;
+    width: 260px;
+  }
+
+  .math-sketch-circle {
+    right: -76px;
+    left: auto;
+    top: 1180px;
+    width: 210px;
+  }
+
+  .math-sketch-sphere {
+    left: auto;
+    right: -70px;
+    top: 1620px;
+    width: 190px;
+    transform: rotate(8deg);
+  }
+}
+
+@media (max-width: 760px) {
+  .public-main-content::before {
+    background-size: 68px 68px;
+    opacity: 0.55;
+  }
+
+  .math-sketch {
+    opacity: 0.17;
+  }
+
+  .math-sketch-linear,
+  .math-sketch-sine,
+  .math-sketch-sphere {
+    display: none;
+  }
+
+  .math-sketch-graph {
+    top: 14px;
+    left: -108px;
+    width: 220px;
+  }
+
+  .math-sketch-circle {
+    right: -106px;
+    top: 820px;
+    width: 205px;
+  }
+}
+.about-feature,
+.about-feature * {
+  min-width: 0;
+}
+
+.teacher-name,
+.teacher-meta-item span,
+.credo-quote,
+.archive-summary-card li,
+.about-feature h1,
+.about-feature h2,
+.about-feature h3,
+.about-feature h4 {
+  overflow-wrap: anywhere;
+}
+
+.teacher-meta-item span {
+  min-width: 0;
+}
+
+@media (max-width: 760px) {
+  .about-feature h1,
+  .about-feature .MuiTypography-h3 {
+    font-size: 2.35rem;
+    line-height: 1.12;
+  }
+
+  .about-feature h2,
+  .about-feature .MuiTypography-h4 {
+    font-size: 1.95rem;
+    line-height: 1.18;
+  }
+}
+
+@media (max-width: 430px) {
+  .about-feature h1,
+  .about-feature .MuiTypography-h3 {
+    font-size: 2rem;
+  }
+
+  .about-feature h2,
+  .about-feature .MuiTypography-h4 {
+    font-size: 1.7rem;
+  }
+
+  .teacher-name {
+    font-size: 1.32rem !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .about-page-section > .MuiContainer-root {
+    max-width: 100%;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .about-page-grid {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  .about-page-grid-item {
+    max-width: 100% !important;
+    flex-basis: 100% !important;
+    padding-left: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  .about-page-grid-item + .about-page-grid-item {
+    margin-top: 16px;
+  }
+}
+
+.math-background-about {
+  color: var(--primary-hover);
+}
+
+.math-background-about .math-sketch {
+  stroke-width: 1.75;
+}
+
+.math-background-about .math-sketch-graph {
+  top: 44px;
+  left: max(20px, calc((100vw - 1180px) / 2 - 96px));
+  width: clamp(220px, 21vw, 310px);
+  opacity: 0.65;
+}
+
+.math-background-about .math-sketch-triangle {
+  top: 84px;
+  right: max(12px, calc((100vw - 1180px) / 2 - 72px));
+  width: clamp(190px, 19vw, 282px);
+  opacity: 0.58;
+}
+
+.math-background-about .math-sketch-linear {
+  top: 392px;
+  right: max(12px, calc((100vw - 1180px) / 2 - 78px));
+  width: clamp(190px, 19vw, 276px);
+  opacity: 0.53;
+}
+
+.math-background-about .math-sketch-sphere {
+  top: 600px;
+  left: 50%;
+  width: clamp(150px, 15vw, 224px);
+  transform: translateX(-50%) rotate(-4deg);
+  opacity: 0.36;
+}
+
+.math-background-about .math-sketch-sine {
+  top: 742px;
+  left: max(18px, calc((100vw - 1180px) / 2 - 96px));
+  width: clamp(220px, 23vw, 340px);
+  opacity: 0.53;
+}
+
+.math-background-about .math-sketch-circle {
+  top: 852px;
+  left: max(18px, calc((100vw - 1180px) / 2 - 68px));
+  width: clamp(180px, 18vw, 258px);
+  opacity: 0.55;
+}
+
+.math-background-about .math-sketch-solids {
+  top: 820px;
+  right: max(12px, calc((100vw - 1180px) / 2 - 76px));
+  width: clamp(190px, 19vw, 282px);
+  opacity: 0.53;
+}
+
+.math-background-about .math-sketch-tools {
+  top: 1120px;
+  right: max(18px, calc((100vw - 1180px) / 2 - 86px));
+  width: clamp(190px, 19vw, 286px);
+  opacity: 0.46;
+}
+
+.math-background-about .math-sketch-algebra {
+  top: 84px;
+  left: 50%;
+  width: clamp(270px, 28vw, 390px);
+  transform: translateX(-50%) rotate(-2deg);
+  opacity: 0.53;
+}
+
+@media (max-width: 1100px) {
+  .math-background-about .math-sketch-graph {
+    left: -52px;
+  }
+
+  .math-background-about .math-sketch-triangle,
+  .math-background-about .math-sketch-linear,
+  .math-background-about .math-sketch-solids,
+  .math-background-about .math-sketch-tools {
+    right: -48px;
+  }
+
+  .math-background-about .math-sketch-sine,
+  .math-background-about .math-sketch-circle,
+  .math-background-about .math-sketch-algebra {
+    left: -56px;
+  }
+}
+
+@media (max-width: 900px) {
+  .math-background-about .math-sketch-graph {
+    top: 26px;
+    left: -74px;
+    width: 238px;
+    opacity: 0.34;
+  }
+
+  .math-background-about .math-sketch-linear {
+    display: block;
+    top: 560px;
+    right: -92px;
+    width: 220px;
+    opacity: 0.29;
+  }
+
+  .math-background-about .math-sketch-circle {
+    top: 1180px;
+    right: -76px;
+    left: auto;
+    width: 210px;
+    opacity: 0.31;
+  }
+
+  .math-background-about .math-sketch-sine,
+  .math-background-about .math-sketch-sphere {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .math-background-about {
+    color: var(--primary);
+  }
+
+  .math-background-about .math-sketch {
+    opacity: 0.20;
+    stroke-width: 1.65;
+  }
+
+  .math-background-about .math-sketch-linear {
+    display: none;
+  }
+
+  .math-background-about .math-sketch-graph {
+    top: 14px;
+    left: -108px;
+    width: 220px;
+    opacity: 0.22;
+  }
+
+  .math-background-about .math-sketch-circle {
+    top: 820px;
+    right: -106px;
+    width: 205px;
+    opacity: 0.22;
+  }
+}
+
+
+
+
