@@ -1,38 +1,63 @@
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import AutoStoriesOutlinedIcon from '@mui/icons-material/AutoStoriesOutlined';
+import ArchitectureOutlinedIcon from '@mui/icons-material/ArchitectureOutlined';
+import CalculateOutlinedIcon from '@mui/icons-material/CalculateOutlined';
 import FunctionsOutlinedIcon from '@mui/icons-material/FunctionsOutlined';
-import { Box, Button, Container, Grid, Stack, Typography } from '@mui/material';
+import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
+import QueryStatsOutlinedIcon from '@mui/icons-material/QueryStatsOutlined';
+import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined';
+import SquareFootOutlinedIcon from '@mui/icons-material/SquareFootOutlined';
+import StarBorderOutlinedIcon from '@mui/icons-material/StarBorderOutlined';
+import ViewInArOutlinedIcon from '@mui/icons-material/ViewInArOutlined';
+import { Box, Button, Container, Stack, Typography } from '@mui/material';
 import { Link } from 'react-router-dom';
-import { documentTypeOptions } from '../constants/documentTypes';
+
+const classLinks = [
+  { label: '5 клас', to: '/materials?class=5', icon: <MenuBookOutlinedIcon fontSize="small" /> },
+  { label: '6 клас', to: '/materials?class=6', icon: <ViewInArOutlinedIcon fontSize="small" /> },
+  { label: '7 клас', to: '/materials?class=7', icon: <ArchitectureOutlinedIcon fontSize="small" /> },
+  { label: '8 клас', to: '/materials?class=8', icon: <SquareFootOutlinedIcon fontSize="small" /> },
+  { label: '9 клас', to: '/materials?class=9', icon: <QueryStatsOutlinedIcon fontSize="small" /> },
+  { label: '10 клас', to: '/materials?class=10', icon: <FunctionsOutlinedIcon fontSize="small" /> },
+  { label: '11 клас', to: '/materials?class=11', icon: <CalculateOutlinedIcon fontSize="small" /> },
+  { label: 'Загальні матеріали', to: '/materials?class=general', icon: <StarBorderOutlinedIcon fontSize="small" /> }
+];
 
 export function HomePage() {
   return (
     <Container maxWidth="lg">
       <Box className="hero">
-        <Stack gap={3} maxWidth={760} className="hero-copy">
-          <Box className="hero-kicker">
-            <FunctionsOutlinedIcon fontSize="small" />
-            <Typography variant="body2">Бібліотека навчальних матеріалів</Typography>
-          </Box>
-          <Typography variant="h1">Навчальні матеріали з математики</Typography>
+        <Stack gap={2.5} className="hero-copy">
+          <Typography variant="h1">
+            Матеріали з
+            <Box component="span">математики</Box>
+          </Typography>
           <Typography variant="h5" color="text.secondary">
             Формули, контрольні роботи, самостійні завдання та методичні матеріали для учнів і вчителів.
           </Typography>
+          <Box className="teacher-summary-card">
+            <Box className="teacher-summary-icon"><SchoolOutlinedIcon /></Box>
+            <Box>
+              <Typography variant="h6" component="h2">Матеріали від вчителя з понад 30-річним досвідом</Typography>
+              <Typography color="text.secondary">
+                Морозова Тетяна Володимирівна — вчитель математики Ліцею №23 «Соборний» ДМР.
+              </Typography>
+            </Box>
+          </Box>
           <Button component={Link} to="/materials" variant="contained" size="large" endIcon={<ArrowForwardIcon />}>
             Переглянути матеріали
           </Button>
         </Stack>
+        <Box className="class-navigation-card" aria-label="Навігація за класом">
+          <Box className="class-link-grid">
+            {classLinks.map((item) => (
+              <Box key={item.to} component={Link} to={item.to} className="class-link-tile">
+                {item.icon}
+                <Typography variant="h6">{item.label}</Typography>
+              </Box>
+            ))}
+          </Box>
+        </Box>
       </Box>
-      <Grid container spacing={2.25} className="category-grid home-category-grid">
-        {documentTypeOptions.slice(0, 6).map((type) => (
-          <Grid key={type.value} size={{ xs: 12, sm: 6, md: 4 }}>
-            <Box className="category-tile">
-              <Box className="category-icon"><AutoStoriesOutlinedIcon /></Box>
-              <Typography variant="h6">{type.label}</Typography>
-            </Box>
-          </Grid>
-        ))}
-      </Grid>
     </Container>
   );
 }
