@@ -17,6 +17,9 @@
   --shadow-sm: 0 8px 22px rgba(78, 60, 43, 0.06);
   --shadow-md: 0 18px 42px rgba(78, 60, 43, 0.09);
   --shadow-lg: 0 26px 64px rgba(78, 60, 43, 0.12);
+  --surface-glass: rgba(255, 253, 248, 0.72);
+  --surface-glass-strong: rgba(255, 253, 248, 0.78);
+  --surface-glass-soft: rgba(244, 235, 221, 0.58);
   --transition: 240ms ease;
 }
 
@@ -180,10 +183,11 @@ a {
 .admin-table,
 .preview-frame,
 .about-feature {
-  background: rgba(255, 253, 248, 0.88);
-  border: 1px solid var(--line);
+  background: var(--surface-glass);
+  border: 1px solid rgba(231, 222, 211, 0.86);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
+  backdrop-filter: blur(2px);
 }
 
 .category-tile,
@@ -258,7 +262,7 @@ a {
 }
 
 .about-feature-main {
-  background: rgba(255, 253, 248, 0.92);
+  background: var(--surface-glass-strong);
 }
 
 .about-feature.compact {
@@ -329,13 +333,18 @@ a {
   padding: 42px;
   text-align: center;
   background:
-    linear-gradient(145deg, rgba(255, 253, 248, 0.94), rgba(244, 235, 221, 0.90));
+    linear-gradient(145deg, rgba(255, 253, 248, 0.76), rgba(244, 235, 221, 0.62));
 }
 
 .document-card {
   width: 100%;
   overflow: hidden;
   border-radius: 16px;
+}
+
+.material-card-skeleton {
+  min-height: 174px;
+  padding: 20px;
 }
 
 .document-card-content {
@@ -389,7 +398,7 @@ a {
   margin: 2px -20px 0;
   padding: 10px 12px;
   border-top: 1px solid var(--line);
-  background: rgba(248, 245, 241, 0.48);
+  background: rgba(248, 245, 241, 0.38);
 }
 
 .card-actions .MuiButton-root {
@@ -411,10 +420,11 @@ a {
   width: fit-content;
   max-width: 100%;
   padding: 12px;
-  background: rgba(255, 252, 248, 0.86);
+  background: rgba(255, 252, 248, 0.74);
   border: 1px solid var(--line);
   border-radius: 16px;
   box-shadow: 0 8px 22px rgba(78, 60, 43, 0.05);
+  backdrop-filter: blur(2px);
   align-items: center;
 }
 
@@ -698,7 +708,7 @@ a {
 .credo-card {
   overflow: hidden;
   background:
-    linear-gradient(145deg, rgba(255, 252, 248, 0.94), rgba(241, 231, 216, 0.72));
+    linear-gradient(145deg, rgba(255, 252, 248, 0.76), rgba(241, 231, 216, 0.58));
 }
 
 .credo-card::after {
@@ -780,8 +790,8 @@ a {
   stroke-width: 1.65;
   stroke-linecap: round;
   stroke-linejoin: round;
-  opacity: 0.24;
-  filter: drop-shadow(0 10px 18px rgba(78, 60, 43, 0.035));
+  opacity: 0.38;
+  filter: drop-shadow(0 10px 18px rgba(78, 60, 43, 0.05));
 }
 
 .math-sketch text {
@@ -798,7 +808,7 @@ a {
   left: max(18px, calc((100vw - 1180px) / 2 - 130px));
   width: clamp(185px, 19vw, 292px);
   transform: rotate(-4deg);
-  opacity: 0.26;
+  opacity: 0.42;
 }
 
 .math-sketch-linear {
@@ -806,7 +816,7 @@ a {
   right: max(26px, calc((100vw - 1180px) / 2 - 118px));
   width: clamp(170px, 17vw, 258px);
   transform: rotate(4deg);
-  opacity: 0.22;
+  opacity: 0.36;
 }
 
 .math-sketch-sine {
@@ -814,7 +824,7 @@ a {
   left: max(18px, calc((100vw - 1180px) / 2 - 122px));
   width: clamp(190px, 20vw, 310px);
   transform: rotate(2deg);
-  opacity: 0.21;
+  opacity: 0.34;
 }
 
 .math-sketch-triangle {
@@ -822,7 +832,7 @@ a {
   top: 118px;
   width: clamp(150px, 16vw, 248px);
   transform: rotate(5deg);
-  opacity: 0.24;
+  opacity: 0.38;
 }
 
 .math-sketch-circle {
@@ -830,7 +840,7 @@ a {
   top: 1040px;
   width: clamp(150px, 15vw, 235px);
   transform: rotate(3deg);
-  opacity: 0.23;
+  opacity: 0.36;
 }
 
 .math-sketch-solids {
@@ -838,7 +848,7 @@ a {
   top: 980px;
   width: clamp(170px, 17vw, 262px);
   transform: rotate(-3deg);
-  opacity: 0.22;
+  opacity: 0.35;
 }
 
 .math-sketch-sphere {
@@ -846,7 +856,7 @@ a {
   top: 410px;
   width: clamp(145px, 14vw, 218px);
   transform: translateX(-50%) rotate(-5deg);
-  opacity: 0.18;
+  opacity: 0.30;
 }
 
 .math-sketch-tools {
@@ -854,7 +864,7 @@ a {
   top: 1440px;
   width: clamp(180px, 18vw, 280px);
   transform: rotate(3deg);
-  opacity: 0.22;
+  opacity: 0.35;
 }
 
 .math-sketch-algebra {
@@ -862,7 +872,7 @@ a {
   top: 1500px;
   width: clamp(230px, 25vw, 360px);
   transform: rotate(-2deg);
-  opacity: 0.21;
+  opacity: 0.34;
 }
 
 @media (max-width: 1100px) {
@@ -893,7 +903,7 @@ a {
 
 @media (max-width: 900px) {
   .public-math-background {
-    opacity: 0.84;
+    opacity: 0.92;
   }
 
   .math-sketch-triangle,
@@ -944,7 +954,7 @@ a {
   }
 
   .math-sketch {
-    opacity: 0.17;
+    opacity: 0.24;
   }
 
   .math-sketch-linear,
@@ -1051,21 +1061,21 @@ a {
   top: 44px;
   left: max(20px, calc((100vw - 1180px) / 2 - 96px));
   width: clamp(220px, 21vw, 310px);
-  opacity: 0.65;
+  opacity: 0.78;
 }
 
 .math-background-about .math-sketch-triangle {
   top: 84px;
   right: max(12px, calc((100vw - 1180px) / 2 - 72px));
   width: clamp(190px, 19vw, 282px);
-  opacity: 0.58;
+  opacity: 0.70;
 }
 
 .math-background-about .math-sketch-linear {
   top: 392px;
   right: max(12px, calc((100vw - 1180px) / 2 - 78px));
   width: clamp(190px, 19vw, 276px);
-  opacity: 0.53;
+  opacity: 0.64;
 }
 
 .math-background-about .math-sketch-sphere {
@@ -1073,35 +1083,35 @@ a {
   left: 50%;
   width: clamp(150px, 15vw, 224px);
   transform: translateX(-50%) rotate(-4deg);
-  opacity: 0.36;
+  opacity: 0.44;
 }
 
 .math-background-about .math-sketch-sine {
   top: 742px;
   left: max(18px, calc((100vw - 1180px) / 2 - 96px));
   width: clamp(220px, 23vw, 340px);
-  opacity: 0.53;
+  opacity: 0.64;
 }
 
 .math-background-about .math-sketch-circle {
   top: 852px;
   left: max(18px, calc((100vw - 1180px) / 2 - 68px));
   width: clamp(180px, 18vw, 258px);
-  opacity: 0.55;
+  opacity: 0.66;
 }
 
 .math-background-about .math-sketch-solids {
   top: 820px;
   right: max(12px, calc((100vw - 1180px) / 2 - 76px));
   width: clamp(190px, 19vw, 282px);
-  opacity: 0.53;
+  opacity: 0.64;
 }
 
 .math-background-about .math-sketch-tools {
   top: 1120px;
   right: max(18px, calc((100vw - 1180px) / 2 - 86px));
   width: clamp(190px, 19vw, 286px);
-  opacity: 0.46;
+  opacity: 0.56;
 }
 
 .math-background-about .math-sketch-algebra {
@@ -1109,7 +1119,7 @@ a {
   left: 50%;
   width: clamp(270px, 28vw, 390px);
   transform: translateX(-50%) rotate(-2deg);
-  opacity: 0.53;
+  opacity: 0.64;
 }
 
 @media (max-width: 1100px) {
@@ -1136,7 +1146,7 @@ a {
     top: 26px;
     left: -74px;
     width: 238px;
-    opacity: 0.34;
+    opacity: 0.40;
   }
 
   .math-background-about .math-sketch-linear {
@@ -1144,7 +1154,7 @@ a {
     top: 560px;
     right: -92px;
     width: 220px;
-    opacity: 0.29;
+    opacity: 0.35;
   }
 
   .math-background-about .math-sketch-circle {
@@ -1152,7 +1162,7 @@ a {
     right: -76px;
     left: auto;
     width: 210px;
-    opacity: 0.31;
+    opacity: 0.37;
   }
 
   .math-background-about .math-sketch-sine,
@@ -1167,7 +1177,7 @@ a {
   }
 
   .math-background-about .math-sketch {
-    opacity: 0.20;
+    opacity: 0.24;
     stroke-width: 1.65;
   }
 
@@ -1179,14 +1189,14 @@ a {
     top: 14px;
     left: -108px;
     width: 220px;
-    opacity: 0.22;
+    opacity: 0.26;
   }
 
   .math-background-about .math-sketch-circle {
     top: 820px;
     right: -106px;
     width: 205px;
-    opacity: 0.22;
+    opacity: 0.26;
   }
 }
 

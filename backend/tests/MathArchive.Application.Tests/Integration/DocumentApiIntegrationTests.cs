@@ -84,6 +84,104 @@ public sealed class DocumentApiIntegrationTests(ApiIntegrationFixture fixture) :
         Assert.Equal(7, page.Items[0].Grade);
     }
 
+    [Fact]
+    public async Task GetDocuments_WhenSearchMatchesTopicPartiallyAndCaseInsensitively_ReturnsMatches()
+    {
+        using var client = await fixture.CreateAuthorizedClientAsync();
+        using var geometry = CreateDocumentForm(title: "Geometry foundations", grade: 7, topic: "Основи геометрії");
+        using var algebra = CreateDocumentForm(title: "Algebra topic", grade: 7, topic: "Алгебра");
+        await client.PostAsync("/api/admin/documents", geometry);
+        await client.PostAsync("/api/admin/documents", algebra);
+
+        var search = Uri.EscapeDataString("ГЕОМ");
+        var response = await client.GetAsync($"/api/documents?search={search}&page=1&pageSize=12");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var page = await ReadJsonAsync<PagedResult<DocumentDto>>(response);
+        Assert.Contains(page.Items, x => x.Title == "Geometry foundations");
+        Assert.DoesNotContain(page.Items, x => x.Title == "Algebra topic");
+    }
+
+    [Fact]
+    public async Task GetDocuments_WhenSearchHasWhitespace_TrimsBeforeFiltering()
+    {
+        using var client = await fixture.CreateAuthorizedClientAsync();
+        using var geometry = CreateDocumentForm(title: "Trimmed geometry", grade: 7, topic: "Геометрична прогресія");
+        using var algebra = CreateDocumentForm(title: "Trimmed algebra", grade: 7, topic: "Алгебра");
+        await client.PostAsync("/api/admin/documents", geometry);
+        await client.PostAsync("/api/admin/documents", algebra);
+
+        var search = Uri.EscapeDataString("  прогрес  ");
+        var response = await client.GetAsync($"/api/documents?search={search}&page=1&pageSize=12");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var page = await ReadJsonAsync<PagedResult<DocumentDto>>(response);
+        Assert.Contains(page.Items, x => x.Title == "Trimmed geometry");
+        Assert.DoesNotContain(page.Items, x => x.Title == "Trimmed algebra");
+    }
+
+    [Fact]
+    public async Task GetDocuments_WhenSearchIsEmpty_DoesNotFilterByTopic()
+    {
+        using var client = await fixture.CreateAuthorizedClientAsync();
+        using var geometry = CreateDocumentForm(title: "Empty topic geometry", grade: 7, topic: "Геометрія");
+        using var algebra = CreateDocumentForm(title: "Empty topic algebra", grade: 7, topic: "Алгебра");
+        await client.PostAsync("/api/admin/documents", geometry);
+        await client.PostAsync("/api/admin/documents", algebra);
+
+        var search = Uri.EscapeDataString("   ");
+        var response = await client.GetAsync($"/api/documents?search={search}&page=1&pageSize=12");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var page = await ReadJsonAsync<PagedResult<DocumentDto>>(response);
+        Assert.Contains(page.Items, x => x.Title == "Empty topic geometry");
+        Assert.Contains(page.Items, x => x.Title == "Empty topic algebra");
+    }
+
+    [Fact]
+    public async Task GetDocuments_WhenClassAndSearchAreProvided_CombinesFiltersBeforePagination()
+    {
+        using var client = await fixture.CreateAuthorizedClientAsync();
+        using var gradeSevenGeometry = CreateDocumentForm(title: "Grade 7 geometry", grade: 7, topic: "Геометрія");
+        using var gradeEightGeometry = CreateDocumentForm(title: "Grade 8 geometry", grade: 8, topic: "Геометрія");
+        using var gradeSevenAlgebra = CreateDocumentForm(title: "Grade 7 algebra", grade: 7, topic: "Алгебра");
+        await client.PostAsync("/api/admin/documents", gradeSevenGeometry);
+        await client.PostAsync("/api/admin/documents", gradeEightGeometry);
+        await client.PostAsync("/api/admin/documents", gradeSevenAlgebra);
+
+        var search = Uri.EscapeDataString("геом");
+        var response = await client.GetAsync($"/api/documents?grade=7&search={search}&page=1&pageSize=1");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var page = await ReadJsonAsync<PagedResult<DocumentDto>>(response);
+        Assert.Equal(1, page.TotalCount);
+        Assert.Single(page.Items);
+        Assert.Equal("Grade 7 geometry", page.Items[0].Title);
+    }
+
+    [Fact]
+    public async Task GetDocuments_WhenSearchMatchesMultipleTopicRows_PaginatesMatchingResults()
+    {
+        using var client = await fixture.CreateAuthorizedClientAsync();
+        using var first = CreateDocumentForm(title: "Paged geometry one", grade: 7, topic: "Геометрія");
+        using var second = CreateDocumentForm(title: "Paged geometry two", grade: 7, topic: "Основи геометрії");
+        using var algebra = CreateDocumentForm(title: "Paged algebra", grade: 7, topic: "Алгебра");
+        await client.PostAsync("/api/admin/documents", first);
+        await client.PostAsync("/api/admin/documents", second);
+        await client.PostAsync("/api/admin/documents", algebra);
+
+        var search = Uri.EscapeDataString("геом");
+        var response = await client.GetAsync($"/api/documents?search={search}&page=2&pageSize=1");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var page = await ReadJsonAsync<PagedResult<DocumentDto>>(response);
+        Assert.Equal(2, page.TotalCount);
+        Assert.Equal(2, page.TotalPages);
+        Assert.Equal(2, page.Page);
+        Assert.Single(page.Items);
+        Assert.Contains("геом", page.Items[0].Topic, StringComparison.OrdinalIgnoreCase);
+    }
+
 
     [Fact]
     public async Task UploadDocument_WhenGradeIsOmitted_CreatesGeneralMaterial()

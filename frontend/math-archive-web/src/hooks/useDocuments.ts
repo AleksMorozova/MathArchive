@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { getDocument, getDocuments, getTopics } from '../api/documentsApi';
 import { queryKeys } from '../api/queryKeys';
 import type { DocumentFilters } from '../types/documents';
@@ -6,7 +6,16 @@ import type { DocumentFilters } from '../types/documents';
 export function useDocuments(filters: DocumentFilters) {
   return useQuery({
     queryKey: queryKeys.documents(filters),
-    queryFn: () => getDocuments(filters)
+    queryFn: ({ signal }) => getDocuments(filters, signal)
+  });
+}
+
+export function useInfiniteDocuments(filters: DocumentFilters) {
+  return useInfiniteQuery({
+    queryKey: queryKeys.infiniteDocuments(filters),
+    initialPageParam: 1,
+    queryFn: ({ pageParam, signal }) => getDocuments({ ...filters, page: pageParam }, signal),
+    getNextPageParam: (lastPage) => (lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined)
   });
 }
 

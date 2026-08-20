@@ -4,6 +4,7 @@ import { Alert, Box, Button, Chip, Container, Stack, Typography } from '@mui/mat
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getApiErrorMessage, isApiError } from '../api/apiErrors';
+import { authStorage } from '../api/authStorage';
 import { downloadDocument, getDocumentFile } from '../api/documentsApi';
 import { ErrorState, LoadingState } from '../components/StateView';
 import { documentTypeLabels } from '../constants/documentTypes';
@@ -14,6 +15,7 @@ export function DocumentDetailsPage() {
   const { id } = useParams();
   const query = useDocument(id ?? '');
   const document = query.data;
+  const isAdmin = authStorage.isAuthenticated();
   const canPreview = Boolean(document && (document.contentType === 'application/pdf' || document.contentType.startsWith('image/')));
   const [downloadError, setDownloadError] = useState('');
   const [previewUrl, setPreviewUrl] = useState('');
@@ -81,10 +83,10 @@ export function DocumentDetailsPage() {
               <Chip label={document.grade === null ? 'Загальний матеріал' : `Клас: ${document.grade}`} />
               <Chip label={`Тема: ${document.topic}`} />
               <Chip label={`Тип матеріалу: ${documentTypeLabels[document.documentType]}`} />
-              <Chip label={`Формат: ${fileExtension(document.originalFileName)}`} />
-              <Chip label={`Розмір файлу: ${formatFileSize(document.fileSize)}`} />
+              {isAdmin && <Chip label={`Формат: ${fileExtension(document.originalFileName)}`} />}
+              {isAdmin && <Chip label={`Розмір файлу: ${formatFileSize(document.fileSize)}`} />}
               <Chip label={`Дата додавання: ${formatDate(document.createdAt)}`} />
-              <Chip label={`Кількість завантажень: ${document.downloadCount}`} />
+              {isAdmin && <Chip label={`Кількість завантажень: ${document.downloadCount}`} />}
             </Stack>
             {downloadError && <Alert severity="error">{downloadError}</Alert>}
             <Button startIcon={<DownloadIcon />} variant="contained" onClick={handleDownload} disabled={isDownloading} sx={{ alignSelf: 'flex-start' }}>

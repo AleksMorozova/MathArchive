@@ -3,8 +3,9 @@ import { httpClient } from './httpClient';
 
 const generalGradeFilterValue = 'general';
 
-export async function getDocuments(filters: DocumentFilters) {
+export async function getDocuments(filters: DocumentFilters, signal?: AbortSignal) {
   const response = await httpClient.get<PagedResult<DocumentDto>>('/api/documents', {
+    signal,
     params: {
       search: filters.search || undefined,
       grade: filters.grade && filters.grade !== generalGradeFilterValue ? filters.grade : undefined,
