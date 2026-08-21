@@ -811,6 +811,10 @@ a {
   color: var(--primary-hover);
 }
 
+.teacher-meta-item span {
+  overflow-wrap: anywhere;
+}
+
 .teacher-copy {
   max-width: 68ch;
 }
