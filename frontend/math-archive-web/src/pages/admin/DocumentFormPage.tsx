@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { fieldNameFromProblemDetails, getApiErrorMessage, hasValidationErrors, isApiError } from '../../api/apiErrors';
 import { createDocument, updateDocument } from '../../api/documentsApi';
 import { queryKeys } from '../../api/queryKeys';
+import { ErrorState, LoadingState } from '../../components/StateView';
 import { documentTypeOptions } from '../../constants/documentTypes';
 import { useDocument } from '../../hooks/useDocuments';
 import { formatFileSize } from '../../utils/format';
@@ -126,6 +127,18 @@ export function DocumentFormPage({ mode }: DocumentFormPageProps) {
       }
     }
   });
+
+  if (mode === 'edit' && documentQuery.isLoading) {
+    return <LoadingState text="Завантажуємо матеріал…" />;
+  }
+
+  if (mode === 'edit' && documentQuery.isError) {
+    return <ErrorState message={getApiErrorMessage(documentQuery.error, 'Не вдалося завантажити матеріал.')} />;
+  }
+
+  if (mode === 'edit' && !existing) {
+    return <ErrorState title="Матеріал не знайдено" message="Можливо, його було видалено або посилання є неправильним." />;
+  }
 
   return (
     <Box component="form" className="content-panel admin-form" onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
