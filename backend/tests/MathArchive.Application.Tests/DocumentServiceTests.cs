@@ -166,6 +166,21 @@ public sealed class DocumentServiceTests
         Assert.Equal(1, repository.SaveCount);
     }
 
+    [Fact]
+    public async Task PreparePreviewAsync_opens_file_without_incrementing_download_count()
+    {
+        var document = CreateDocument(storedFileName: "stored.pdf");
+        var repository = new FakeDocumentRepository(document);
+        var storage = new FakeFileStorage();
+        var service = CreateService(repository, storage);
+
+        var preview = await service.PreparePreviewAsync(document.Id, CancellationToken.None);
+
+        Assert.NotNull(preview);
+        Assert.Equal(0, document.DownloadCount);
+        Assert.Equal(0, repository.SaveCount);
+    }
+
     private static DocumentService CreateService(FakeDocumentRepository repository, FakeFileStorage storage)
     {
         return new DocumentService(

@@ -1,7 +1,7 @@
 import type { AxiosAdapter, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from './apiErrors';
-import { downloadDocument, getDocuments } from './documentsApi';
+import { downloadDocument, getDocumentFile, getDocuments } from './documentsApi';
 import { httpClient } from './httpClient';
 
 const originalAdapter = httpClient.defaults.adapter;
@@ -76,15 +76,35 @@ describe('documentsApi', () => {
     const revokeObjectUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
 
-    httpClient.defaults.adapter = resolveAdapter(blob, {
-      'content-disposition': 'attachment; filename="algebra.pdf"'
-    });
+    let requestConfig: InternalAxiosRequestConfig | undefined;
+    httpClient.defaults.adapter = async (config) => {
+      requestConfig = config as InternalAxiosRequestConfig;
+      return resolveAdapter(blob, {
+        'content-disposition': 'attachment; filename="algebra.pdf"'
+      })(config);
+    };
 
     await downloadDocument('document-id');
 
     expect(createObjectUrl).toHaveBeenCalledWith(blob);
+    expect(requestConfig?.url).toBe('/api/documents/document-id/download');
     expect(click).toHaveBeenCalled();
     expect(revokeObjectUrl).toHaveBeenCalledWith('blob:material');
+  });
+
+  it('loads previews from the non-counting preview endpoint and forwards cancellation', async () => {
+    const blob = new Blob(['preview-content'], { type: 'application/pdf' });
+    const abortController = new AbortController();
+    let requestConfig: InternalAxiosRequestConfig | undefined;
+    httpClient.defaults.adapter = async (config) => {
+      requestConfig = config as InternalAxiosRequestConfig;
+      return resolveAdapter(blob)(config);
+    };
+
+    await expect(getDocumentFile('document-id', abortController.signal)).resolves.toBe(blob);
+
+    expect(requestConfig?.url).toBe('/api/documents/document-id/preview');
+    expect(requestConfig?.signal).toBe(abortController.signal);
   });
 
   it('parses ProblemDetails returned from a failed file download', async () => {

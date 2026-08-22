@@ -2,7 +2,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DownloadIcon from '@mui/icons-material/Download';
 import { Alert, Box, Button, Chip, Container, Stack, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { getApiErrorMessage, isApiError } from '../api/apiErrors';
 import { authStorage } from '../api/authStorage';
 import { downloadDocument, getDocumentFile } from '../api/documentsApi';
@@ -13,6 +13,8 @@ import { fileExtension, formatDate, formatFileSize } from '../utils/format';
 
 export function DocumentDetailsPage() {
   const { id } = useParams();
+  const location = useLocation();
+  const backTo = location.state?.from ?? '/materials';
   const query = useDocument(id ?? '');
   const document = query.data;
   const isAdmin = authStorage.isAuthenticated();
@@ -33,7 +35,9 @@ export function DocumentDetailsPage() {
     let isActive = true;
     setPreviewError('');
 
-    getDocumentFile(document.id)
+    const abortController = new AbortController();
+
+    getDocumentFile(document.id, abortController.signal)
       .then((blob) => {
         if (!isActive) return;
         objectUrl = URL.createObjectURL(blob);
@@ -47,6 +51,7 @@ export function DocumentDetailsPage() {
 
     return () => {
       isActive = false;
+      abortController.abort();
       if (objectUrl) {
         URL.revokeObjectURL(objectUrl);
       }
@@ -72,7 +77,7 @@ export function DocumentDetailsPage() {
   return (
     <Container maxWidth="lg" className="page-section">
       <Stack gap={3}>
-        <Button component={Link} to="/materials" startIcon={<ArrowBackIcon />} sx={{ alignSelf: 'flex-start' }}>
+        <Button component={Link} to={backTo} startIcon={<ArrowBackIcon />} sx={{ alignSelf: 'flex-start' }}>
           Назад до матеріалів
         </Button>
         <Box className="content-panel">

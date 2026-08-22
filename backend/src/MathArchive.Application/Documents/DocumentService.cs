@@ -158,7 +158,17 @@ public sealed class DocumentService(
 
     public async Task<DocumentDownload?> PrepareDownloadAsync(Guid id, CancellationToken cancellationToken)
     {
-        var document = await documentRepository.GetByIdAsync(id, track: true, cancellationToken);
+        return await PrepareFileAsync(id, incrementDownloadCount: true, cancellationToken);
+    }
+
+    public async Task<DocumentDownload?> PreparePreviewAsync(Guid id, CancellationToken cancellationToken)
+    {
+        return await PrepareFileAsync(id, incrementDownloadCount: false, cancellationToken);
+    }
+
+    private async Task<DocumentDownload?> PrepareFileAsync(Guid id, bool incrementDownloadCount, CancellationToken cancellationToken)
+    {
+        var document = await documentRepository.GetByIdAsync(id, track: incrementDownloadCount, cancellationToken);
         if (document is null)
         {
             return null;
@@ -173,8 +183,12 @@ public sealed class DocumentService(
 
         try
         {
-            document.IncrementDownloadCount();
-            await documentRepository.SaveChangesAsync(cancellationToken);
+            if (incrementDownloadCount)
+            {
+                document.IncrementDownloadCount();
+                await documentRepository.SaveChangesAsync(cancellationToken);
+            }
+
             return new DocumentDownload(stream, document.OriginalFileName, document.ContentType);
         }
         catch
