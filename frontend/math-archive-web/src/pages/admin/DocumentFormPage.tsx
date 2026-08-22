@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { Alert, Box, Button, LinearProgress, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { z } from 'zod';
@@ -40,6 +40,7 @@ export function DocumentFormPage({ mode }: DocumentFormPageProps) {
   const queryClient = useQueryClient();
   const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState('');
+  const hydratedDocumentId = useRef<string | null>(null);
   const documentQuery = useDocument(id ?? '');
   const existing = mode === 'edit' ? documentQuery.data : undefined;
 
@@ -75,7 +76,7 @@ export function DocumentFormPage({ mode }: DocumentFormPageProps) {
   });
 
   useEffect(() => {
-    if (existing) {
+    if (existing && hydratedDocumentId.current !== existing.id) {
       form.reset({
         title: existing.title,
         description: existing.description ?? '',
@@ -85,6 +86,7 @@ export function DocumentFormPage({ mode }: DocumentFormPageProps) {
         documentType: existing.documentType,
         file: undefined
       });
+      hydratedDocumentId.current = existing.id;
     }
   }, [existing, form]);
 
@@ -144,7 +146,11 @@ export function DocumentFormPage({ mode }: DocumentFormPageProps) {
   }
 
   return (
-    <Box component="form" className="content-panel admin-form" onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
+    <Box component="form" className="content-panel admin-form" onSubmit={form.handleSubmit((values) => {
+      if (!mutation.isPending) {
+        mutation.mutate(values);
+      }
+    })}>
       <Stack gap={2}>
         <Typography variant="h3">{mode === 'create' ? 'Новий матеріал' : 'Редагування матеріалу'}</Typography>
         {message && <Alert severity="success">{message}</Alert>}
@@ -205,7 +211,9 @@ export function DocumentFormPage({ mode }: DocumentFormPageProps) {
         />
         {progress > 0 && progress < 100 && <LinearProgress variant="determinate" value={progress} />}
         <Stack direction="row" gap={1}>
-          <Button type="submit" variant="contained">{mode === 'create' ? 'Зберегти' : 'Зберегти зміни'}</Button>
+          <Button type="submit" variant="contained" disabled={mutation.isPending}>
+            {mutation.isPending ? 'Зберігаємо…' : mode === 'create' ? 'Зберегти' : 'Зберегти зміни'}
+          </Button>
           <Button component={Link} to="/admin/documents">Скасувати</Button>
         </Stack>
       </Stack>

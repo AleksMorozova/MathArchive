@@ -33,6 +33,9 @@ export function AdminDocumentsPage() {
     onSuccess: async (_data, deletedId) => {
       setMessage('Матеріал успішно видалено');
       setDeleteTarget(null);
+      if (documents.data?.items.length === 1 && filters.page > 1) {
+        setFilters((current) => ({ ...current, page: current.page - 1 }));
+      }
       queryClient.removeQueries({ queryKey: queryKeys.document(deletedId) });
       await queryClient.invalidateQueries({ queryKey: ['documents'] });
     }
@@ -93,12 +96,23 @@ export function AdminDocumentsPage() {
           )}
         </>
       )}
-      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)}>
+      <Dialog open={!!deleteTarget} onClose={() => {
+        if (!deleteMutation.isPending) {
+          setDeleteTarget(null);
+        }
+      }}>
         <DialogTitle>Видалити матеріал?</DialogTitle>
         <DialogContent>Цю дію неможливо скасувати. Файл також буде видалено зі сховища.</DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteTarget(null)}>Скасувати</Button>
-          <Button color="error" variant="contained" onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}>Видалити</Button>
+          <Button onClick={() => setDeleteTarget(null)} disabled={deleteMutation.isPending}>Скасувати</Button>
+          <Button
+            color="error"
+            variant="contained"
+            disabled={deleteMutation.isPending}
+            onClick={() => deleteTarget && !deleteMutation.isPending && deleteMutation.mutate(deleteTarget.id)}
+          >
+            {deleteMutation.isPending ? 'Видаляємо…' : 'Видалити'}
+          </Button>
         </DialogActions>
       </Dialog>
     </Stack>
