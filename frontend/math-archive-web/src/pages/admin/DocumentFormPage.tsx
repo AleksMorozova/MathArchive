@@ -114,6 +114,9 @@ export function DocumentFormPage({ mode }: DocumentFormPageProps) {
     onSuccess: async () => {
       setMessage(mode === 'create' ? 'Матеріал успішно додано' : 'Матеріал успішно оновлено');
       await queryClient.invalidateQueries({ queryKey: ['documents'] });
+      if (mode === 'edit' && id) {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.document(id) });
+      }
       window.setTimeout(() => navigate('/admin/documents'), 600);
     },
     onError: (error) => {

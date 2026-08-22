@@ -3,7 +3,8 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createDocument, getDocument } from '../../api/documentsApi';
+import { createDocument, getDocument, updateDocument } from '../../api/documentsApi';
+import { queryKeys } from '../../api/queryKeys';
 import { DocumentFormPage } from './DocumentFormPage';
 
 vi.mock('../../api/documentsApi', () => ({
@@ -89,6 +90,23 @@ describe('DocumentFormPage', () => {
     expect(screen.getByDisplayValue('Основні формули')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Геометрія')).toBeInTheDocument();
     expect(screen.getByText('Поточний файл: geometry.pdf')).toBeInTheDocument();
+  });
+
+  it('invalidates document lists and the edited document detail after a successful update', async () => {
+    const user = userEvent.setup();
+    const queryClient = createQueryClient();
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries');
+    vi.mocked(getDocument).mockResolvedValue(createLoadedDocument());
+    vi.mocked(updateDocument).mockResolvedValueOnce(createLoadedDocument());
+
+    renderForm(queryClient, 'edit');
+
+    await screen.findByDisplayValue('Пам’ятка з геометрії');
+    await user.click(screen.getByRole('button', { name: 'Зберегти зміни' }));
+
+    await waitFor(() => expect(updateDocument).toHaveBeenCalled());
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['documents'] });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: queryKeys.document('document-id') });
   });
 
   it('renders the create form without waiting for a document query', () => {

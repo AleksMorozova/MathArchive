@@ -30,10 +30,11 @@ export function AdminDocumentsPage() {
   const topics = useTopics();
   const deleteMutation = useMutation({
     mutationFn: deleteDocument,
-    onSuccess: async () => {
+    onSuccess: async (_data, deletedId) => {
       setMessage('Матеріал успішно видалено');
       setDeleteTarget(null);
-      await queryClient.invalidateQueries({ queryKey: queryKeys.documents(filters) });
+      queryClient.removeQueries({ queryKey: queryKeys.document(deletedId) });
+      await queryClient.invalidateQueries({ queryKey: ['documents'] });
     }
   });
 
