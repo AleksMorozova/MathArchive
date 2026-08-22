@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -56,6 +56,30 @@ describe('DocumentFormPage', () => {
     expect(formData.get('documentType')).toBe('MethodicalMaterial');
   });
 
+  it('does not submit a pending create mutation twice', async () => {
+    const user = userEvent.setup();
+    const queryClient = createQueryClient();
+    vi.mocked(createDocument).mockReturnValueOnce(new Promise(() => undefined));
+
+    renderForm(queryClient);
+
+    await user.type(screen.getByLabelText('Назва'), 'Критерії оцінювання');
+    await user.type(screen.getByLabelText('Тема'), 'Оцінювання');
+    await user.click(screen.getByLabelText('Призначення'));
+    await user.click(screen.getByRole('option', { name: 'Загальний матеріал' }));
+    await user.click(screen.getByLabelText('Тип матеріалу'));
+    await user.click(screen.getByRole('option', { name: 'Методичний матеріал' }));
+    await user.upload(
+      document.querySelector('input[type="file"]') as HTMLInputElement,
+      new File(['content'], 'criteria.pdf', { type: 'application/pdf' })
+    );
+
+    await user.dblClick(screen.getByRole('button', { name: 'Зберегти' }));
+
+    await waitFor(() => expect(createDocument).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole('button', { name: 'Зберігаємо…' })).toBeDisabled();
+  });
+
   it('shows a loading state instead of the edit form while the document is loading', () => {
     const queryClient = createQueryClient();
     let resolveDocument!: (value: Awaited<ReturnType<typeof getDocument>>) => void;
@@ -90,6 +114,27 @@ describe('DocumentFormPage', () => {
     expect(screen.getByDisplayValue('Основні формули')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Геометрія')).toBeInTheDocument();
     expect(screen.getByText('Поточний файл: geometry.pdf')).toBeInTheDocument();
+  });
+
+  it('does not overwrite unsaved edit values when document query data changes', async () => {
+    const user = userEvent.setup();
+    const queryClient = createQueryClient();
+    vi.mocked(getDocument).mockResolvedValueOnce(createLoadedDocument());
+
+    renderForm(queryClient, 'edit');
+
+    const titleInput = await screen.findByDisplayValue('Пам’ятка з геометрії');
+    await user.clear(titleInput);
+    await user.type(titleInput, 'Моя незбережена назва');
+
+    act(() => {
+      queryClient.setQueryData(queryKeys.document('document-id'), {
+        ...createLoadedDocument(),
+        title: 'Назва після фонового оновлення'
+      });
+    });
+
+    expect(screen.getByLabelText('Назва')).toHaveValue('Моя незбережена назва');
   });
 
   it('invalidates document lists and the edited document detail after a successful update', async () => {

@@ -48,7 +48,55 @@ describe('AdminDocumentsPage', () => {
     expect(removeQueries).toHaveBeenCalledWith({ queryKey: queryKeys.document('document-id') });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['documents'] });
   });
+
+  it('does not trigger a pending delete mutation twice', async () => {
+    const user = userEvent.setup();
+    const queryClient = createQueryClient();
+    vi.mocked(deleteDocument).mockReturnValueOnce(new Promise(() => undefined));
+
+    renderPage(queryClient);
+
+    await screen.findByText('Пам’ятка з геометрії');
+    await user.click(screen.getByRole('button', { name: 'Видалити' }));
+    await user.dblClick(within(screen.getByRole('dialog')).getByRole('button', { name: 'Видалити' }));
+
+    await waitFor(() => expect(deleteDocument).toHaveBeenCalledTimes(1));
+    expect(within(screen.getByRole('dialog')).getByRole('button', { name: 'Видаляємо…' })).toBeDisabled();
+    expect(within(screen.getByRole('dialog')).getByRole('button', { name: 'Скасувати' })).toBeDisabled();
+  });
+
+  it('moves to the previous page after deleting the only item on page two', async () => {
+    const user = userEvent.setup();
+    const queryClient = createQueryClient();
+    vi.mocked(getDocuments).mockImplementation(async (filters) => filters.page === 2
+      ? { items: [{ ...createDocument(), id: 'page-two-document', title: 'Останній матеріал' }], page: 2, pageSize: 12, totalCount: 13, totalPages: 2 }
+      : { items: [createDocument()], page: 1, pageSize: 12, totalCount: 12, totalPages: 2 });
+
+    renderPage(queryClient);
+
+    await screen.findByText('Пам’ятка з геометрії');
+    await user.click(screen.getByRole('button', { name: /2/ }));
+    await screen.findByText('Останній матеріал');
+    await user.click(screen.getByRole('button', { name: 'Видалити' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Видалити' }));
+
+    expect(await screen.findByText('Пам’ятка з геометрії')).toBeInTheDocument();
+    await waitFor(() => expect(getDocuments).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 1 }),
+      expect.any(AbortSignal)
+    ));
+  });
 });
+
+function renderPage(queryClient: QueryClient) {
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <AdminDocumentsPage />
+      </MemoryRouter>
+    </QueryClientProvider>
+  );
+}
 
 function createQueryClient() {
   return new QueryClient({
