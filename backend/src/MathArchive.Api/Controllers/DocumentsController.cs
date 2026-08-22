@@ -47,6 +47,15 @@ public sealed class DocumentsController(DocumentService documentService) : Contr
             : File(download.Stream, download.ContentType, download.FileName);
     }
 
+    [HttpGet("{id:guid}/preview")]
+    public async Task<IActionResult> Preview(Guid id, CancellationToken cancellationToken)
+    {
+        var preview = await documentService.PreparePreviewAsync(id, cancellationToken);
+        return preview is null
+            ? MaterialNotFound()
+            : File(preview.Stream, preview.ContentType);
+    }
+
     private ObjectResult MaterialNotFound()
     {
         return Problem(

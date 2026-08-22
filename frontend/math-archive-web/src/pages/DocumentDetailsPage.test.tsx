@@ -1,7 +1,10 @@
-import { render, screen } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { authStorage } from '../api/authStorage';
+import { downloadDocument, getDocumentFile } from '../api/documentsApi';
+import { DocumentCard } from '../components/DocumentCard';
 import { DocumentDetailsPage } from './DocumentDetailsPage';
 import { useDocument } from '../hooks/useDocuments';
 import type { DocumentDto } from '../types/documents';
@@ -23,6 +26,7 @@ const useDocumentMock = vi.mocked(useDocument);
 
 describe('DocumentDetailsPage', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     authStorage.clearToken();
     useDocumentMock.mockReturnValue({
       isLoading: false,
@@ -53,6 +57,55 @@ describe('DocumentDetailsPage', () => {
     expect(screen.getByText('Розмір файлу: 2 КБ')).toBeInTheDocument();
     expect(screen.getByText('Кількість завантажень: 12')).toBeInTheDocument();
   });
+
+  it('loads a preview through the preview API and keeps explicit download separate', async () => {
+    const user = userEvent.setup();
+    const previewBlob = new Blob(['preview'], { type: 'application/pdf' });
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn() });
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
+    const createObjectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:preview');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    vi.mocked(getDocumentFile).mockResolvedValue(previewBlob);
+    vi.mocked(downloadDocument).mockResolvedValue(undefined);
+    useDocumentMock.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      error: null,
+      data: { ...createDocument(), contentType: 'application/pdf' }
+    } as unknown as ReturnType<typeof useDocument>);
+
+    renderDetailsPage();
+
+    await waitFor(() => expect(getDocumentFile).toHaveBeenCalledWith('document-id', expect.any(AbortSignal)));
+    expect(createObjectUrl).toHaveBeenCalledWith(previewBlob);
+
+    await user.click(screen.getByRole('button', { name: 'Завантажити файл' }));
+    expect(downloadDocument).toHaveBeenCalledWith('document-id');
+  });
+
+  it('preserves material filters when returning from details', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={['/materials?class=7&topic=геом']}>
+        <Routes>
+          <Route path="/materials" element={<><DocumentCard document={createDocument()} /><LocationProbe /></>} />
+          <Route path="/materials/:id" element={<DocumentDetailsPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole('link', { name: 'Переглянути' }));
+    await user.click(screen.getByRole('link', { name: 'Назад до матеріалів' }));
+
+    expect(screen.getByTestId('location')).toHaveTextContent('/materials?class=7&topic=геом');
+  });
+
+  it('falls back to the unfiltered materials page for direct details navigation', () => {
+    renderDetailsPage();
+
+    expect(screen.getByRole('link', { name: 'Назад до матеріалів' })).toHaveAttribute('href', '/materials');
+  });
 });
 
 function renderDetailsPage() {
@@ -63,6 +116,11 @@ function renderDetailsPage() {
       </Routes>
     </MemoryRouter>
   );
+}
+
+function LocationProbe() {
+  const location = useLocation();
+  return <div data-testid="location">{location.pathname + location.search}</div>;
 }
 
 function createDocument(): DocumentDto {

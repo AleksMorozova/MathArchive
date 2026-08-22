@@ -29,8 +29,9 @@ export async function getDocument(id: string) {
   return response.data;
 }
 
-export async function getDocumentFile(id: string) {
-  const response = await httpClient.get<Blob>(`/api/documents/${id}/download`, {
+export async function getDocumentFile(id: string, signal?: AbortSignal) {
+  const response = await httpClient.get<Blob>(`/api/documents/${id}/preview`, {
+    signal,
     responseType: 'blob'
   });
 

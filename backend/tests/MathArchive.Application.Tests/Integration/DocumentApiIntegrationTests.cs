@@ -305,6 +305,27 @@ public sealed class DocumentApiIntegrationTests(ApiIntegrationFixture fixture) :
     }
 
     [Fact]
+    public async Task PreviewDocument_WhenFileExists_ReturnsContentWithoutIncrementingDownloadCount()
+    {
+        using var client = await fixture.CreateAuthorizedClientAsync();
+        var bytes = new byte[] { 4, 5, 6, 7 };
+        using var upload = CreateDocumentForm(title: "Previewable", fileBytes: bytes);
+        var uploadResponse = await client.PostAsync("/api/admin/documents", upload);
+        var document = await ReadJsonAsync<DocumentDto>(uploadResponse);
+
+        var response = await client.GetAsync($"/api/documents/{document.Id}/preview");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/pdf", response.Content.Headers.ContentType?.MediaType);
+        Assert.Null(response.Content.Headers.ContentDisposition);
+        Assert.Equal(bytes, await response.Content.ReadAsByteArrayAsync());
+
+        var persisted = await fixture.FindDocumentAsync(document.Id);
+        Assert.NotNull(persisted);
+        Assert.Equal(0, persisted.DownloadCount);
+    }
+
+    [Fact]
     public async Task DownloadDocument_WhenDocumentDoesNotExist_ReturnsProblemDetailsNotFound()
     {
         using var client = fixture.CreateClient();

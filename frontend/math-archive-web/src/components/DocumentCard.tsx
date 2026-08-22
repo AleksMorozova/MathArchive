@@ -3,13 +3,14 @@ import DownloadIcon from '@mui/icons-material/Download';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { Alert, Box, Button, Card, CardContent, Chip, Stack, Typography } from '@mui/material';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { getApiErrorMessage } from '../api/apiErrors';
 import { downloadDocument } from '../api/documentsApi';
 import { documentTypeLabels } from '../constants/documentTypes';
 import type { DocumentDto } from '../types/documents';
 
 export function DocumentCard({ document }: { document: DocumentDto }) {
+  const location = useLocation();
   const [downloadError, setDownloadError] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -43,7 +44,13 @@ export function DocumentCard({ document }: { document: DocumentDto }) {
             <Button startIcon={<DownloadIcon />} variant="text" onClick={handleDownload} disabled={isDownloading}>
               Завантажити
             </Button>
-            <Button startIcon={<VisibilityIcon />} variant="text" component={Link} to={`/materials/${document.id}`}>
+            <Button
+              startIcon={<VisibilityIcon />}
+              variant="text"
+              component={Link}
+              to={`/materials/${document.id}`}
+              state={{ from: location.pathname + location.search }}
+            >
               Переглянути
             </Button>
           </Stack>
