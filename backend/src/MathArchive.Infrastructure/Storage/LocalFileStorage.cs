@@ -1,9 +1,12 @@
 using MathArchive.Application.Files;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace MathArchive.Infrastructure.Storage;
 
-public sealed class LocalFileStorage(IOptions<LocalStorageOptions> options) : IFileStorage
+public sealed class LocalFileStorage(
+    IOptions<LocalStorageOptions> options,
+    ILogger<LocalFileStorage> logger) : IFileStorage
 {
     private readonly string rootPath = Path.GetFullPath(options.Value.RootPath);
 
@@ -15,11 +18,37 @@ public sealed class LocalFileStorage(IOptions<LocalStorageOptions> options) : IF
         var storedFileName = $"{Guid.NewGuid():N}{extension}";
         var targetPath = GetSafePath(storedFileName);
 
-        await using var targetStream = File.Create(targetPath);
-        await stream.CopyToAsync(targetStream, cancellationToken);
+        try
+        {
+            long length;
+            await using (var targetStream = File.Create(targetPath))
+            {
+                await stream.CopyToAsync(targetStream, cancellationToken);
+                length = targetStream.Length;
+            }
 
-        var length = targetStream.Length;
-        return new StoredFileResult(Path.GetFileName(originalFileName), storedFileName, contentType, length);
+            return new StoredFileResult(Path.GetFileName(originalFileName), storedFileName, contentType, length);
+        }
+        catch (Exception saveException)
+        {
+            try
+            {
+                if (File.Exists(targetPath))
+                {
+                    File.Delete(targetPath);
+                }
+            }
+            catch (Exception cleanupException)
+            {
+                logger.LogWarning(
+                    cleanupException,
+                    "Failed to remove partially written file {StoredFileName} after file save failed with {SaveExceptionType}.",
+                    storedFileName,
+                    saveException.GetType().Name);
+            }
+
+            throw;
+        }
     }
 
     public Task<Stream?> TryOpenReadAsync(string storedFileName, CancellationToken cancellationToken)

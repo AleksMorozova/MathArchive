@@ -130,7 +130,7 @@ docker compose up -d postgres
 Default local connection:
 
 ```text
-Host=localhost;Port=5432;Database=matharchive;Username=matharchive;Password=matharchive
+Host=localhost;Port=5433;Database=matharchive;Username=matharchive;Password=matharchive
 ```
 
 ### 2. Configure the administrator
@@ -163,7 +163,7 @@ Environment variable equivalents:
 Admin__Username=admin
 Admin__PasswordHash=PASTE_HASH_HERE
 Jwt__SigningKey=replace-with-a-long-random-development-key-at-least-32-characters
-ConnectionStrings__DefaultConnection=Host=localhost;Port=5432;Database=matharchive;Username=matharchive;Password=matharchive
+ConnectionStrings__DefaultConnection=Host=localhost;Port=5433;Database=matharchive;Username=matharchive;Password=matharchive
 FileStorage__RootPath=storage/documents
 ```
 
