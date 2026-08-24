@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { fetchDocuments } from './seo-api.mjs';
+import { fetchDocuments, TransientSeoApiError } from './seo-api.mjs';
 
 const apiBaseUrl = 'https://example.test';
 const documentPayload = { items: [{ id: 'document-1', title: 'Алгебра' }] };
@@ -29,12 +29,12 @@ test('retries a transient 502 and then succeeds', async () => {
   assert.deepEqual(documents, documentPayload.items);
   assert.equal(fetchImpl.calls, 2);
   assert.deepEqual(delays, [1000]);
-  assert.match(warnings[0], /attempt 1 of 4 failed with HTTP 502/);
+  assert.match(warnings[0], /attempt 1 of 3 failed with HTTP 502/);
   assert.doesNotMatch(warnings[0], /example\.test/);
 });
 
-test('fails after transient responses exhaust all attempts', async () => {
-  const fetchImpl = mockFetch([response(502), response(502), response(502), response(502)]);
+test('classifies exhausted transient responses for best-effort generation', async () => {
+  const fetchImpl = mockFetch([response(502), response(502), response(502)]);
   const delays = [];
 
   await assert.rejects(
@@ -44,11 +44,11 @@ test('fails after transient responses exhaust all attempts', async () => {
       sleep: async (delay) => delays.push(delay),
       logger: { warn: () => {} }
     }),
-    /API returned HTTP 502 after 4 attempts/
+    (error) => error instanceof TransientSeoApiError && /API returned HTTP 502 after 3 attempts/.test(error.message)
   );
 
-  assert.equal(fetchImpl.calls, 4);
-  assert.deepEqual(delays, [1000, 2000, 4000]);
+  assert.equal(fetchImpl.calls, 3);
+  assert.deepEqual(delays, [1000, 3000]);
 });
 
 test('fails immediately for a permanent 404 response', async () => {

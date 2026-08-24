@@ -106,5 +106,8 @@ jobs:
       - name: Test frontend
         run: npm test
 
+      - name: Test SEO generator
+        run: npm run test:seo-generator
+
       - name: Build frontend
         run: npm run build
