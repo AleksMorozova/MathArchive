@@ -46,10 +46,11 @@ describe('DocumentDetailsPage', () => {
     expect(screen.queryByText(/Формат:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Розмір файлу:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Кількість завантажень:/)).not.toBeInTheDocument();
-    expect(screen.getByRole('navigation', { name: 'Навігаційний шлях' })).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'Breadcrumb' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Головна' })).toHaveAttribute('href', '/');
     expect(screen.getByRole('link', { name: 'Матеріали' })).toHaveAttribute('href', '/materials');
     expect(screen.getByRole('link', { name: 'Морозова Тетяна Володимирівна' })).toHaveAttribute('href', '/about');
+    expect(screen.getByRole('link', { name: 'Морозова Тетяна Володимирівна' })).toHaveAttribute('rel', 'author');
   });
 
   it('shows technical file metadata for authenticated admin users', () => {

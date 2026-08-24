@@ -58,7 +58,12 @@ describe('SEO metadata', () => {
     const value = JSON.parse(document.head.querySelector('script[data-seo-structured-data]')?.textContent ?? '{}');
     expect(value['@graph']).toEqual(expect.arrayContaining([
       expect.objectContaining({ '@type': 'Person', name: 'Морозова Тетяна Володимирівна' }),
-      expect.objectContaining({ '@type': 'Article', author: { '@id': 'https://morozovamath.com/about#teacher' } }),
+      expect.objectContaining({
+        '@type': 'LearningResource',
+        author: expect.objectContaining({ '@type': 'Person', '@id': 'https://morozovamath.com/about#teacher' }),
+        dateCreated: '2026-01-01T00:00:00Z',
+        dateModified: '2026-01-01T00:00:00Z'
+      }),
       expect.objectContaining({ '@type': 'BreadcrumbList' })
     ]));
   });

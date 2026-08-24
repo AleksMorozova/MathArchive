@@ -80,7 +80,7 @@ export function DocumentDetailsPage() {
     <Container maxWidth="lg" className="page-section">
       <Stack gap={3}>
         <Seo {...getDocumentSeo(document)} document={document} />
-        <Breadcrumbs aria-label="Навігаційний шлях" className="material-breadcrumbs">
+        <Breadcrumbs aria-label="Breadcrumb" className="material-breadcrumbs">
           <MuiLink component={Link} to="/" underline="hover">Головна</MuiLink>
           <MuiLink component={Link} to={backTo} underline="hover">Матеріали</MuiLink>
           <Typography color="text.primary" aria-current="page">{document.title}</Typography>
@@ -92,8 +92,9 @@ export function DocumentDetailsPage() {
           <Stack gap={2}>
             <Typography component="h1" variant="h3">{document.title}</Typography>
             {document.description && <Typography color="text.secondary">{document.description}</Typography>}
-            <Typography variant="body2" color="text.secondary">
-              Автор матеріалу: <MuiLink component={Link} to="/about" underline="hover">Морозова Тетяна Володимирівна</MuiLink>
+            <Typography component="p" className="material-byline" variant="body2" color="text.secondary">
+              <span>Автор навчального матеріалу:</span>{' '}
+              <MuiLink component={Link} to="/about" rel="author" underline="hover">Морозова Тетяна Володимирівна</MuiLink>, учитель математики із понад 30-річним педагогічним досвідом
             </Typography>
             <Stack direction="row" gap={1} flexWrap="wrap">
               <Chip label={document.grade === null ? 'Загальний матеріал' : `Клас: ${document.grade}`} />
