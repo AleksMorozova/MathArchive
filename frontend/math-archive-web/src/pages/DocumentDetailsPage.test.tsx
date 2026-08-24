@@ -39,13 +39,17 @@ describe('DocumentDetailsPage', () => {
   it('hides technical file metadata for public users', () => {
     renderDetailsPage();
 
-    expect(screen.getByText('Матеріал для перевірки')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Матеріал для перевірки' })).toBeInTheDocument();
     expect(screen.getByText('Клас: 7')).toBeInTheDocument();
     expect(screen.getByText('Тема: Геометрія')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Завантажити файл' })).toBeInTheDocument();
     expect(screen.queryByText(/Формат:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Розмір файлу:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Кількість завантажень:/)).not.toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'Навігаційний шлях' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Головна' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: 'Матеріали' })).toHaveAttribute('href', '/materials');
+    expect(screen.getByRole('link', { name: 'Морозова Тетяна Володимирівна' })).toHaveAttribute('href', '/about');
   });
 
   it('shows technical file metadata for authenticated admin users', () => {

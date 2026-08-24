@@ -6,6 +6,7 @@ import { fetchDocuments, TransientSeoApiError } from './seo-api.mjs';
 const siteUrl = 'https://morozovamath.com';
 const environment = loadEnv('production', process.cwd(), '');
 const configuredApiBaseUrl = process.env.VITE_API_BASE_URL || environment.VITE_API_BASE_URL;
+const googleSiteVerification = (process.env.VITE_GOOGLE_SITE_VERIFICATION || environment.VITE_GOOGLE_SITE_VERIFICATION || '').trim();
 if (!configuredApiBaseUrl?.trim()) {
   throw new Error('VITE_API_BASE_URL must be configured for SEO generation.');
 }
@@ -22,7 +23,9 @@ if (parsedApiBaseUrl.protocol !== 'http:' && parsedApiBaseUrl.protocol !== 'http
 const outputDirectory = new URL('../dist/', import.meta.url);
 const materialPagesDirectory = new URL('materials/', outputDirectory);
 const template = (await readFile(new URL('index.html', outputDirectory), 'utf8'))
-  .replace(/<!-- seo-snapshot:start -->[\s\S]*?<!-- seo-snapshot:end -->/, '');
+  .replace(/<!-- seo-snapshot:start -->[\s\S]*?<!-- seo-snapshot:end -->/, '')
+  .replace(/\s*<meta name="google-site-verification" content="[^"]*" \/>/g, '')
+  .replace(/\s*<script type="application\/ld\+json" data-seo-structured-data>[\s\S]*?<\/script>/g, '');
 
 const homeMetadata = {
   title: 'Навчальні матеріали з математики | Морозова Тетяна',
@@ -40,6 +43,12 @@ const aboutMetadata = {
   title: 'Про вчителя математики Тетяну Морозову',
   description: 'Про педагогічний досвід Тетяни Морозової та добірку навчальних матеріалів з математики для учнів, батьків і вчителів.',
   canonicalPath: '/about'
+};
+
+const author = {
+  name: 'Морозова Тетяна Володимирівна',
+  jobTitle: 'Учитель математики',
+  workplace: 'Ліцей №23 «Соборний» ДМР'
 };
 
 await rm(materialPagesDirectory, { recursive: true, force: true });
@@ -88,17 +97,19 @@ if (generatedDynamicPages) {
   for (const document of documents) {
     const gradeLabel = document.grade === null ? 'Загальний матеріал' : `${document.grade} клас`;
     const metadata = {
-      title: `${document.title} — ${gradeLabel.toLowerCase()} | Математика`,
-      description: document.description?.trim() || `${document.title}. Навчальний матеріал з теми «${document.topic}», ${gradeLabel.toLowerCase()}.`,
+      title: createDocumentSeoTitle(document.title, document.topic, gradeLabel.toLowerCase()),
+      description: createDocumentSeoDescription(document, gradeLabel.toLowerCase()),
       canonicalPath: `/materials/${document.id}`,
-      type: 'article'
+      type: 'article',
+      document
     };
 
     await renderPage(join('materials', `${document.id}.html`), metadata, `
-      <p><a href="/materials">Назад до матеріалів</a></p>
+      <nav class="breadcrumbs" aria-label="Навігаційний шлях"><a href="/">Головна</a> / <a href="/materials">Матеріали</a> / <span aria-current="page">${escapeHtml(document.title)}</span></nav>
       <article>
         <h1>${escapeHtml(document.title)}</h1>
         ${document.description ? `<p>${escapeHtml(document.description)}</p>` : ''}
+        <p>Автор матеріалу: <a href="/about">${escapeHtml(author.name)}</a></p>
         <dl>
           <dt>Клас</dt><dd>${escapeHtml(gradeLabel)}</dd>
           <dt>Тема</dt><dd>${escapeHtml(document.topic)}</dd>
@@ -117,6 +128,10 @@ if (generatedDynamicPages) {
 
 async function renderPage(fileName, metadata, content) {
   const canonicalUrl = new URL(metadata.canonicalPath, siteUrl).toString();
+  const structuredData = createStructuredData(metadata, canonicalUrl);
+  const verificationTag = googleSiteVerification
+    ? `    <meta name="google-site-verification" content="${escapeAttribute(googleSiteVerification)}" />\n`
+    : '';
   const page = template
     .replace(/<title>.*?<\/title>/, `<title>${escapeHtml(metadata.title)}</title>`)
     .replace(/<meta name="description" content="[^"]*" \/>/, `<meta name="description" content="${escapeAttribute(metadata.description)}" />`)
@@ -127,9 +142,66 @@ async function renderPage(fileName, metadata, content) {
     .replace(/<meta property="og:type" content="[^"]*" \/>/, `<meta property="og:type" content="${metadata.type || 'website'}" />`)
     .replace(/<meta name="twitter:title" content="[^"]*" \/>/, `<meta name="twitter:title" content="${escapeAttribute(metadata.title)}" />`)
     .replace(/<meta name="twitter:description" content="[^"]*" \/>/, `<meta name="twitter:description" content="${escapeAttribute(metadata.description)}" />`)
+    .replace('</head>', `${verificationTag}    <script type="application/ld+json" data-seo-structured-data>${escapeJsonForHtml(structuredData)}</script>\n  </head>`)
     .replace('<div id="root"></div>', `<div id="root"><!-- seo-snapshot:start -->${renderShell(content)}<!-- seo-snapshot:end --></div>`);
 
   await writeFile(new URL(fileName.replaceAll('\\', '/'), outputDirectory), page, 'utf8');
+}
+
+function createStructuredData(metadata, canonicalUrl) {
+  const personId = `${siteUrl}/about#teacher`;
+  const person = {
+    '@type': 'Person',
+    '@id': personId,
+    name: author.name,
+    jobTitle: author.jobTitle,
+    worksFor: { '@type': 'EducationalOrganization', name: author.workplace }
+  };
+  const page = metadata.document
+    ? {
+        '@type': 'Article',
+        '@id': `${canonicalUrl}#article`,
+        headline: metadata.title,
+        description: metadata.description,
+        url: canonicalUrl,
+        author: { '@id': personId },
+        creator: { '@id': personId }
+      }
+    : { '@type': 'WebPage', '@id': canonicalUrl, name: metadata.title, description: metadata.description, url: canonicalUrl };
+  const graph = [person, page];
+
+  if (metadata.document) {
+    graph.push({
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Головна', item: siteUrl },
+        { '@type': 'ListItem', position: 2, name: 'Матеріали', item: `${siteUrl}/materials` },
+        { '@type': 'ListItem', position: 3, name: metadata.document.title, item: canonicalUrl }
+      ]
+    });
+  }
+
+  return { '@context': 'https://schema.org', '@graph': graph };
+}
+
+function createDocumentSeoTitle(title, topic, gradeLabel) {
+  let result = `${title} | ${gradeLabel} — математика`;
+  if (result.length < 30 && topic.trim() && topic.trim() !== title.trim()) {
+    result = `${title}: ${topic.trim()} | ${gradeLabel}`;
+  }
+  if (result.length > 60) {
+    result = `${title} | ${gradeLabel}`;
+  }
+  return result.length > 60 ? title : result;
+}
+
+function createDocumentSeoDescription(document, gradeLabel) {
+  const summary = document.description?.trim() || 'Навчальний матеріал з математики.';
+  return `${document.title}: ${summary.replace(/[.!?]+$/, '')}. Тема: «${document.topic}», ${gradeLabel}.`;
+}
+
+function escapeJsonForHtml(value) {
+  return JSON.stringify(value).replaceAll('<', '\\u003c');
 }
 
 function renderShell(content) {

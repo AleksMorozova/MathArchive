@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
+import type { DocumentDto } from '../types/documents';
 import type { SeoMetadata } from './seoConfig';
-import { siteUrl } from './seoConfig';
+import { author, siteUrl } from './seoConfig';
 
-export function Seo({ title, description, canonicalPath, type = 'website', noIndex = false }: SeoMetadata) {
+export function Seo({ title, description, canonicalPath, type = 'website', noIndex = false, document: material }: SeoMetadata & { document?: DocumentDto }) {
   useEffect(() => {
     const canonicalUrl = new URL(canonicalPath, siteUrl).toString();
 
@@ -18,9 +19,63 @@ export function Seo({ title, description, canonicalPath, type = 'website', noInd
     setMeta('name', 'twitter:title', title);
     setMeta('name', 'twitter:description', description);
     setCanonical(canonicalUrl);
-  }, [canonicalPath, description, noIndex, title, type]);
+    setStructuredData(createStructuredData({ canonicalUrl, description, document: material, title, type }));
+  }, [canonicalPath, description, material, noIndex, title, type]);
 
   return null;
+}
+
+function createStructuredData({ canonicalUrl, description, document, title, type }: {
+  canonicalUrl: string;
+  description: string;
+  document?: DocumentDto;
+  title: string;
+  type: 'website' | 'article';
+}) {
+  const person = {
+    '@type': 'Person',
+    '@id': `${siteUrl}/about#teacher`,
+    name: author.name,
+    jobTitle: author.jobTitle,
+    worksFor: { '@type': 'EducationalOrganization', name: author.workplace }
+  };
+
+  const page = document
+    ? {
+        '@type': 'Article',
+        '@id': `${canonicalUrl}#article`,
+        headline: title,
+        description,
+        url: canonicalUrl,
+        author: { '@id': person['@id'] },
+        creator: { '@id': person['@id'] }
+      }
+    : { '@type': type === 'article' ? 'Article' : 'WebPage', '@id': canonicalUrl, name: title, description, url: canonicalUrl };
+
+  const graph: object[] = [person, page];
+  if (document) {
+    graph.push({
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Головна', item: siteUrl },
+        { '@type': 'ListItem', position: 2, name: 'Матеріали', item: `${siteUrl}/materials` },
+        { '@type': 'ListItem', position: 3, name: document.title, item: canonicalUrl }
+      ]
+    });
+  }
+
+  return { '@context': 'https://schema.org', '@graph': graph };
+}
+
+function setStructuredData(value: object) {
+  let element = document.head.querySelector<HTMLScriptElement>('script[data-seo-structured-data]');
+  if (!element) {
+    element = document.createElement('script');
+    element.type = 'application/ld+json';
+    element.dataset.seoStructuredData = '';
+    document.head.appendChild(element);
+  }
+  element.textContent = JSON.stringify(value).replaceAll('<', '\\u003c');
 }
 
 function setMeta(attribute: 'name' | 'property', key: string, content: string) {

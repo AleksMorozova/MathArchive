@@ -11,6 +11,12 @@ export interface SeoMetadata {
   noIndex?: boolean;
 }
 
+export const author = {
+  name: 'Морозова Тетяна Володимирівна',
+  jobTitle: 'Учитель математики',
+  workplace: 'Ліцей №23 «Соборний» ДМР'
+};
+
 export const homeSeo: SeoMetadata = {
   title: 'Навчальні матеріали з математики | Морозова Тетяна',
   description: 'Формули, контрольні, самостійні роботи та навчальні матеріали з математики для учнів 5–11 класів від досвідченого вчителя.',
@@ -46,9 +52,28 @@ export function getDocumentSeo(document: DocumentDto): SeoMetadata {
   const gradeLabel = document.grade === null ? 'загальний матеріал' : `${document.grade} клас`;
 
   return {
-    title: `${document.title} — ${gradeLabel} | Математика`,
-    description: document.description?.trim() || `${document.title}. Навчальний матеріал з теми «${document.topic}», ${gradeLabel}.`,
+    title: createDocumentSeoTitle(document.title, document.topic, gradeLabel),
+    description: createDocumentSeoDescription(document, gradeLabel),
     canonicalPath: `/materials/${document.id}`,
     type: 'article'
   };
+}
+
+function createDocumentSeoTitle(title: string, topic: string, gradeLabel: string) {
+  let result = `${title} | ${gradeLabel} — математика`;
+
+  if (result.length < 30 && topic.trim() && topic.trim() !== title.trim()) {
+    result = `${title}: ${topic.trim()} | ${gradeLabel}`;
+  }
+
+  if (result.length > 60) {
+    result = `${title} | ${gradeLabel}`;
+  }
+
+  return result.length > 60 ? title : result;
+}
+
+function createDocumentSeoDescription(document: DocumentDto, gradeLabel: string) {
+  const summary = document.description?.trim() || 'Навчальний матеріал з математики.';
+  return `${document.title}: ${summary.replace(/[.!?]+$/, '')}. Тема: «${document.topic}», ${gradeLabel}.`;
 }

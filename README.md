@@ -197,6 +197,14 @@ Optional frontend environment variable:
 VITE_API_BASE_URL=http://localhost:5000
 ```
 
+For a production build, `VITE_API_BASE_URL` must point to the public API. Google Search Console HTML-tag verification is optional and can be enabled in the Vercel project environment variables:
+
+```text
+VITE_GOOGLE_SITE_VERIFICATION=verification-token-from-google
+```
+
+Store only the token value, not the complete `<meta>` element. When configured, the production SEO generator includes the verification tag in the initial HTML of every public page. The build continues normally when this variable is absent.
+
 ## Database Migrations
 
 Apply existing migrations:
