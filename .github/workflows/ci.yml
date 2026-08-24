@@ -87,7 +87,7 @@ jobs:
         working-directory: frontend/math-archive-web
 
     env:
-      VITE_API_BASE_URL: https://example-render-api.onrender.com
+      VITE_API_BASE_URL: https://matharchive.onrender.com
 
     steps:
       - name: Checkout
