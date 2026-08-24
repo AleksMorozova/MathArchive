@@ -1,6 +1,6 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DownloadIcon from '@mui/icons-material/Download';
-import { Alert, Box, Button, Chip, Container, Stack, Typography } from '@mui/material';
+import { Alert, Box, Breadcrumbs, Button, Chip, Container, Link as MuiLink, Stack, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { getApiErrorMessage, isApiError } from '../api/apiErrors';
@@ -79,7 +79,12 @@ export function DocumentDetailsPage() {
   return (
     <Container maxWidth="lg" className="page-section">
       <Stack gap={3}>
-        <Seo {...getDocumentSeo(document)} />
+        <Seo {...getDocumentSeo(document)} document={document} />
+        <Breadcrumbs aria-label="Навігаційний шлях" className="material-breadcrumbs">
+          <MuiLink component={Link} to="/" underline="hover">Головна</MuiLink>
+          <MuiLink component={Link} to={backTo} underline="hover">Матеріали</MuiLink>
+          <Typography color="text.primary" aria-current="page">{document.title}</Typography>
+        </Breadcrumbs>
         <Button component={Link} to={backTo} startIcon={<ArrowBackIcon />} sx={{ alignSelf: 'flex-start' }}>
           Назад до матеріалів
         </Button>
@@ -87,6 +92,9 @@ export function DocumentDetailsPage() {
           <Stack gap={2}>
             <Typography component="h1" variant="h3">{document.title}</Typography>
             {document.description && <Typography color="text.secondary">{document.description}</Typography>}
+            <Typography variant="body2" color="text.secondary">
+              Автор матеріалу: <MuiLink component={Link} to="/about" underline="hover">Морозова Тетяна Володимирівна</MuiLink>
+            </Typography>
             <Stack direction="row" gap={1} flexWrap="wrap">
               <Chip label={document.grade === null ? 'Загальний матеріал' : `Клас: ${document.grade}`} />
               <Chip label={`Тема: ${document.topic}`} />

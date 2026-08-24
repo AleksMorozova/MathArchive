@@ -82,6 +82,15 @@ a {
   margin: 0 0 12px;
 }
 
+.seo-snapshot .breadcrumbs {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.material-breadcrumbs {
+  color: var(--muted);
+}
+
 .page-shell {
   min-height: 100vh;
   display: flex;

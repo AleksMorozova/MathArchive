@@ -1,7 +1,8 @@
 import { render, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { Seo } from './Seo';
-import { getMaterialsSeo } from './seoConfig';
+import { getDocumentSeo, getMaterialsSeo } from './seoConfig';
+import type { DocumentDto } from '../types/documents';
 
 describe('SEO metadata', () => {
   it('updates the document metadata and canonical URL', async () => {
@@ -28,4 +29,55 @@ describe('SEO metadata', () => {
       noIndex: true
     });
   });
+
+  it('creates specific, concise material metadata', () => {
+    const vectorSeo = getDocumentSeo(createDocument({
+      title: 'Вектори',
+      description: 'Основні поняття, властивості та дії з векторами на площині.',
+      topic: 'Вектори на площині'
+    }));
+    const longSeo = getDocumentSeo(createDocument({
+      title: 'Комбінаторика, теорія ймовірностей та статистика',
+      description: 'Основні поняття, правила та формули.',
+      topic: 'Комбінаторика та ймовірність'
+    }));
+
+    expect(vectorSeo.title).toBe('Вектори: Вектори на площині | 9 клас');
+    expect(longSeo.title).toBe('Комбінаторика, теорія ймовірностей та статистика | 9 клас');
+    expect(vectorSeo.description).toContain('Тема: «Вектори на площині», 9 клас.');
+    expect(vectorSeo.title.length).toBeGreaterThanOrEqual(30);
+    expect(longSeo.title.length).toBeLessThanOrEqual(60);
+  });
+
+  it('adds person, author, and breadcrumb structured data for a material', async () => {
+    const material = createDocument();
+    const metadata = getDocumentSeo(material);
+    render(<Seo {...metadata} document={material} />);
+
+    await waitFor(() => expect(document.head.querySelector('script[data-seo-structured-data]')).toBeInTheDocument());
+    const value = JSON.parse(document.head.querySelector('script[data-seo-structured-data]')?.textContent ?? '{}');
+    expect(value['@graph']).toEqual(expect.arrayContaining([
+      expect.objectContaining({ '@type': 'Person', name: 'Морозова Тетяна Володимирівна' }),
+      expect.objectContaining({ '@type': 'Article', author: { '@id': 'https://morozovamath.com/about#teacher' } }),
+      expect.objectContaining({ '@type': 'BreadcrumbList' })
+    ]));
+  });
 });
+
+function createDocument(overrides: Partial<DocumentDto> = {}): DocumentDto {
+  return {
+    id: 'document-id',
+    title: 'Матеріал для перевірки',
+    description: 'Опис матеріалу',
+    grade: 9,
+    topic: 'Геометрія',
+    documentType: 'Theory',
+    originalFileName: 'material.pdf',
+    contentType: 'application/pdf',
+    fileSize: 1024,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    downloadCount: 0,
+    ...overrides
+  };
+}
