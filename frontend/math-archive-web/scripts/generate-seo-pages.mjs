@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { fetchDocuments } from './seo-api.mjs';
 
 const siteUrl = 'https://morozovamath.com';
 const apiBaseUrl = (process.env.VITE_API_BASE_URL || 'https://matharchive.onrender.com').replace(/\/+$/, '');
@@ -25,7 +26,7 @@ const aboutMetadata = {
   canonicalPath: '/about'
 };
 
-const documents = await loadDocuments();
+const documents = await fetchDocuments({ apiBaseUrl });
 
 await renderPage('index.html', homeMetadata, `
   <h1>Матеріали з математики</h1>
@@ -77,26 +78,6 @@ for (const document of documents) {
 
 await writeFile(new URL('sitemap.xml', outputDirectory), createSitemap(documents), 'utf8');
 console.log(`Generated SEO snapshots for 3 public pages and ${documents.length} material pages.`);
-
-async function loadDocuments() {
-  try {
-    const response = await fetch(`${apiBaseUrl}/api/documents?page=1&pageSize=1000`, {
-      signal: AbortSignal.timeout(60000),
-      headers: { Accept: 'application/json' }
-    });
-    if (!response.ok) {
-      throw new Error(`API returned HTTP ${response.status}`);
-    }
-
-    const result = await response.json();
-    return Array.isArray(result.items) ? result.items : [];
-  } catch (error) {
-    throw new Error(
-      `Unable to generate material pages from ${apiBaseUrl}: ${error instanceof Error ? error.message : String(error)}`,
-      { cause: error }
-    );
-  }
-}
 
 async function renderPage(fileName, metadata, content) {
   const canonicalUrl = new URL(metadata.canonicalPath, siteUrl).toString();
