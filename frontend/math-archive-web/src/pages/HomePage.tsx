@@ -10,6 +10,8 @@ import StarBorderOutlinedIcon from '@mui/icons-material/StarBorderOutlined';
 import ViewInArOutlinedIcon from '@mui/icons-material/ViewInArOutlined';
 import { Box, Button, Container, Stack, Typography } from '@mui/material';
 import { Link } from 'react-router-dom';
+import { Seo } from '../seo/Seo';
+import { homeSeo } from '../seo/seoConfig';
 
 const classLinks = [
   { label: '5 клас', to: '/materials?class=5', icon: <MenuBookOutlinedIcon fontSize="small" /> },
@@ -25,6 +27,7 @@ const classLinks = [
 export function HomePage() {
   return (
     <Container maxWidth="lg">
+      <Seo {...homeSeo} />
       <Box className="hero">
         <Stack gap={2.5} className="hero-copy">
           <Typography variant="h1">

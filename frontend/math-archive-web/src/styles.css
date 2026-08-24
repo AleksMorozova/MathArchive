@@ -44,6 +44,44 @@ a {
   text-decoration: none;
 }
 
+.seo-snapshot {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 24px;
+  line-height: 1.65;
+}
+
+.seo-snapshot header,
+.seo-snapshot footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 18px 0;
+}
+
+.seo-snapshot nav a,
+.seo-snapshot main a {
+  color: var(--primary-hover);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.seo-snapshot nav a + a {
+  margin-left: 16px;
+}
+
+.seo-snapshot main {
+  padding: 36px 0;
+}
+
+.seo-snapshot dt {
+  font-weight: 700;
+}
+
+.seo-snapshot dd {
+  margin: 0 0 12px;
+}
+
 .page-shell {
   min-height: 100vh;
   display: flex;

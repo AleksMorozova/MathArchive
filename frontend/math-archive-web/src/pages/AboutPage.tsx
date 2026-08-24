@@ -4,6 +4,8 @@ import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined';
 import TimelineOutlinedIcon from '@mui/icons-material/TimelineOutlined';
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined';
 import { Box, Container, Grid, Stack, Typography } from '@mui/material';
+import { Seo } from '../seo/Seo';
+import { aboutSeo } from '../seo/seoConfig';
 
 const materialItems = [
   'конспекти та теоретичні матеріали',
@@ -17,6 +19,7 @@ const materialItems = [
 export function AboutPage() {
   return (
     <Box component="section" className="about-archive-section about-page-section">
+      <Seo {...aboutSeo} />
       <Container maxWidth="lg">
         <Grid container className="about-page-grid" spacing={{ xs: 2, md: 3 }} alignItems="stretch">
           <Grid className="about-page-grid-item" size={{ xs: 12, md: 7 }}>

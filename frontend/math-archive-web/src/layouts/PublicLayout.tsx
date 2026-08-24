@@ -17,7 +17,7 @@ export function PublicLayout() {
   const mathBackgroundVariant = location.pathname === '/about' ? 'about' : 'default';
 
   const navigation = (
-    <Stack direction={{ xs: 'column', sm: 'row' }} gap={1}>
+    <Stack component="nav" aria-label="Основна навігація" direction={{ xs: 'column', sm: 'row' }} gap={1}>
       {links.map((link) => (
         <Button key={link.to} component={NavLink} to={link.to} onClick={() => setOpen(false)}>
           {link.label}

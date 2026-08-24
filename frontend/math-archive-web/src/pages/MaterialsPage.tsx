@@ -7,6 +7,8 @@ import { EmptyState, ErrorState } from '../components/StateView';
 import { FiltersBar } from '../components/FiltersBar';
 import { useInfiniteDocuments } from '../hooks/useDocuments';
 import type { DocumentFilters } from '../types/documents';
+import { Seo } from '../seo/Seo';
+import { getMaterialsSeo } from '../seo/seoConfig';
 
 const materialClassOptions = [5, 6, 7, 8, 9, 10, 11];
 
@@ -97,9 +99,10 @@ export function MaterialsPage() {
   return (
     <Container maxWidth="lg" className="page-section materials-page">
       <Stack gap={2.5}>
+        <Seo {...getMaterialsSeo(classFilter, topicFilter)} />
         <Box className="materials-hero">
           <Stack gap={1.25}>
-            <Typography variant="h3">Навчальні матеріали</Typography>
+            <Typography component="h1" variant="h3">Навчальні матеріали</Typography>
             <Typography color="text.secondary" className="materials-subtitle">
               Знайдіть контрольні, самостійні роботи та теоретичні матеріали.
             </Typography>
