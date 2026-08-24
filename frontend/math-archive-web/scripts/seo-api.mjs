@@ -1,12 +1,19 @@
 const transientStatusCodes = new Set([502, 503, 504]);
-const defaultRetryDelays = [1000, 2000, 4000];
+const defaultRetryDelays = [1000, 3000];
+
+export class TransientSeoApiError extends Error {
+  constructor(message, options) {
+    super(message, options);
+    this.name = 'TransientSeoApiError';
+  }
+}
 
 export async function fetchDocuments({
   apiBaseUrl,
   fetchImpl = fetch,
   sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
   retryDelays = defaultRetryDelays,
-  requestTimeoutMs = 30000,
+  requestTimeoutMs = 10000,
   logger = console
 }) {
   const totalAttempts = retryDelays.length + 1;
@@ -22,7 +29,7 @@ export async function fetchDocuments({
       });
     } catch (error) {
       if (attempt === totalAttempts) {
-        throw createFinalError(`${describeRequestFailure(error)} after ${totalAttempts} attempts`, error);
+        throw createTransientError(`${describeRequestFailure(error)} after ${totalAttempts} attempts`, error);
       }
 
       await retryAfter({
@@ -38,7 +45,7 @@ export async function fetchDocuments({
 
     if (transientStatusCodes.has(response.status)) {
       if (attempt === totalAttempts) {
-        throw createFinalError(`API returned HTTP ${response.status} after ${totalAttempts} attempts`);
+        throw createTransientError(`API returned HTTP ${response.status} after ${totalAttempts} attempts`);
       }
 
       await retryAfter({
@@ -88,4 +95,11 @@ function describeRequestFailure(error) {
 
 function createFinalError(message, cause) {
   return new Error(`Unable to generate material pages from the public API: ${message}`, cause ? { cause } : undefined);
+}
+
+function createTransientError(message, cause) {
+  return new TransientSeoApiError(
+    `Unable to generate material pages from the public API: ${message}`,
+    cause ? { cause } : undefined
+  );
 }

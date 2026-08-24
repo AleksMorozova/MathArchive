@@ -1,10 +1,26 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { fetchDocuments } from './seo-api.mjs';
+import { loadEnv } from 'vite';
+import { fetchDocuments, TransientSeoApiError } from './seo-api.mjs';
 
 const siteUrl = 'https://morozovamath.com';
-const apiBaseUrl = (process.env.VITE_API_BASE_URL || 'https://matharchive.onrender.com').replace(/\/+$/, '');
+const environment = loadEnv('production', process.cwd(), '');
+const configuredApiBaseUrl = process.env.VITE_API_BASE_URL || environment.VITE_API_BASE_URL;
+if (!configuredApiBaseUrl?.trim()) {
+  throw new Error('VITE_API_BASE_URL must be configured for SEO generation.');
+}
+const apiBaseUrl = configuredApiBaseUrl.trim().replace(/\/+$/, '');
+let parsedApiBaseUrl;
+try {
+  parsedApiBaseUrl = new URL(apiBaseUrl);
+} catch {
+  throw new Error('VITE_API_BASE_URL must be a valid absolute URL.');
+}
+if (parsedApiBaseUrl.protocol !== 'http:' && parsedApiBaseUrl.protocol !== 'https:') {
+  throw new Error('VITE_API_BASE_URL must use HTTP or HTTPS.');
+}
 const outputDirectory = new URL('../dist/', import.meta.url);
+const materialPagesDirectory = new URL('materials/', outputDirectory);
 const template = (await readFile(new URL('index.html', outputDirectory), 'utf8'))
   .replace(/<!-- seo-snapshot:start -->[\s\S]*?<!-- seo-snapshot:end -->/, '');
 
@@ -26,7 +42,20 @@ const aboutMetadata = {
   canonicalPath: '/about'
 };
 
-const documents = await fetchDocuments({ apiBaseUrl });
+await rm(materialPagesDirectory, { recursive: true, force: true });
+
+let documents = [];
+let generatedDynamicPages = false;
+try {
+  documents = await fetchDocuments({ apiBaseUrl });
+  generatedDynamicPages = true;
+} catch (error) {
+  if (!(error instanceof TransientSeoApiError)) {
+    throw error;
+  }
+
+  console.warn(`${error.message}. Continuing with stable SEO pages and the base sitemap only.`);
+}
 
 await renderPage('index.html', homeMetadata, `
   <h1>Морозова Тетяна Володимирівна</h1>
@@ -54,31 +83,37 @@ await renderPage('about.html', aboutMetadata, `
   <p>Це зібрання конспектів, формул, самостійних і контрольних робіт, презентацій та карток із завданнями з математики.</p>
 `);
 
-await mkdir(new URL('materials/', outputDirectory), { recursive: true });
-for (const document of documents) {
-  const gradeLabel = document.grade === null ? 'Загальний матеріал' : `${document.grade} клас`;
-  const metadata = {
-    title: `${document.title} — ${gradeLabel.toLowerCase()} | Математика`,
-    description: document.description?.trim() || `${document.title}. Навчальний матеріал з теми «${document.topic}», ${gradeLabel.toLowerCase()}.`,
-    canonicalPath: `/materials/${document.id}`,
-    type: 'article'
-  };
+if (generatedDynamicPages) {
+  await mkdir(materialPagesDirectory, { recursive: true });
+  for (const document of documents) {
+    const gradeLabel = document.grade === null ? 'Загальний матеріал' : `${document.grade} клас`;
+    const metadata = {
+      title: `${document.title} — ${gradeLabel.toLowerCase()} | Математика`,
+      description: document.description?.trim() || `${document.title}. Навчальний матеріал з теми «${document.topic}», ${gradeLabel.toLowerCase()}.`,
+      canonicalPath: `/materials/${document.id}`,
+      type: 'article'
+    };
 
-  await renderPage(join('materials', `${document.id}.html`), metadata, `
-    <p><a href="/materials">Назад до матеріалів</a></p>
-    <article>
-      <h1>${escapeHtml(document.title)}</h1>
-      ${document.description ? `<p>${escapeHtml(document.description)}</p>` : ''}
-      <dl>
-        <dt>Клас</dt><dd>${escapeHtml(gradeLabel)}</dd>
-        <dt>Тема</dt><dd>${escapeHtml(document.topic)}</dd>
-      </dl>
-    </article>
-  `);
+    await renderPage(join('materials', `${document.id}.html`), metadata, `
+      <p><a href="/materials">Назад до матеріалів</a></p>
+      <article>
+        <h1>${escapeHtml(document.title)}</h1>
+        ${document.description ? `<p>${escapeHtml(document.description)}</p>` : ''}
+        <dl>
+          <dt>Клас</dt><dd>${escapeHtml(gradeLabel)}</dd>
+          <dt>Тема</dt><dd>${escapeHtml(document.topic)}</dd>
+        </dl>
+      </article>
+    `);
+  }
 }
 
 await writeFile(new URL('sitemap.xml', outputDirectory), createSitemap(documents), 'utf8');
-console.log(`Generated SEO snapshots for 3 public pages and ${documents.length} material pages.`);
+if (generatedDynamicPages) {
+  console.log(`Generated SEO snapshots for 3 public pages and ${documents.length} material pages.`);
+} else {
+  console.warn('Generated 3 stable SEO pages. Material pages and material sitemap entries were not included in this build.');
+}
 
 async function renderPage(fileName, metadata, content) {
   const canonicalUrl = new URL(metadata.canonicalPath, siteUrl).toString();
