@@ -42,13 +42,18 @@ function createStructuredData({ canonicalUrl, description, document, title, type
 
   const page = document
     ? {
-        '@type': 'Article',
-        '@id': `${canonicalUrl}#article`,
-        headline: title,
+        '@type': 'LearningResource',
+        '@id': `${canonicalUrl}#material`,
+        name: document.title,
         description,
         url: canonicalUrl,
-        author: { '@id': person['@id'] },
-        creator: { '@id': person['@id'] }
+        inLanguage: 'uk',
+        about: document.topic,
+        educationalLevel: document.grade === null ? 'Загальний матеріал' : `${document.grade} клас`,
+        dateCreated: document.createdAt,
+        dateModified: document.updatedAt,
+        author: person,
+        creator: person
       }
     : { '@type': type === 'article' ? 'Article' : 'WebPage', '@id': canonicalUrl, name: title, description, url: canonicalUrl };
 

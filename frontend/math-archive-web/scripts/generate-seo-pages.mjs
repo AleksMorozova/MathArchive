@@ -105,11 +105,11 @@ if (generatedDynamicPages) {
     };
 
     await renderPage(join('materials', `${document.id}.html`), metadata, `
-      <nav class="breadcrumbs" aria-label="Навігаційний шлях"><a href="/">Головна</a> / <a href="/materials">Матеріали</a> / <span aria-current="page">${escapeHtml(document.title)}</span></nav>
+      <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Головна</a> / <a href="/materials">Матеріали</a> / <span aria-current="page">${escapeHtml(document.title)}</span></nav>
       <article>
         <h1>${escapeHtml(document.title)}</h1>
         ${document.description ? `<p>${escapeHtml(document.description)}</p>` : ''}
-        <p>Автор матеріалу: <a href="/about">${escapeHtml(author.name)}</a></p>
+        <p class="material-byline"><span>Автор навчального матеріалу:</span> <a href="/about" rel="author">${escapeHtml(author.name)}</a>, ${escapeHtml(author.jobTitle.toLowerCase())} із понад 30-річним педагогічним досвідом</p>
         <dl>
           <dt>Клас</dt><dd>${escapeHtml(gradeLabel)}</dd>
           <dt>Тема</dt><dd>${escapeHtml(document.topic)}</dd>
@@ -159,13 +159,18 @@ function createStructuredData(metadata, canonicalUrl) {
   };
   const page = metadata.document
     ? {
-        '@type': 'Article',
-        '@id': `${canonicalUrl}#article`,
-        headline: metadata.title,
+        '@type': 'LearningResource',
+        '@id': `${canonicalUrl}#material`,
+        name: metadata.document.title,
         description: metadata.description,
         url: canonicalUrl,
-        author: { '@id': personId },
-        creator: { '@id': personId }
+        inLanguage: 'uk',
+        about: metadata.document.topic,
+        educationalLevel: metadata.document.grade === null ? 'Загальний матеріал' : `${metadata.document.grade} клас`,
+        dateCreated: metadata.document.createdAt,
+        dateModified: metadata.document.updatedAt,
+        author: person,
+        creator: person
       }
     : { '@type': 'WebPage', '@id': canonicalUrl, name: metadata.title, description: metadata.description, url: canonicalUrl };
   const graph = [person, page];
