@@ -6,6 +6,7 @@ import { Box, Button, Drawer, IconButton, Stack, Typography } from '@mui/materia
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { logout } from '../api/authApi';
+import { Seo } from '../seo/Seo';
 
 export function AdminLayout() {
   const [open, setOpen] = useState(false);
@@ -30,6 +31,7 @@ export function AdminLayout() {
 
   return (
     <Box className="admin-shell">
+      <Seo title="Панель керування | MathArchive" description="Панель керування матеріалами." canonicalPath="/admin" noIndex />
       <Box component="aside" className="admin-sidebar">
         <Typography variant="h6">MathArchive</Typography>
         {nav}

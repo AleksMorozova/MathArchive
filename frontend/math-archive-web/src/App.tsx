@@ -9,6 +9,7 @@ import { LoginPage } from './pages/admin/LoginPage';
 import { DocumentDetailsPage } from './pages/DocumentDetailsPage';
 import { HomePage } from './pages/HomePage';
 import { MaterialsPage } from './pages/MaterialsPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 
 const router = createBrowserRouter([
   {
@@ -17,7 +18,8 @@ const router = createBrowserRouter([
       { path: '/', element: <HomePage /> },
       { path: '/materials', element: <MaterialsPage /> },
       { path: '/materials/:id', element: <DocumentDetailsPage /> },
-      { path: '/about', element: <AboutPage /> }
+      { path: '/about', element: <AboutPage /> },
+      { path: '*', element: <NotFoundPage /> }
     ]
   },
   { path: '/admin/login', element: <LoginPage /> },

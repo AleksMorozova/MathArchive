@@ -10,6 +10,8 @@ import { ErrorState, LoadingState } from '../components/StateView';
 import { documentTypeLabels } from '../constants/documentTypes';
 import { useDocument } from '../hooks/useDocuments';
 import { fileExtension, formatDate, formatFileSize } from '../utils/format';
+import { Seo } from '../seo/Seo';
+import { getDocumentSeo } from '../seo/seoConfig';
 
 export function DocumentDetailsPage() {
   const { id } = useParams();
@@ -77,12 +79,13 @@ export function DocumentDetailsPage() {
   return (
     <Container maxWidth="lg" className="page-section">
       <Stack gap={3}>
+        <Seo {...getDocumentSeo(document)} />
         <Button component={Link} to={backTo} startIcon={<ArrowBackIcon />} sx={{ alignSelf: 'flex-start' }}>
           Назад до матеріалів
         </Button>
         <Box className="content-panel">
           <Stack gap={2}>
-            <Typography variant="h3">{document.title}</Typography>
+            <Typography component="h1" variant="h3">{document.title}</Typography>
             {document.description && <Typography color="text.secondary">{document.description}</Typography>}
             <Stack direction="row" gap={1} flexWrap="wrap">
               <Chip label={document.grade === null ? 'Загальний матеріал' : `Клас: ${document.grade}`} />
