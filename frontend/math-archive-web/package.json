@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build && node scripts/generate-seo-pages.mjs",
     "test": "vitest run",
-    "test:seo-generator": "node --test scripts/seo-api.test.mjs",
+    "test:seo-generator": "node --test scripts/seo-api.node-tests.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
