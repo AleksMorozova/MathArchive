@@ -4,7 +4,6 @@ import CalculateOutlinedIcon from '@mui/icons-material/CalculateOutlined';
 import FunctionsOutlinedIcon from '@mui/icons-material/FunctionsOutlined';
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
 import QueryStatsOutlinedIcon from '@mui/icons-material/QueryStatsOutlined';
-import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined';
 import SquareFootOutlinedIcon from '@mui/icons-material/SquareFootOutlined';
 import StarBorderOutlinedIcon from '@mui/icons-material/StarBorderOutlined';
 import ViewInArOutlinedIcon from '@mui/icons-material/ViewInArOutlined';
@@ -29,22 +28,21 @@ export function HomePage() {
     <Container maxWidth="lg">
       <Seo {...homeSeo} />
       <Box className="hero">
-        <Stack gap={2.5} className="hero-copy">
-          <Typography variant="h1">
-            Матеріали з
-            <Box component="span">математики</Box>
-          </Typography>
-          <Typography variant="h5" color="text.secondary">
-            Формули, контрольні роботи, самостійні завдання та методичні матеріали для учнів і вчителів.
-          </Typography>
-          <Box className="teacher-summary-card">
-            <Box className="teacher-summary-icon"><SchoolOutlinedIcon /></Box>
-            <Box>
-              <Typography variant="h6" component="h2">Матеріали від вчителя з понад 30-річним досвідом</Typography>
-              <Typography color="text.secondary">
-                Морозова Тетяна Володимирівна — вчитель математики Ліцею №23 «Соборний» ДМР.
-              </Typography>
-            </Box>
+        <Stack gap={3} className="hero-copy">
+          <Box className="teacher-introduction">
+            <Typography variant="h1">Морозова Тетяна Володимирівна</Typography>
+            <Typography component="p" variant="h5" className="teacher-experience">
+              Вчитель математики з понад 30-річним досвідом
+            </Typography>
+            <Typography component="p" color="text.secondary" className="teacher-workplace">
+              Ліцей №23 «Соборний» ДМР
+            </Typography>
+          </Box>
+          <Box className="hero-materials-summary">
+            <Typography component="h2" variant="h5">Навчальні матеріали з математики</Typography>
+            <Typography color="text.secondary">
+              Формули, контрольні та самостійні роботи, пам’ятки й методичні матеріали для учнів і вчителів.
+            </Typography>
           </Box>
           <Button component={Link} to="/materials" variant="contained" size="large" endIcon={<ArrowForwardIcon />}>
             Переглянути матеріали

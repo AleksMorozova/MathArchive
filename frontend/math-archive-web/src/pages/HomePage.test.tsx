@@ -12,9 +12,12 @@ describe('HomePage', () => {
     );
 
     expect(screen.queryByText('Бібліотека навчальних матеріалів')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Матеріали з математики' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Матеріали від вчителя з понад 30-річним досвідом' })).toBeInTheDocument();
-    expect(screen.getByText('Морозова Тетяна Володимирівна — вчитель математики Ліцею №23 «Соборний» ДМР.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Морозова Тетяна Володимирівна' })).toBeInTheDocument();
+    expect(screen.getByText('Вчитель математики з понад 30-річним досвідом')).toBeInTheDocument();
+    expect(screen.getByText('Ліцей №23 «Соборний» ДМР')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Навчальні матеріали з математики' })).toBeInTheDocument();
+    expect(screen.getByText('Формули, контрольні та самостійні роботи, пам’ятки й методичні матеріали для учнів і вчителів.')).toBeInTheDocument();
+    expect(document.querySelector('.teacher-summary-card')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Переглянути матеріали/ })).toHaveAttribute('href', '/materials');
     expect(screen.queryByText('Для вчителів')).not.toBeInTheDocument();
     expect(screen.queryByText('Про сайт')).not.toBeInTheDocument();
