@@ -1,15 +1,18 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, RouterProvider, createBrowserRouter } from 'react-router-dom';
-import { AdminLayout } from './layouts/AdminLayout';
 import { PublicLayout } from './layouts/PublicLayout';
 import { ProtectedRoute } from './routes/ProtectedRoute';
 import { AboutPage } from './pages/AboutPage';
-import { AdminDocumentsPage } from './pages/admin/AdminDocumentsPage';
-import { DocumentFormPage } from './pages/admin/DocumentFormPage';
-import { LoginPage } from './pages/admin/LoginPage';
 import { DocumentDetailsPage } from './pages/DocumentDetailsPage';
 import { HomePage } from './pages/HomePage';
 import { MaterialsPage } from './pages/MaterialsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { LoadingState } from './components/StateView';
+
+const AdminLayout = lazy(() => import('./layouts/AdminLayout').then((module) => ({ default: module.AdminLayout })));
+const AdminDocumentsPage = lazy(() => import('./pages/admin/AdminDocumentsPage').then((module) => ({ default: module.AdminDocumentsPage })));
+const DocumentFormPage = lazy(() => import('./pages/admin/DocumentFormPage').then((module) => ({ default: module.DocumentFormPage })));
+const LoginPage = lazy(() => import('./pages/admin/LoginPage').then((module) => ({ default: module.LoginPage })));
 
 const router = createBrowserRouter([
   {
@@ -40,5 +43,9 @@ const router = createBrowserRouter([
 ]);
 
 export function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <Suspense fallback={<LoadingState text="Завантажуємо сторінку…" />}>
+      <RouterProvider router={router} />
+    </Suspense>
+  );
 }
