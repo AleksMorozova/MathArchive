@@ -6,7 +6,6 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { getApiErrorMessage } from '../api/apiErrors';
 import { downloadDocument } from '../api/documentsApi';
-import { documentTypeLabels } from '../constants/documentTypes';
 import type { DocumentDto } from '../types/documents';
 
 export function DocumentCard({ document }: { document: DocumentDto }) {
@@ -37,7 +36,6 @@ export function DocumentCard({ document }: { document: DocumentDto }) {
           <Stack direction="row" gap={0.75} flexWrap="wrap" className="document-tags">
             <Chip label={document.grade === null ? 'Загальний матеріал' : `${document.grade} клас`} size="small" />
             <Chip label={document.topic} size="small" />
-            <Chip label={documentTypeLabels[document.documentType]} size="small" />
           </Stack>
           {downloadError && <Alert severity="error">{downloadError}</Alert>}
           <Stack direction="row" gap={1} className="card-actions">

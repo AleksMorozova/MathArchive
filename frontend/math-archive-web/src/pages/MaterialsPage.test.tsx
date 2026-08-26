@@ -59,6 +59,21 @@ describe('MaterialsPage', () => {
     expect(screen.queryByLabelText('Тип матеріалу')).not.toBeInTheDocument();
   });
 
+  it('shows grade and topic on cards without the material type', () => {
+    useInfiniteDocumentsMock.mockReturnValue(createInfiniteDocumentsResult({
+      data: {
+        pages: [createPage({ page: 1, totalPages: 1, items: [createDocument('first')] })],
+        pageParams: [1]
+      }
+    }));
+
+    renderMaterialsPage('/materials');
+
+    expect(screen.getByText('7 клас')).toBeInTheDocument();
+    expect(screen.getByText('Алгебра')).toBeInTheDocument();
+    expect(screen.queryByText('Теоретичний матеріал')).not.toBeInTheDocument();
+  });
+
   it('debounces topic text changes and preserves selected class', async () => {
     renderMaterialsPage('/materials?class=7&topic=Алгебра');
 
