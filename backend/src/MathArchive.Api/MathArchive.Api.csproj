@@ -23,4 +23,8 @@
     <ProjectReference Include="..\MathArchive.Infrastructure\MathArchive.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="MathArchive.Application.Tests" />
+  </ItemGroup>
+
 </Project>

@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using FluentValidation;
 using MathArchive.Api.Errors;
 using MathArchive.Api.Health;
+using MathArchive.Api.Startup;
 using MathArchive.Application;
 using MathArchive.Infrastructure;
 using MathArchive.Infrastructure.Auth;
@@ -165,7 +166,14 @@ var app = builder.Build();
 
 if (builder.Configuration.GetValue("Database:ApplyMigrationsOnStartup", true))
 {
-    await MigrateDatabaseAsync(app);
+    var migrationLogger = app.Services
+        .GetRequiredService<ILoggerFactory>()
+        .CreateLogger("StartupDatabaseMigration");
+
+    await DatabaseMigrationRetry.ExecuteAsync(
+        cancellationToken => MigrateDatabaseAsync(app, cancellationToken),
+        migrationLogger,
+        app.Lifetime.ApplicationStopping);
 }
 
 app.UseSwagger();
@@ -190,11 +198,11 @@ app.MapControllers();
 
 app.Run();
 
-static async Task MigrateDatabaseAsync(WebApplication app)
+static async Task MigrateDatabaseAsync(WebApplication app, CancellationToken cancellationToken)
 {
     await using var scope = app.Services.CreateAsyncScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<MathArchiveDbContext>();
-    await dbContext.Database.MigrateAsync();
+    await dbContext.Database.MigrateAsync(cancellationToken);
 }
 
 static void ValidateAdminConfiguration(IConfiguration configuration, bool isDevelopment)
