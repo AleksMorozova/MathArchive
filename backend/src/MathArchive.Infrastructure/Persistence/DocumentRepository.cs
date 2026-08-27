@@ -40,14 +40,27 @@ public sealed class DocumentRepository(MathArchiveDbContext dbContext) : IDocume
             query = query.Where(x => x.DocumentType == parameters.DocumentType.Value);
         }
 
+        if (parameters.CreatedFrom.HasValue)
+        {
+            var createdFrom = new DateTimeOffset(parameters.CreatedFrom.Value.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+            query = query.Where(x => x.CreatedAt >= createdFrom);
+        }
+
+        if (parameters.CreatedTo.HasValue)
+        {
+            var createdTo = new DateTimeOffset(parameters.CreatedTo.Value.ToDateTime(TimeOnly.MaxValue), TimeSpan.Zero);
+            query = query.Where(x => x.CreatedAt <= createdTo);
+        }
+
         var totalCount = await query.CountAsync(cancellationToken);
         var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)parameters.PageSize);
 
-        var items = await query
+        var orderedQuery = parameters.Sort == DocumentSortOrder.CreatedAtDescending
+            ? query.OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id)
+            : query.OrderBy(x => x.Grade == null).ThenBy(x => x.Grade).ThenByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id);
+
+        var items = await orderedQuery
             .AsNoTracking()
-            .OrderBy(x => x.Grade == null)
-            .ThenBy(x => x.Grade)
-            .ThenByDescending(x => x.CreatedAt)
             .Skip((parameters.Page - 1) * parameters.PageSize)
             .Take(parameters.PageSize)
             .ToListAsync(cancellationToken);

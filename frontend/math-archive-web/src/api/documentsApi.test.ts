@@ -68,6 +68,30 @@ describe('documentsApi', () => {
     });
   });
 
+  it('sends creation date range and sorting with pagination', async () => {
+    let requestConfig: InternalAxiosRequestConfig | undefined;
+    httpClient.defaults.adapter = async (config) => {
+      requestConfig = config as InternalAxiosRequestConfig;
+      return resolveAdapter({ items: [], page: 2, pageSize: 12, totalCount: 13, totalPages: 2 })(config);
+    };
+
+    await getDocuments({
+      page: 2,
+      pageSize: 12,
+      createdFrom: '2026-08-01',
+      createdTo: '2026-08-27',
+      sort: 'CreatedAtDescending'
+    });
+
+    expect(requestConfig?.params).toMatchObject({
+      createdFrom: '2026-08-01',
+      createdTo: '2026-08-27',
+      sort: 'CreatedAtDescending',
+      page: 2,
+      pageSize: 12
+    });
+  });
+
   it('downloads binary file content on success', async () => {
     const blob = new Blob(['file-content'], { type: 'application/pdf' });
     Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn() });

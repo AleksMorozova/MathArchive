@@ -8,5 +8,8 @@ public sealed record DocumentQueryParameters(
     bool GeneralOnly,
     string? Topic,
     DocumentType? DocumentType,
+    DateOnly? CreatedFrom,
+    DateOnly? CreatedTo,
+    DocumentSortOrder Sort,
     int Page = 1,
     int PageSize = 12);

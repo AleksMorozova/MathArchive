@@ -12,7 +12,7 @@ import { queryKeys } from '../../api/queryKeys';
 import { FiltersBar } from '../../components/FiltersBar';
 import { EmptyState, ErrorState, LoadingState } from '../../components/StateView';
 import { documentTypeLabels } from '../../constants/documentTypes';
-import { useDocuments, useTopics } from '../../hooks/useDocuments';
+import { useDocuments } from '../../hooks/useDocuments';
 import type { DocumentDto, DocumentFilters } from '../../types/documents';
 import { formatDate } from '../../utils/format';
 
@@ -20,14 +20,23 @@ function formatGradeLabel(grade: number | null) {
   return grade === null ? 'Загальний матеріал' : `${grade} клас`;
 }
 
+const initialFilters: DocumentFilters = {
+  page: 1,
+  pageSize: 12,
+  search: '',
+  grade: '',
+  createdFrom: '',
+  createdTo: '',
+  sort: 'CreatedAtDescending'
+};
+
 export function AdminDocumentsPage() {
-  const [filters, setFilters] = useState<DocumentFilters>({ page: 1, pageSize: 12, search: '', grade: '', topic: '', documentType: '' });
+  const [filters, setFilters] = useState<DocumentFilters>(initialFilters);
   const [deleteTarget, setDeleteTarget] = useState<DocumentDto | null>(null);
   const [message, setMessage] = useState('');
   const isMobile = useMediaQuery('(max-width:760px)');
   const queryClient = useQueryClient();
   const documents = useDocuments(filters);
-  const topics = useTopics();
   const deleteMutation = useMutation({
     mutationFn: deleteDocument,
     onSuccess: async (_data, deletedId) => {
@@ -51,9 +60,18 @@ export function AdminDocumentsPage() {
       </Stack>
       {message && <Box className="success-message">{message}</Box>}
       {deleteMutation.isError && <Box className="error-message">{getApiErrorMessage(deleteMutation.error, 'Не вдалося видалити матеріал.')}</Box>}
-      <FiltersBar filters={filters} topics={topics.data ?? []} onChange={updateFilters} onClear={() => setFilters({ page: 1, pageSize: 12, search: '', grade: '', topic: '', documentType: '' })} />
+      <FiltersBar
+        filters={filters}
+        topics={[]}
+        onChange={updateFilters}
+        onClear={() => setFilters(initialFilters)}
+        showTopic={false}
+        showDocumentType={false}
+        showCreatedDate
+      />
       {documents.isLoading && <LoadingState />}
       {documents.isError && <ErrorState message={getApiErrorMessage(documents.error)} />}
+      {documents.data && <Typography color="text.secondary">Знайдено матеріалів: {documents.data.totalCount}</Typography>}
       {documents.data && documents.data.items.length === 0 && <EmptyState />}
       {documents.data && documents.data.items.length > 0 && (
         <>

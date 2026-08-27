@@ -85,6 +85,37 @@ public sealed class DocumentApiIntegrationTests(ApiIntegrationFixture fixture) :
     }
 
     [Fact]
+    public async Task GetDocuments_WhenDateClassAndTopicFiltersAreApplied_ReturnsFilteredTotalAndNewestFirstPage()
+    {
+        using var client = await fixture.CreateAuthorizedClientAsync();
+        var topic = $"Date filter {Guid.NewGuid():N}";
+        using var olderMatch = CreateDocumentForm(title: "Older date match", grade: 7, topic: topic);
+        using var newerMatch = CreateDocumentForm(title: "Newer date match", grade: 7, topic: topic);
+        using var otherGrade = CreateDocumentForm(title: "Other grade date item", grade: 8, topic: topic);
+        await client.PostAsync("/api/admin/documents", olderMatch);
+        await client.PostAsync("/api/admin/documents", newerMatch);
+        await client.PostAsync("/api/admin/documents", otherGrade);
+        var today = DateTime.UtcNow.ToString("yyyy-MM-dd");
+
+        var response = await client.GetAsync(
+            $"/api/documents?grade=7&topic={Uri.EscapeDataString(topic)}&createdFrom={today}&createdTo={today}&sort=CreatedAtDescending&page=1&pageSize=1");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var page = await ReadJsonAsync<PagedResult<DocumentDto>>(response);
+        Assert.Equal(2, page.TotalCount);
+        Assert.Equal(2, page.TotalPages);
+        Assert.Single(page.Items);
+        Assert.Equal("Newer date match", page.Items[0].Title);
+
+        var tomorrow = DateTime.UtcNow.AddDays(1).ToString("yyyy-MM-dd");
+        var emptyResponse = await client.GetAsync(
+            $"/api/documents?topic={Uri.EscapeDataString(topic)}&createdFrom={tomorrow}&page=1&pageSize=12");
+        var emptyPage = await ReadJsonAsync<PagedResult<DocumentDto>>(emptyResponse);
+        Assert.Equal(0, emptyPage.TotalCount);
+        Assert.Empty(emptyPage.Items);
+    }
+
+    [Fact]
     public async Task GetDocuments_WhenSearchMatchesTopicPartiallyAndCaseInsensitively_ReturnsMatches()
     {
         using var client = await fixture.CreateAuthorizedClientAsync();

@@ -82,4 +82,23 @@ describe('FiltersBar', () => {
     expect(screen.queryByLabelText('Тема')).not.toBeInTheDocument();
     expect(onChange).toHaveBeenLastCalledWith({ topic: 'геом' });
   });
+
+  it('can render and update an upload date range', () => {
+    const onChange = vi.fn();
+
+    render(
+      <FiltersBar
+        filters={{ page: 1, pageSize: 12, createdFrom: '2026-08-01', createdTo: '' }}
+        topics={[]}
+        onChange={onChange}
+        onClear={vi.fn()}
+        showCreatedDate
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText('Дата до'), { target: { value: '2026-08-27' } });
+
+    expect(screen.getByLabelText('Дата від')).toHaveValue('2026-08-01');
+    expect(onChange).toHaveBeenCalledWith({ createdTo: '2026-08-27' });
+  });
 });
