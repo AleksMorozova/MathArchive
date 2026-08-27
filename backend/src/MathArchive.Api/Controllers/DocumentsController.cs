@@ -16,12 +16,15 @@ public sealed class DocumentsController(DocumentService documentService) : Contr
         [FromQuery] bool generalOnly,
         [FromQuery] string? topic,
         [FromQuery] DocumentType? documentType,
+        [FromQuery] DateOnly? createdFrom,
+        [FromQuery] DateOnly? createdTo,
+        [FromQuery] DocumentSortOrder sort = DocumentSortOrder.Default,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 12,
         CancellationToken cancellationToken = default)
     {
         return documentService.SearchAsync(
-            new DocumentQueryParameters(search, grade, generalOnly, topic, documentType, page, pageSize),
+            new DocumentQueryParameters(search, grade, generalOnly, topic, documentType, createdFrom, createdTo, sort, page, pageSize),
             cancellationToken);
     }
 

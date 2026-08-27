@@ -36,6 +36,9 @@ export interface DocumentFilters {
   grade?: string;
   topic?: string;
   documentType?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  sort?: 'CreatedAtDescending';
   page: number;
   pageSize: number;
 }

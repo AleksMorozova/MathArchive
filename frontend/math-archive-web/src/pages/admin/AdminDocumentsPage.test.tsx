@@ -3,14 +3,13 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { deleteDocument, getDocuments, getTopics } from '../../api/documentsApi';
+import { deleteDocument, getDocuments } from '../../api/documentsApi';
 import { queryKeys } from '../../api/queryKeys';
 import { AdminDocumentsPage } from './AdminDocumentsPage';
 
 vi.mock('../../api/documentsApi', () => ({
   deleteDocument: vi.fn(async () => undefined),
-  getDocuments: vi.fn(),
-  getTopics: vi.fn(async () => [])
+  getDocuments: vi.fn()
 }));
 
 describe('AdminDocumentsPage', () => {
@@ -83,6 +82,35 @@ describe('AdminDocumentsPage', () => {
     expect(await screen.findByText('Пам’ятка з геометрії')).toBeInTheDocument();
     await waitFor(() => expect(getDocuments).toHaveBeenLastCalledWith(
       expect.objectContaining({ page: 1 }),
+      expect.any(AbortSignal)
+    ));
+  });
+
+  it('shows the filtered total and requests newest materials first with date filters', async () => {
+    const user = userEvent.setup();
+    const queryClient = createQueryClient();
+    vi.mocked(getDocuments).mockResolvedValue({
+      items: [],
+      page: 1,
+      pageSize: 12,
+      totalCount: 4,
+      totalPages: 1
+    });
+
+    renderPage(queryClient);
+
+    expect(await screen.findByText('Знайдено матеріалів: 4')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Тема')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Тип матеріалу')).not.toBeInTheDocument();
+    expect(getDocuments).toHaveBeenCalledWith(
+      expect.objectContaining({ sort: 'CreatedAtDescending', page: 1 }),
+      expect.any(AbortSignal)
+    );
+
+    await user.type(screen.getByLabelText('Дата від'), '2026-08-01');
+
+    await waitFor(() => expect(getDocuments).toHaveBeenLastCalledWith(
+      expect.objectContaining({ createdFrom: '2026-08-01', sort: 'CreatedAtDescending', page: 1 }),
       expect.any(AbortSignal)
     ));
   });

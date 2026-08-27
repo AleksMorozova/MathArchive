@@ -12,6 +12,9 @@ export async function getDocuments(filters: DocumentFilters, signal?: AbortSigna
       generalOnly: filters.grade === generalGradeFilterValue ? true : undefined,
       topic: filters.topic || undefined,
       documentType: filters.documentType || undefined,
+      createdFrom: filters.createdFrom || undefined,
+      createdTo: filters.createdTo || undefined,
+      sort: filters.sort || undefined,
       page: filters.page,
       pageSize: filters.pageSize
     }

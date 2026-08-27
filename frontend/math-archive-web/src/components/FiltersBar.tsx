@@ -13,6 +13,7 @@ interface FiltersBarProps {
   showGrade?: boolean;
   showTopic?: boolean;
   showDocumentType?: boolean;
+  showCreatedDate?: boolean;
   compact?: boolean;
   gradeOptions?: number[];
   topicMode?: 'select' | 'text';
@@ -27,6 +28,7 @@ export function FiltersBar({
   showGrade = true,
   showTopic = true,
   showDocumentType = true,
+  showCreatedDate = false,
   compact = false,
   gradeOptions = Array.from({ length: 11 }, (_, index) => index + 1),
   topicMode = 'select'
@@ -35,7 +37,8 @@ export function FiltersBar({
     (showSearch && filters.search) ||
     (showGrade && filters.grade) ||
     (showTopic && filters.topic?.trim()) ||
-    (showDocumentType && filters.documentType)
+    (showDocumentType && filters.documentType) ||
+    (showCreatedDate && (filters.createdFrom || filters.createdTo))
   );
 
   return (
@@ -77,6 +80,24 @@ export function FiltersBar({
           <MenuItem value="">Оберіть тип матеріалу</MenuItem>
           {documentTypeOptions.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
         </TextField>
+      )}
+      {showCreatedDate && (
+        <>
+          <TextField
+            label="Дата від"
+            type="date"
+            value={filters.createdFrom ?? ''}
+            onChange={(event) => onChange({ createdFrom: event.target.value })}
+            slotProps={{ inputLabel: { shrink: true } }}
+          />
+          <TextField
+            label="Дата до"
+            type="date"
+            value={filters.createdTo ?? ''}
+            onChange={(event) => onChange({ createdTo: event.target.value })}
+            slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: filters.createdFrom || undefined } }}
+          />
+        </>
       )}
       <Button startIcon={<ClearIcon />} onClick={onClear} disabled={compact && !hasSelectedFilters}>Очистити фільтри</Button>
     </Stack>
