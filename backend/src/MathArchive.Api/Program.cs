@@ -65,8 +65,18 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
     {
-        policy.WithOrigins(allowedOrigins.ToArray())
-            .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+        if (builder.Environment.IsDevelopment())
+        {
+            policy.SetIsOriginAllowed(origin =>
+                allowedOrigins.Contains(origin.TrimEnd('/'), StringComparer.OrdinalIgnoreCase) ||
+                IsLoopbackOrigin(origin));
+        }
+        else
+        {
+            policy.WithOrigins(allowedOrigins.ToArray());
+        }
+
+        policy.WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
             .WithHeaders(HeaderNames.Authorization, HeaderNames.ContentType);
     });
 });
@@ -312,6 +322,13 @@ static string? NormalizeOrigin(string? origin)
     }
 
     return uri.GetLeftPart(UriPartial.Authority).TrimEnd('/');
+}
+
+static bool IsLoopbackOrigin(string origin)
+{
+    return Uri.TryCreate(origin, UriKind.Absolute, out var uri) &&
+        (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps) &&
+        uri.IsLoopback;
 }
 
 public partial class Program

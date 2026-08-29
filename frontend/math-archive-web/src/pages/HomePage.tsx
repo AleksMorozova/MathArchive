@@ -25,7 +25,7 @@ const classLinks = [
 
 export function HomePage() {
   return (
-    <Container maxWidth="lg">
+    <Container maxWidth="lg" className="home-page">
       <Seo {...homeSeo} />
       <Box className="hero">
         <Stack gap={3} className="hero-copy">
@@ -44,7 +44,7 @@ export function HomePage() {
               Формули, контрольні та самостійні роботи, пам’ятки й методичні матеріали для учнів і вчителів.
             </Typography>
           </Box>
-          <Button component={Link} to="/materials" variant="contained" size="large" endIcon={<ArrowForwardIcon />}>
+          <Button component={Link} to="/materials" variant="contained" size="large" endIcon={<ArrowForwardIcon />} className="home-cta">
             Переглянути матеріали
           </Button>
         </Stack>

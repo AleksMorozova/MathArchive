@@ -45,10 +45,10 @@ export function PublicLayout() {
           </Toolbar>
         </Container>
       </AppBar>
-      <Drawer anchor="right" open={open} onClose={() => setOpen(false)}>
+      <Drawer anchor="right" open={open} onClose={() => setOpen(false)} className="public-navigation-drawer">
         <Box sx={{ width: 260, p: 2 }}>{navigation}</Box>
       </Drawer>
-      <Box component="main" className="main-content public-main-content">
+      <Box component="main" className={`main-content public-main-content${location.pathname === '/' ? ' home-route' : ''}`}>
         <MathBackground variant={mathBackgroundVariant} />
         <Outlet />
       </Box>

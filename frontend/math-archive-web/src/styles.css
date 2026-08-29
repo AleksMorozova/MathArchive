@@ -98,8 +98,8 @@ a {
 }
 
 .public-header {
-  border-bottom: 1px solid rgba(231, 222, 211, 0.92);
-  background: rgba(255, 253, 248, 0.88) !important;
+  border-bottom: 1px solid rgba(9, 42, 83, 0.10);
+  background: rgba(255, 255, 255, 0.94) !important;
   backdrop-filter: blur(18px);
 }
 
@@ -116,12 +116,17 @@ a {
 }
 
 .brand-link:hover {
-  background: rgba(217, 196, 165, 0.24);
+  background: rgba(0, 151, 178, 0.08);
   transform: translateY(-1px);
 }
 
 .brand-link .MuiSvgIcon-root {
-  filter: drop-shadow(0 6px 12px rgba(138, 106, 82, 0.18));
+  color: #0097B2;
+  filter: drop-shadow(0 6px 12px rgba(0, 151, 178, 0.16));
+}
+
+.brand-link .MuiTypography-root {
+  color: #082B59;
 }
 
 .desktop-nav {
@@ -129,6 +134,11 @@ a {
 }
 
 .desktop-nav .MuiButton-root,
+.public-navigation-drawer .MuiDrawer-paper .MuiButton-root {
+  color: #082B59;
+  justify-content: flex-start;
+}
+
 .admin-sidebar .MuiButton-root,
 .MuiDrawer-paper .MuiButton-root {
   color: var(--primary-hover);
@@ -136,6 +146,11 @@ a {
 }
 
 .desktop-nav .MuiButton-root.active,
+.public-navigation-drawer .MuiDrawer-paper .MuiButton-root.active {
+  background: #FFF3D3;
+  color: #082B59;
+}
+
 .admin-sidebar .MuiButton-root.active,
 .MuiDrawer-paper .MuiButton-root.active {
   background: rgba(241, 231, 216, 0.88);
@@ -154,10 +169,7 @@ a {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 10% 10%, rgba(217, 196, 165, 0.30), transparent 24rem),
-    radial-gradient(circle at 92% 42%, rgba(241, 231, 216, 0.42), transparent 30rem),
-    linear-gradient(180deg, rgba(255, 252, 248, 0.70), rgba(248, 245, 241, 0.76));
+  background: #F5FAFF;
 }
 
 .public-main-content::before {
@@ -166,9 +178,9 @@ a {
   inset: 0;
   z-index: 0;
   background:
-    linear-gradient(rgba(138, 106, 82, 0.040) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(138, 106, 82, 0.036) 1px, transparent 1px);
-  background-size: 56px 56px;
+    linear-gradient(rgba(31, 111, 157, 0.060) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(31, 111, 157, 0.052) 1px, transparent 1px);
+  background-size: 44px 44px;
   mask-image: linear-gradient(180deg, transparent 0, black 120px, black calc(100% - 80px), transparent 100%);
   pointer-events: none;
 }
@@ -177,11 +189,24 @@ a {
   position: relative;
   z-index: 2;
 }
+
+.public-main-content.home-route {
+  background: #F5FAFF;
+}
+
+.public-main-content.home-route::before {
+  background:
+    linear-gradient(rgba(31, 111, 157, 0.075) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(31, 111, 157, 0.065) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: linear-gradient(180deg, transparent 0, black 44px, black calc(100% - 32px), transparent 100%);
+  user-select: none;
+}
 .footer {
-  border-top: 1px solid var(--line);
+  border-top: 1px solid rgba(8, 43, 89, 0.10);
   padding: 28px 0;
   color: var(--muted);
-  background: rgba(255, 253, 248, 0.72);
+  background: rgba(255, 255, 255, 0.94);
 }
 
 .hero {
@@ -324,6 +349,419 @@ a {
   font-size: 1.45rem;
   color: var(--primary-hover);
   opacity: 0.78;
+}
+
+/* Homepage: modern academic direction from the supplied reference. */
+.home-page {
+  --home-navy: #082B59;
+  --home-teal: #0097B2;
+  --home-teal-dark: #007F99;
+  --home-yellow: #F7B500;
+  --home-ochre: #AC6000;
+  --home-border: #CFE0EC;
+  max-width: 1280px !important;
+}
+
+.home-page .hero {
+  min-height: clamp(590px, calc(100vh - 150px), 720px);
+  grid-template-columns: minmax(370px, 0.78fr) minmax(600px, 1.22fr);
+  gap: clamp(42px, 5vw, 78px);
+  padding: clamp(54px, 7vh, 76px) 0 46px;
+  overflow: visible;
+}
+
+.home-page .hero-copy {
+  max-width: 490px;
+  gap: 26px !important;
+}
+
+.home-page .teacher-introduction {
+  gap: 12px;
+}
+
+.home-page .teacher-introduction h1 {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  padding-bottom: 16px;
+  color: var(--home-navy);
+  font-size: clamp(2.35rem, 3.4vw, 3.65rem);
+  font-weight: 800;
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+}
+
+.home-page .teacher-introduction h1::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  bottom: 2px;
+  width: min(74%, 275px);
+  height: 4px;
+  border-radius: 999px;
+  background: var(--home-teal);
+  transform: rotate(-1.2deg);
+}
+
+.home-page .teacher-experience {
+  max-width: 28ch;
+  color: var(--home-ochre);
+  font-size: clamp(1.15rem, 1.6vw, 1.45rem);
+  font-weight: 760 !important;
+}
+
+.home-page .teacher-workplace,
+.home-page .hero-materials-summary p {
+  color: #38516F;
+}
+
+.home-page .hero-materials-summary {
+  gap: 8px;
+  padding-top: 22px;
+  border-top: 2px solid rgba(0, 151, 178, 0.58);
+}
+
+.home-page .hero-materials-summary h2 {
+  color: var(--home-navy);
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.home-page .home-cta {
+  min-width: min(100%, 300px);
+  min-height: 54px;
+  border-radius: 999px;
+  background: var(--home-teal);
+  color: #FFFFFF;
+  box-shadow: 0 12px 24px rgba(0, 127, 153, 0.24);
+  transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
+.home-page .home-cta:hover,
+.home-page .home-cta:focus-visible {
+  background: var(--home-teal-dark);
+  box-shadow: 0 17px 30px rgba(0, 127, 153, 0.32);
+  transform: translateY(-2px);
+}
+
+.home-page .home-cta:focus-visible {
+  outline: 3px solid rgba(247, 181, 0, 0.55);
+  outline-offset: 3px;
+}
+
+.home-page .home-cta .MuiButton-endIcon {
+  color: var(--home-yellow);
+}
+
+.home-page .class-navigation-card {
+  min-height: 470px;
+  padding: clamp(26px, 3vw, 38px);
+  border: 1px solid var(--home-border);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 20px 48px rgba(8, 43, 89, 0.11);
+  backdrop-filter: blur(5px);
+}
+
+.home-page .class-link-grid {
+  gap: clamp(14px, 1.6vw, 20px);
+}
+
+.home-page .class-link-tile {
+  position: relative;
+  min-height: 178px;
+  gap: 13px;
+  overflow: hidden;
+  padding: 25px 12px 20px;
+  border: 1px solid var(--home-border);
+  border-top: 7px solid var(--home-teal);
+  border-radius: 17px;
+  background: #FFFFFF;
+  color: var(--home-navy);
+  box-shadow: 0 8px 18px rgba(8, 43, 89, 0.10);
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.home-page .class-link-tile:nth-child(3n + 2) {
+  border-top-color: var(--home-navy);
+}
+
+.home-page .class-link-tile:nth-child(3n) {
+  border-top-color: var(--home-yellow);
+}
+
+.home-page .class-link-tile:hover,
+.home-page .class-link-tile:focus-visible {
+  border-color: var(--home-teal);
+  border-top-color: var(--home-teal);
+  background: #FFFFFF;
+  box-shadow: 0 15px 28px rgba(8, 43, 89, 0.16);
+  transform: translateY(-4px);
+}
+
+.home-page .class-link-tile:focus-visible {
+  outline: 3px solid rgba(0, 151, 178, 0.30);
+  outline-offset: 3px;
+}
+
+.home-page .class-link-tile .MuiTypography-root {
+  color: var(--home-navy);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.home-page .class-link-tile .MuiSvgIcon-root {
+  color: var(--home-teal);
+  font-size: 2.15rem;
+  opacity: 1;
+}
+
+.home-page .class-link-tile:nth-child(3n + 2) .MuiSvgIcon-root {
+  color: var(--home-navy);
+}
+
+.home-page .class-link-tile:nth-child(3n) .MuiSvgIcon-root {
+  color: var(--home-yellow);
+}
+
+.home-route .public-math-background {
+  color: #0097B2;
+  user-select: none;
+}
+
+.home-route .math-sketch {
+  stroke-width: 1.55;
+  opacity: 0.28;
+  filter: none;
+}
+
+.home-route .math-sketch:nth-child(even) {
+  color: #082B59;
+}
+
+.home-route .math-sketch-tools,
+.home-route .math-sketch-circle {
+  color: #F7B500;
+}
+
+@media (max-width: 1050px) {
+  .home-page .hero {
+    grid-template-columns: 1fr;
+    gap: 42px;
+    padding-top: 52px;
+  }
+
+  .home-page .hero-copy {
+    max-width: 650px;
+  }
+
+  .home-page .class-navigation-card {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .public-header .brand-link {
+    padding-left: 2px;
+  }
+
+  .home-page .hero {
+    gap: 34px;
+    padding: 40px 0 48px;
+  }
+
+  .home-page .hero-copy {
+    gap: 22px !important;
+  }
+
+  .home-page .teacher-introduction h1 {
+    font-size: clamp(2.15rem, 11vw, 3rem);
+    line-height: 1.06;
+  }
+
+  .home-page .class-navigation-card {
+    padding: 20px;
+    border-radius: 20px;
+  }
+
+  .home-page .class-link-grid {
+    gap: 13px;
+  }
+
+  .home-page .class-link-tile {
+    min-height: 132px;
+    padding: 20px 10px 16px;
+  }
+
+  .home-page .class-link-tile .MuiTypography-root {
+    font-size: 0.98rem;
+  }
+}
+
+@media (max-width: 390px) {
+  .home-page .class-navigation-card {
+    padding: 14px;
+  }
+
+  .home-page .class-link-grid {
+    gap: 10px;
+  }
+
+  .home-page .class-link-tile {
+    min-height: 122px;
+  }
+}
+
+/* Shared modern academic treatment for public content pages. */
+.public-main-content:not(.home-route) {
+  --public-navy: #082B59;
+  --public-teal: #0097B2;
+  --public-teal-dark: #007F99;
+  --public-yellow: #F7B500;
+  --public-border: #CFE0EC;
+}
+
+.public-main-content:not(.home-route) h1,
+.public-main-content:not(.home-route) h2,
+.public-main-content:not(.home-route) h3,
+.public-main-content:not(.home-route) h4 {
+  color: var(--public-navy);
+}
+
+.public-main-content:not(.home-route) .materials-hero h1 {
+  position: relative;
+  width: fit-content;
+  padding-bottom: 12px;
+}
+
+.public-main-content:not(.home-route) .materials-hero h1::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  bottom: 2px;
+  width: 72%;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--public-teal);
+  transform: rotate(-1deg);
+}
+
+.public-main-content:not(.home-route) .content-panel,
+.public-main-content:not(.home-route) .document-card,
+.public-main-content:not(.home-route) .state-box,
+.public-main-content:not(.home-route) .preview-frame,
+.public-main-content:not(.home-route) .about-feature,
+.public-main-content:not(.home-route) .filters-bar {
+  border-color: var(--public-border);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 14px 34px rgba(8, 43, 89, 0.10);
+}
+
+.public-main-content:not(.home-route) .document-card:hover,
+.public-main-content:not(.home-route) .about-feature:hover {
+  border-color: rgba(0, 151, 178, 0.62);
+  box-shadow: 0 20px 42px rgba(8, 43, 89, 0.15);
+}
+
+.public-main-content:not(.home-route) .document-card-icon,
+.public-main-content:not(.home-route) .feature-icon {
+  color: var(--public-teal);
+  border-color: rgba(0, 151, 178, 0.20);
+  background: #EAF9FC;
+  box-shadow: none;
+}
+
+.public-main-content:not(.home-route) .feature-icon.sage {
+  color: #A56F00;
+  background: #FFF7DD;
+}
+
+.public-main-content:not(.home-route) .feature-icon.blue {
+  color: var(--public-navy);
+  background: #EDF3FA;
+}
+
+.public-main-content:not(.home-route) .card-actions {
+  border-top-color: var(--public-border);
+  background: #F7FBFF;
+}
+
+.public-main-content:not(.home-route) .card-actions .MuiButton-root,
+.public-main-content:not(.home-route) .material-breadcrumbs a,
+.public-main-content:not(.home-route) .material-byline a {
+  color: var(--public-teal-dark);
+}
+
+.public-main-content:not(.home-route) .MuiButton-contained {
+  border-radius: 999px;
+  background: var(--public-teal);
+  color: #FFFFFF;
+  box-shadow: 0 10px 22px rgba(0, 127, 153, 0.22);
+}
+
+.public-main-content:not(.home-route) .MuiButton-contained:hover,
+.public-main-content:not(.home-route) .MuiButton-contained:focus-visible {
+  background: var(--public-teal-dark);
+  box-shadow: 0 14px 28px rgba(0, 127, 153, 0.30);
+}
+
+.public-main-content:not(.home-route) .MuiButton-root:focus-visible,
+.public-main-content:not(.home-route) a:focus-visible {
+  outline: 3px solid rgba(247, 181, 0, 0.48);
+  outline-offset: 3px;
+}
+
+.public-main-content:not(.home-route) .MuiChip-root {
+  border: 1px solid rgba(0, 151, 178, 0.16);
+  background: #EDF8FB;
+  color: var(--public-navy);
+}
+
+.public-main-content:not(.home-route) .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: var(--public-teal);
+}
+
+.public-main-content:not(.home-route) .filters-bar .MuiOutlinedInput-root {
+  background: #FFFFFF;
+}
+
+.public-main-content:not(.home-route) .MuiInputLabel-root.Mui-focused {
+  color: var(--public-teal-dark);
+}
+
+.public-main-content:not(.home-route) .materials-list li::before {
+  background: var(--public-yellow);
+  box-shadow: 0 0 0 4px rgba(247, 181, 0, 0.16);
+}
+
+.public-main-content:not(.home-route) .about-archive-section {
+  background:
+    radial-gradient(circle at 12% 16%, rgba(0, 151, 178, 0.08), transparent 22rem),
+    transparent;
+}
+
+.public-main-content:not(.home-route) .teacher-meta-item {
+  border-color: var(--public-border);
+  background: #F7FBFF;
+}
+
+.public-main-content:not(.home-route) .teacher-name,
+.public-main-content:not(.home-route) .credo-quote {
+  color: var(--public-teal-dark);
+}
+
+.public-main-content:not(.home-route) .public-math-background {
+  color: var(--public-teal);
+  user-select: none;
+}
+
+.public-main-content:not(.home-route) .math-sketch:nth-child(even) {
+  color: var(--public-navy);
+}
+
+.public-main-content:not(.home-route) .math-sketch-tools,
+.public-main-content:not(.home-route) .math-sketch-circle {
+  color: var(--public-yellow);
 }
 
 .category-tile,
@@ -708,6 +1146,28 @@ a {
   }
 }
 
+@keyframes math-float {
+  from {
+    translate: -3px 4px;
+    rotate: -0.5deg;
+  }
+  to {
+    translate: 18px -20px;
+    rotate: 1deg;
+  }
+}
+
+@keyframes math-float-reverse {
+  from {
+    translate: 4px -5px;
+    rotate: 0.6deg;
+  }
+  to {
+    translate: -19px 17px;
+    rotate: -1deg;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -716,6 +1176,12 @@ a {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+
+  .math-sketch {
+    translate: 0 0 !important;
+    rotate: 0deg !important;
+    will-change: auto;
   }
 }
 
@@ -955,6 +1421,19 @@ a {
   stroke-linejoin: round;
   opacity: 0.40;
   filter: drop-shadow(0 10px 18px rgba(78, 60, 43, 0.05));
+  animation: math-float 8s ease-in-out infinite alternate;
+  will-change: translate, rotate;
+}
+
+.math-sketch:nth-child(even) {
+  animation-name: math-float-reverse;
+  animation-duration: 10s;
+  animation-delay: -3s;
+}
+
+.math-sketch:nth-child(3n) {
+  animation-duration: 12s;
+  animation-delay: -6s;
 }
 
 .math-sketch text {
