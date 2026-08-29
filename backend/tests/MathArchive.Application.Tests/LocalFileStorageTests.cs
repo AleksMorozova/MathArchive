@@ -52,6 +52,32 @@ public sealed class LocalFileStorageTests
     }
 
     [Fact]
+    public async Task ListAsync_returns_only_top_level_files_with_size_and_timestamp()
+    {
+        var rootPath = CreateRootPath();
+        var storage = CreateStorage(rootPath);
+
+        try
+        {
+            Directory.CreateDirectory(rootPath);
+            await File.WriteAllBytesAsync(Path.Combine(rootPath, "first.pdf"), [1, 2, 3]);
+            Directory.CreateDirectory(Path.Combine(rootPath, "ignored"));
+            await File.WriteAllBytesAsync(Path.Combine(rootPath, "ignored", "nested.pdf"), [4]);
+
+            var files = await storage.ListAsync(CancellationToken.None);
+
+            var file = Assert.Single(files);
+            Assert.Equal("first.pdf", file.StoredFileName);
+            Assert.Equal(3, file.FileSize);
+            Assert.True(file.LastModifiedAt <= DateTimeOffset.UtcNow);
+        }
+        finally
+        {
+            DeleteRootPath(rootPath);
+        }
+    }
+
+    [Fact]
     public async Task SaveAsync_when_canceled_removes_target_file_and_propagates_cancellation()
     {
         var rootPath = CreateRootPath();

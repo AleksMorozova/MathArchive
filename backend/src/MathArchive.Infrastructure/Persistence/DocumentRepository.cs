@@ -84,6 +84,15 @@ public sealed class DocumentRepository(MathArchiveDbContext dbContext) : IDocume
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<DocumentStorageReference>> GetStorageReferencesAsync(CancellationToken cancellationToken)
+    {
+        return await dbContext.Documents
+            .AsNoTracking()
+            .OrderBy(x => x.Title)
+            .Select(x => new DocumentStorageReference(x.Id, x.Title, x.StoredFileName, x.FileSize))
+            .ToListAsync(cancellationToken);
+    }
+
     public void Add(Document document)
     {
         dbContext.Documents.Add(document);
