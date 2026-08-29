@@ -73,6 +73,20 @@ public sealed class LocalFileStorage(
         return Task.CompletedTask;
     }
 
+    public Task<IReadOnlyList<StoredFileInfo>> ListAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        Directory.CreateDirectory(rootPath);
+
+        IReadOnlyList<StoredFileInfo> files = new DirectoryInfo(rootPath)
+            .EnumerateFiles("*", SearchOption.TopDirectoryOnly)
+            .Select(file => new StoredFileInfo(file.Name, file.Length, file.LastWriteTimeUtc))
+            .OrderBy(file => file.StoredFileName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return Task.FromResult(files);
+    }
+
     private string GetSafePath(string storedFileName)
     {
         var fileName = Path.GetFileName(storedFileName);

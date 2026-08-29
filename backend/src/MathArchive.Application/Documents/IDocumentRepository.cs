@@ -11,6 +11,9 @@ public interface IDocumentRepository
 
     Task<IReadOnlyList<string>> GetTopicsAsync(CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<DocumentStorageReference>> GetStorageReferencesAsync(CancellationToken cancellationToken) =>
+        throw new NotSupportedException("This repository implementation does not support storage audits.");
+
     void Add(Document document);
 
     void Remove(Document document);

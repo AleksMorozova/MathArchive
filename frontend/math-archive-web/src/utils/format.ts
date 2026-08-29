@@ -3,6 +3,10 @@ export function formatDate(value: string) {
 }
 
 export function formatFileSize(value: number) {
+  if (value === 0) {
+    return '0 КБ';
+  }
+
   if (value < 1024 * 1024) {
     return `${Math.max(1, Math.round(value / 1024))} КБ`;
   }

@@ -28,6 +28,8 @@ A single administrator can manage the archive through a protected admin panel.
 * Edit document metadata
 * Replace uploaded files
 * Delete documents
+* Audit consistency between database records and stored files
+* Safely clean up unreferenced files after an explicit confirmation
 * Manage the archive through a dedicated admin interface
 
 ## Tech Stack
@@ -240,6 +242,7 @@ dotnet ef migrations add MigrationName `
 /admin/documents
 /admin/documents/new
 /admin/documents/:id/edit
+/admin/storage
 ```
 
 ## API Endpoints
@@ -258,6 +261,8 @@ GET /api/documents/{id}/download
 ```http
 POST   /api/auth/login
 POST   /api/admin/documents
+GET    /api/admin/storage/audit
+POST   /api/admin/storage/cleanup-orphans
 PUT    /api/admin/documents/{id}
 DELETE /api/admin/documents/{id}
 ```

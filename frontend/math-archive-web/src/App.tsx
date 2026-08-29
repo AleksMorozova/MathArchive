@@ -13,6 +13,7 @@ const AdminLayout = lazy(() => import('./layouts/AdminLayout').then((module) => 
 const AdminDocumentsPage = lazy(() => import('./pages/admin/AdminDocumentsPage').then((module) => ({ default: module.AdminDocumentsPage })));
 const DocumentFormPage = lazy(() => import('./pages/admin/DocumentFormPage').then((module) => ({ default: module.DocumentFormPage })));
 const LoginPage = lazy(() => import('./pages/admin/LoginPage').then((module) => ({ default: module.LoginPage })));
+const StorageAuditPage = lazy(() => import('./pages/admin/StorageAuditPage').then((module) => ({ default: module.StorageAuditPage })));
 
 const router = createBrowserRouter([
   {
@@ -37,7 +38,8 @@ const router = createBrowserRouter([
       { index: true, element: <Navigate to="/admin/documents" replace /> },
       { path: 'documents', element: <AdminDocumentsPage /> },
       { path: 'documents/new', element: <DocumentFormPage mode="create" /> },
-      { path: 'documents/:id/edit', element: <DocumentFormPage mode="edit" /> }
+      { path: 'documents/:id/edit', element: <DocumentFormPage mode="edit" /> },
+      { path: 'storage', element: <StorageAuditPage /> }
     ]
   }
 ]);

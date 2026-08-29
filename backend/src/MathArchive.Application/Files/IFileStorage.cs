@@ -7,4 +7,7 @@ public interface IFileStorage
     Task<Stream?> TryOpenReadAsync(string storedFileName, CancellationToken cancellationToken);
 
     Task DeleteAsync(string storedFileName, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<StoredFileInfo>> ListAsync(CancellationToken cancellationToken) =>
+        throw new NotSupportedException("This storage implementation does not support enumeration.");
 }
