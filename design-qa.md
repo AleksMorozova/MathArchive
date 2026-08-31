@@ -1,5 +1,7 @@
 # Homepage design QA
 
+This is a historical QA record of the homepage/public-page redesign, not a current release sign-off. Test counts, local URLs, and observed fixture issues describe that verification session. See the [README](README.md) for current setup and commands. Admin styling was subsequently updated separately.
+
 ## Sources and setup
 
 - Reference: `C:\Users\pc\AppData\Local\Temp\codex-clipboard-e24a1450-170f-4fda-b0dc-c4e5be95373d.png`
@@ -40,7 +42,7 @@ Passed.
 
 - Verified the shared academic palette on `/materials`, a material details route, and `/about` at the desktop browser viewport.
 - Confirmed five seeded material cards load from the local API and public navigation remains functional.
-- Confirmed mathematical illustrations move over time with independent 12–18 second animations; `prefers-reduced-motion` reduces them to a static state.
+- Confirmed mathematical illustrations move over time; `prefers-reduced-motion` reduces them to a static state. The current CSS uses independent 8, 10, and 12 second animations after subsequent movement adjustments.
 - Confirmed the updated pages produce no browser console warnings or errors during the visual checks.
 - Local CORS preflight from `http://localhost:5174` returned `204`, echoed that origin, and allowed the established API methods.
 - The details preview reported a missing seeded physical file; this is existing local fixture/storage state rather than a CORS or redesign failure.
