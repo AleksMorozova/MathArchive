@@ -1,7 +1,8 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { StrictMode } from 'react';
 import { authStorage } from '../api/authStorage';
 import { downloadDocument, getDocumentFile } from '../api/documentsApi';
 import { DocumentCard } from '../components/DocumentCard';
@@ -26,6 +27,7 @@ const useDocumentMock = vi.mocked(useDocument);
 
 describe('DocumentDetailsPage', () => {
   beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Analytics unavailable')));
     vi.clearAllMocks();
     authStorage.clearToken();
     useDocumentMock.mockReturnValue({
@@ -34,6 +36,76 @@ describe('DocumentDetailsPage', () => {
       error: null,
       data: createDocument()
     } as unknown as ReturnType<typeof useDocument>);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it.each(['card', 'details'] as const)('records one download from the %s download button even when analytics fails', async (location) => {
+    const user = userEvent.setup();
+    const document = { ...createDocument(), id: '078cbdd3-15e5-4871-9abc-9c0fadf6a594' };
+    useDocumentMock.mockReturnValue({ isLoading: false, isError: false, data: document } as unknown as ReturnType<typeof useDocument>);
+    vi.mocked(downloadDocument).mockReturnValue(new Promise(() => undefined));
+    render(<StrictMode><MemoryRouter initialEntries={[`/materials/${document.id}`]}>
+      {location === 'card' ? <DocumentCard document={document} /> : <Routes><Route path="/materials/:id" element={<DocumentDetailsPage />} /></Routes>}
+    </MemoryRouter></StrictMode>);
+    const button = screen.getByRole('button', { name: location === 'card' ? 'Завантажити' : 'Завантажити файл' });
+    expect(fetch).not.toHaveBeenCalled();
+    await user.dblClick(button);
+    expect(downloadDocument).toHaveBeenCalledTimes(1);
+    expect(downloadDocument).toHaveBeenCalledWith(document.id);
+    expect(button).toBeDisabled();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string)).toEqual({
+      sessionId: expect.any(String), eventType: 'DocumentDownload', documentId: document.id
+    });
+  });
+
+  it('dispatches the exact DocumentDownload POST synchronously from the regular open link without waiting for analytics', async () => {
+    const documentId = '078cbdd3-15e5-4871-9abc-9c0fadf6a594';
+    useDocumentMock.mockReturnValue({ isLoading: false, isError: false, data: { ...createDocument(), id: documentId } } as unknown as ReturnType<typeof useDocument>);
+    // A pending analytics request must not prevent the anchor's normal new-tab navigation.
+    vi.mocked(fetch).mockReturnValue(new Promise(() => undefined));
+    const page = <StrictMode><MemoryRouter initialEntries={[`/materials/${documentId}`]}><Routes><Route path="/materials/:id" element={<DocumentDetailsPage />} /></Routes></MemoryRouter></StrictMode>;
+    const rendered = render(page);
+    expect(fetch).not.toHaveBeenCalled();
+    const link = screen.getByRole('link', { name: 'Відкрити документ' });
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 });
+    fireEvent(link, click);
+    // These assertions run before yielding to any promise or browser navigation.
+    expect(click.defaultPrevented).toBe(false);
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('href', expect.stringContaining(`/api/documents/${documentId}/preview`));
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const [url, options] = vi.mocked(fetch).mock.calls[0];
+    expect(url).toEqual(expect.stringMatching(/\/api\/analytics\/events$/));
+    expect(options).toMatchObject({ method: 'POST', credentials: 'omit', keepalive: true, headers: { 'Content-Type': 'application/json' } });
+    expect(JSON.parse(options!.body as string)).toEqual({
+      sessionId: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i),
+      eventType: 'DocumentDownload', documentId
+    });
+    rendered.rerender(page);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(downloadDocument).not.toHaveBeenCalled();
+  });
+
+  it('keeps document opening and preview usable when analytics fails without duplicate preview events', async () => {
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn(() => 'blob:preview') });
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
+    vi.mocked(getDocumentFile).mockResolvedValue(new Blob(['preview'], { type: 'application/pdf' }));
+    const document = { ...createDocument(), contentType: 'application/pdf' };
+    useDocumentMock.mockReturnValue({ isLoading: false, isError: false, data: document } as unknown as ReturnType<typeof useDocument>);
+    const page = <StrictMode><MemoryRouter initialEntries={['/materials/document-id']}><Routes><Route path="/materials/:id" element={<DocumentDetailsPage />} /></Routes></MemoryRouter></StrictMode>;
+    const rendered = render(page);
+    await waitFor(() => expect(screen.getByTitle(document.title)).toHaveAttribute('src', 'blob:preview'));
+    rendered.rerender(page);
+    const events = () => vi.mocked(fetch).mock.calls.map(([, options]) => JSON.parse(options!.body as string).eventType);
+    expect(events()).toEqual(['DocumentPreview']);
+    const link = screen.getByRole('link', { name: 'Відкрити документ' });
+    expect(link).toHaveAttribute('href', expect.stringContaining('/api/documents/document-id/preview'));
+    expect(link).toHaveAttribute('target', '_blank');
+    await userEvent.setup().click(link);
+    expect(events()).toEqual(['DocumentPreview', 'DocumentDownload']);
+    expect(screen.getByTitle(document.title)).toBeInTheDocument();
+    expect(downloadDocument).not.toHaveBeenCalled();
   });
 
   it('hides technical file metadata for public users', () => {

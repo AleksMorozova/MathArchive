@@ -1,7 +1,8 @@
 import CalculateOutlinedIcon from '@mui/icons-material/CalculateOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
 import { AppBar, Box, Button, Container, Drawer, IconButton, Stack, Toolbar, Typography } from '@mui/material';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { trackSiteVisit } from '../api/analyticsApi';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { MathBackground } from '../components/MathBackground';
 
@@ -12,6 +13,7 @@ const links = [
 ];
 
 export function PublicLayout() {
+  useEffect(() => { trackSiteVisit(); }, []);
   const [open, setOpen] = useState(false);
   const location = useLocation();
   const mathBackgroundVariant = location.pathname === '/about' ? 'about' : 'default';

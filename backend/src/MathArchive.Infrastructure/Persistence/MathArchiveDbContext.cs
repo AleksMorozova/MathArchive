@@ -6,9 +6,11 @@ namespace MathArchive.Infrastructure.Persistence;
 public sealed class MathArchiveDbContext(DbContextOptions<MathArchiveDbContext> options) : DbContext(options)
 {
     public DbSet<Document> Documents => Set<Document>();
+    public DbSet<MathArchive.Domain.Analytics.AnalyticsEvent> AnalyticsEvents => Set<MathArchive.Domain.Analytics.AnalyticsEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new DocumentConfiguration());
+        modelBuilder.ApplyConfiguration(new AnalyticsEventConfiguration());
     }
 }

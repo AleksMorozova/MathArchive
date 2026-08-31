@@ -12,6 +12,8 @@ public static class DependencyInjection
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         services.AddScoped<DocumentService>();
+        services.AddScoped<Analytics.AnalyticsService>();
+        services.AddScoped<IValidator<Analytics.RecordAnalyticsEvent>, Analytics.RecordAnalyticsEventValidator>();
         services.AddScoped<StorageAuditService>();
         services.AddSingleton<IClock, SystemClock>();
         services.AddScoped<IValidator<DocumentMetadata>, DocumentMetadataValidator>();

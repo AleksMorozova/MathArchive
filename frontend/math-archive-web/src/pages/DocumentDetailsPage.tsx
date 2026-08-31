@@ -1,7 +1,10 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DownloadIcon from '@mui/icons-material/Download';
 import { Alert, Box, Breadcrumbs, Button, Chip, Container, Link as MuiLink, Stack, Typography } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import { trackEvent } from '../api/analyticsApi';
+import { buildApiUrl } from '../api/apiConfig';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { getApiErrorMessage, isApiError } from '../api/apiErrors';
 import { authStorage } from '../api/authStorage';
@@ -25,6 +28,7 @@ export function DocumentDetailsPage() {
   const [previewUrl, setPreviewUrl] = useState('');
   const [previewError, setPreviewError] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
+  const trackedPreview = useRef('');
 
   useEffect(() => {
     if (!document || !canPreview) {
@@ -35,6 +39,7 @@ export function DocumentDetailsPage() {
 
     let objectUrl = '';
     let isActive = true;
+    setPreviewUrl('');
     setPreviewError('');
 
     const abortController = new AbortController();
@@ -44,6 +49,11 @@ export function DocumentDetailsPage() {
         if (!isActive) return;
         objectUrl = URL.createObjectURL(blob);
         setPreviewUrl(objectUrl);
+        const openingKey = `${location.key}:${document.id}`;
+        if (trackedPreview.current !== openingKey) {
+          trackedPreview.current = openingKey;
+          trackEvent('DocumentPreview', document.id);
+        }
       })
       .catch((error) => {
         if (!isActive) return;
@@ -58,13 +68,15 @@ export function DocumentDetailsPage() {
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [canPreview, document]);
+  }, [canPreview, document, location.key]);
 
   if (query.isLoading) return <LoadingState />;
   if (query.isError) return <DocumentErrorState error={query.error} />;
   if (!document) return <ErrorState />;
 
   const handleDownload = async () => {
+    if (isDownloading) return;
+    trackEvent('DocumentDownload', document.id);
     setDownloadError('');
     setIsDownloading(true);
     try {
@@ -106,6 +118,9 @@ export function DocumentDetailsPage() {
               {isAdmin && <Chip label={`Кількість завантажень: ${document.downloadCount}`} />}
             </Stack>
             {downloadError && <Alert severity="error">{downloadError}</Alert>}
+            <Button component="a" href={buildApiUrl(`/api/documents/${document.id}/preview`)} target="_blank" rel="noopener noreferrer" startIcon={<OpenInNewIcon />} onClick={() => trackEvent('DocumentDownload', document.id)} onAuxClick={event => { if (event.button === 1) trackEvent('DocumentDownload', document.id); }} sx={{ alignSelf: 'flex-start' }}>
+              Відкрити документ
+            </Button>
             <Button startIcon={<DownloadIcon />} variant="contained" onClick={handleDownload} disabled={isDownloading} sx={{ alignSelf: 'flex-start' }}>
               Завантажити файл
             </Button>
