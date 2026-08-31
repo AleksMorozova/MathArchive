@@ -3,6 +3,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 import MenuIcon from '@mui/icons-material/Menu';
 import StorageIcon from '@mui/icons-material/Storage';
+import BarChartIcon from '@mui/icons-material/BarChart';
 import { Box, Button, Drawer, IconButton, Stack, Typography } from '@mui/material';
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
@@ -30,6 +31,9 @@ export function AdminLayout() {
       </Button>
       <Button component={NavLink} to="/admin/storage" startIcon={<StorageIcon />} onClick={() => setOpen(false)}>
         Сховище
+      </Button>
+      <Button component={NavLink} to="/admin/analytics" startIcon={<BarChartIcon />} onClick={() => setOpen(false)}>
+        Статистика
       </Button>
       <Button startIcon={<LogoutIcon />} onClick={signOut}>Вийти</Button>
     </Stack>

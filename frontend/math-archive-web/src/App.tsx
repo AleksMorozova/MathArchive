@@ -14,6 +14,7 @@ const AdminDocumentsPage = lazy(() => import('./pages/admin/AdminDocumentsPage')
 const DocumentFormPage = lazy(() => import('./pages/admin/DocumentFormPage').then((module) => ({ default: module.DocumentFormPage })));
 const LoginPage = lazy(() => import('./pages/admin/LoginPage').then((module) => ({ default: module.LoginPage })));
 const StorageAuditPage = lazy(() => import('./pages/admin/StorageAuditPage').then((module) => ({ default: module.StorageAuditPage })));
+const AnalyticsPage = lazy(() => import('./pages/admin/AnalyticsPage').then((module) => ({ default: module.AnalyticsPage })));
 
 const router = createBrowserRouter([
   {
@@ -39,7 +40,8 @@ const router = createBrowserRouter([
       { path: 'documents', element: <AdminDocumentsPage /> },
       { path: 'documents/new', element: <DocumentFormPage mode="create" /> },
       { path: 'documents/:id/edit', element: <DocumentFormPage mode="edit" /> },
-      { path: 'storage', element: <StorageAuditPage /> }
+      { path: 'storage', element: <StorageAuditPage /> },
+      { path: 'analytics', element: <AnalyticsPage /> }
     ]
   }
 ]);

@@ -3,6 +3,7 @@ using System;
 using MathArchive.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MathArchive.Infrastructure.Migrations
 {
     [DbContext(typeof(MathArchiveDbContext))]
-    partial class MathArchiveDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260831145701_RenameDocumentViewToDocumentDownload")]
+    partial class RenameDocumentViewToDocumentDownload
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { getApiErrorMessage } from '../api/apiErrors';
 import { downloadDocument } from '../api/documentsApi';
+import { trackEvent } from '../api/analyticsApi';
 import type { DocumentDto } from '../types/documents';
 
 export function DocumentCard({ document }: { document: DocumentDto }) {
@@ -14,6 +15,8 @@ export function DocumentCard({ document }: { document: DocumentDto }) {
   const [isDownloading, setIsDownloading] = useState(false);
 
   const handleDownload = async () => {
+    if (isDownloading) return;
+    trackEvent('DocumentDownload', document.id);
     setDownloadError('');
     setIsDownloading(true);
     try {

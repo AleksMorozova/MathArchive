@@ -22,6 +22,7 @@ public static class DependencyInjection
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
 
         services.AddScoped<IDocumentRepository, DocumentRepository>();
+        services.AddScoped<MathArchive.Application.Analytics.IAnalyticsRepository, AnalyticsRepository>();
         services.AddScoped<IFileStorage, LocalFileStorage>();
         services.AddSingleton<AdminPasswordHasher>();
         services.AddScoped<JwtTokenService>();

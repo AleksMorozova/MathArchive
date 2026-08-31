@@ -75,6 +75,7 @@ public sealed class ApiIntegrationFixture : IAsyncLifetime
         await using var scope = Factory.Services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<MathArchiveDbContext>();
         await dbContext.Documents.ExecuteDeleteAsync();
+        await dbContext.AnalyticsEvents.ExecuteDeleteAsync();
 
         if (Directory.Exists(storageRoot))
         {
