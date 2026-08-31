@@ -7,6 +7,8 @@ import { z } from 'zod';
 import { getApiErrorMessage, isApiError } from '../../api/apiErrors';
 import { login } from '../../api/authApi';
 import { Seo } from '../../seo/Seo';
+import { ThemeProvider } from '@mui/material/styles';
+import { adminTheme } from '../../layouts/adminTheme';
 
 const schema = z.object({
   username: z.string().min(1, 'Введіть логін'),
@@ -33,6 +35,8 @@ export function LoginPage() {
   });
 
   return (
+    <ThemeProvider theme={adminTheme}>
+    <Box className="admin-login-shell">
     <Container maxWidth="sm" className="login-page">
       <Seo title="Вхід до панелі керування | MathArchive" description="Вхід адміністратора." canonicalPath="/admin/login" noIndex />
       <Box component="form" className="content-panel" onSubmit={submit}>
@@ -45,5 +49,7 @@ export function LoginPage() {
         </Stack>
       </Box>
     </Container>
+    </Box>
+    </ThemeProvider>
   );
 }
