@@ -1,6 +1,6 @@
 # Anonymous usage analytics
 
-The admin statistics page is `/admin/analytics` ("Статистика"). It uses the existing admin authorization and theme. Counts represent openings, not unique students or proof that someone read a document.
+The admin statistics page is `/admin/analytics` ("Статистика"). It uses the existing admin authorization and theme. Counts represent site openings and intentional preview/file-open/download actions, not unique students or proof that someone read a document.
 
 ## Event meanings and frontend locations
 
@@ -12,9 +12,9 @@ The existing document metadata `DownloadCount` remains unchanged: it counts the 
 
 `src/api/analyticsApi.ts` creates a random UUID in localStorage under `matharchive_session_id`, reuses it across visits, and falls back to a page-local ID when storage is unavailable. Clearing browser storage resets this ID. Concurrent first-ever tabs can each generate an ID; no cross-tab locking is introduced for this small application.
 
-Public tracking uses a small fire-and-forget fetch with `credentials: 'omit'` and no Authorization header. It deliberately bypasses the shared Axios authentication interceptors so an analytics failure cannot log out the admin. Both synchronous and asynchronous failures are suppressed; events are not retried or queued. Missing browser crypto, offline mode, blockers, or server failures can cause undercounting without breaking the site.
+Public tracking uses a small fire-and-forget fetch with `keepalive: true`, `credentials: 'omit'`, and no Authorization header. It deliberately bypasses the shared Axios authentication interceptors so an analytics failure cannot log out the admin. Both synchronous and asynchronous failures are suppressed; events are not retried or queued. Missing browser crypto, offline mode, blockers, or server failures can cause undercounting without breaking the site. Keepalive supports navigation-time dispatch but does not guarantee delivery.
 
-Only the five requested event fields are persisted. No IP address, user agent, name, email, account ID, page URL, or cookies are stored by this feature. Hosting/provider access logs are independent of this application table. The persistent random browser identifier is not an identified student account. Public browsing by the administrator is not excluded, and this is not a bot-proof analytics system.
+Only `Id`, `SessionId`, `EventType`, `DocumentId`, and `CreatedAt` are persisted. No IP address, user agent, name, email, account ID, page URL, or cookies are stored by this feature. Hosting/provider access logs are independent of this application table. The persistent random browser identifier is not an identified student account. Public browsing by the administrator is not excluded, and this is not a bot-proof analytics system.
 
 ## API contract
 
@@ -23,7 +23,7 @@ Only the five requested event fields are persisted. No IP address, user agent, n
 ```json
 {
   "sessionId": "11111111-1111-4111-8111-111111111111",
-  "eventType": "DocumentPreview",
+  "eventType": "DocumentDownload",
   "documentId": "22222222-2222-4222-8222-222222222222"
 }
 ```
@@ -60,102 +60,52 @@ The UI interprets dates in the administrator's browser timezone and shows that t
 
 Initial migration: `20260831135409_AddAnalyticsEvents`.
 
-Rename migration: `20260831145701_RenameDocumentViewToDocumentDownload`. Because EF stores event names as strings, this data-only migration changes existing `DocumentView` rows to `DocumentDownload`, preserving their IDs, sessions, documents, and timestamps. Down reverses the string rename. No schema changes or backfill of previously untracked download clicks are needed. Deploy backend and frontend together: old clients sending `DocumentView` are no longer supported.
+Rename migration: `20260831145701_RenameDocumentViewToDocumentDownload`. Because EF stores event names as strings, this data-only migration changes existing `DocumentView` rows to `DocumentDownload`, preserving their IDs, sessions, documents, and timestamps. Down reverses the string rename without deleting rows. No schema changes are required for the rename. Previously untracked download clicks cannot be reconstructed and are not backfilled. Deploy backend and frontend together: old clients sending `DocumentView` are no longer supported.
 
-Adds `analytics_events` with UUID ID/session/document fields, a string event type, and a UTC timestamp. Indexes cover `(created_at, event_type)` and `document_id`. There is no session index because this feature does not query sessions.
+The initial migration adds `analytics_events` with UUID ID/session/document fields, a string event type, and a UTC timestamp. Indexes cover `(created_at, event_type)` and `document_id`. There is no session index because this feature does not query sessions.
 
-Historical document IDs intentionally have no foreign key: deleting a material must not erase its historical counts or block normal deletion. The report left-joins current document titles, displaying "Видалений матеріал" when the material no longer exists. Titles are not copied into events. No retention job is introduced; events remain until explicitly removed. Rolling the migration back drops analytics data only.
+Historical document IDs intentionally have no foreign key: deleting a material must not erase its historical counts or block normal deletion. The report left-joins current document titles, displaying "Видалений матеріал" when the material no longer exists. Titles are not copied into events. No retention job is introduced; events remain until explicitly removed. Rolling back the initial `AddAnalyticsEvents` migration drops the analytics table and its data, but does not delete documents or files.
 
 Generate/apply migrations using the existing deployment workflow. The backend's existing migration-on-startup setting applies this migration when enabled. Do not deploy tracking before the corresponding backend migration/API is available.
 
 ## Tests and local verification
 
 - `AnalyticsServiceTests`: recording all event types, validation, UTC timestamps, and date-range validation/normalization.
-- `AnalyticsApiIntegrationTests`: public recording/validation, admin authorization, PostgreSQL date boundaries, summary/table counts, zero counters, sorting, empty results, and preservation after document deletion. Uses the existing temporary PostgreSQL database fixture; never a production database.
+- `AnalyticsApiIntegrationTests`: public recording/validation, admin authorization, PostgreSQL date boundaries, download summary/table fields, zero counters, sorting, empty results, preservation after document deletion, and migration of historical event names. Uses the existing temporary PostgreSQL database fixture; never a production database.
 - `analyticsApi.test.tsx`: UUID reuse, credential-free payloads, StrictMode/remount/reload behavior, storage/network failure isolation.
 - `analyticsDates.test.ts`: presets, invalid ranges, and independent local-midnight conversion across DST dates.
-- `AnalyticsPage.test.tsx`: period requests, summary/table, loading, error/retry, and empty states.
-- `DocumentDetailsPage.test.tsx`: preview deduplication and usable file-opening navigation when analytics is offline.
+- `AnalyticsPage.test.tsx`: period requests, summary/table, Ukrainian download labels, loading, error/retry, and empty states.
+- `DocumentDetailsPage.test.tsx`: preview deduplication, one download event per activation of all three MathArchive file controls (including the card), and usable file actions when analytics is offline.
 
 ```powershell
+docker compose up -d postgres
+dotnet restore backend/MathArchive.sln
 dotnet build backend/MathArchive.sln --no-restore
 dotnet test backend/MathArchive.sln --no-build
 cd frontend/math-archive-web
+npm ci
 npx vitest run --maxWorkers=1
 $env:VITE_API_BASE_URL='http://localhost:5293'
 npm run build
 ```
 
-## Download-metric refactor
+## Refactor rationale
 
-The previous metric omitted the card/details download buttons and described explicit file opens as "views". A prior live trace proved the existing keepalive transport returned 204 and persisted the open-link event; no transport failure was reproduced. The refactor expands action coverage rather than changing PDF-viewer behavior or adding retries that could double-count events.
+The previous metric omitted the card/details download buttons and described explicit file opens as "views". The implementation's recorded live trace found that the existing keepalive transport returned 204 and persisted the open-link event; it did not reproduce a transport failure. The refactor expanded action coverage rather than changing PDF-viewer behavior or adding retries that could double-count events.
 
-Changed for this refactor: the analytics domain enum, application contracts/validation, repository aggregation, rename migration and designer, analytics service/integration tests, frontend analytics API/types/tests, `DocumentCard.tsx`, `DocumentDetailsPage.tsx` and tests, admin `AnalyticsPage.tsx` and tests, and this document. API response fields are now `summary.documentDownloads` and `documents[].downloadCount`; endpoints and date handling are unchanged. Migration tests verify conversion of historical string values. Frontend tests verify single events from all three actions, preview separation, nonblocking failures, and Ukrainian download labels.
+## Implementation references
 
-## Verification and changed files
+- [Public dispatch and report types](../frontend/math-archive-web/src/api/analyticsApi.ts)
+- [Card download action](../frontend/math-archive-web/src/components/DocumentCard.tsx)
+- [Preview and details file actions](../frontend/math-archive-web/src/pages/DocumentDetailsPage.tsx)
+- [Admin statistics UI](../frontend/math-archive-web/src/pages/admin/AnalyticsPage.tsx)
+- [Application contracts](../backend/src/MathArchive.Application/Analytics/AnalyticsContracts.cs)
+- [Validation and recording](../backend/src/MathArchive.Application/Analytics/AnalyticsService.cs)
+- [Database aggregation](../backend/src/MathArchive.Infrastructure/Persistence/AnalyticsRepository.cs)
+- [Event-name migration](../backend/src/MathArchive.Infrastructure/Migrations/20260831145701_RenameDocumentViewToDocumentDownload.cs)
 
-### Download refactor verification and changed files
+## Historical verification record
 
-Verification: 87 backend tests (including PostgreSQL integration and data-migration tests) and 73 frontend tests passed. Both builds passed and EF reported no pending model changes. The frontend build retained its existing large-chunk warning and used the stable SEO fallback while the local API was restarting.
+The download-refactor implementation report recorded 87 passing backend tests (including PostgreSQL and migration tests), 73 passing frontend tests, successful builds, and no pending EF model changes. It also recorded a browser run in which each of the three MathArchive file controls sent one `DocumentDownload` POST with the selected document ID, received 204, and added one database event. Preview opening added only a preview event.
 
-A real browser session exercised all three MathArchive file controls. Each sent `DocumentDownload` with the selected document ID to the public endpoint and received 204. PostgreSQL download events for that document increased from 1 to 4 (one per click), while opening the preview increased preview events from 3 to 4 without an additional download. The temporary request-tracing proxy was removed afterward. No PDF-viewer behavior changed. The rename migration was applied to the local development database; production deployment still needs the updated backend/migration and frontend together.
-
-Files changed specifically for this refactor:
-
-- `backend/src/MathArchive.Domain/Analytics/AnalyticsEvent.cs`
-- `backend/src/MathArchive.Application/Analytics/AnalyticsContracts.cs`
-- `backend/src/MathArchive.Application/Analytics/AnalyticsService.cs`
-- `backend/src/MathArchive.Infrastructure/Persistence/AnalyticsRepository.cs`
-- `backend/src/MathArchive.Infrastructure/Migrations/20260831145701_RenameDocumentViewToDocumentDownload.cs`
-- `backend/src/MathArchive.Infrastructure/Migrations/20260831145701_RenameDocumentViewToDocumentDownload.Designer.cs`
-- `backend/tests/MathArchive.Application.Tests/AnalyticsServiceTests.cs`
-- `backend/tests/MathArchive.Application.Tests/Integration/AnalyticsApiIntegrationTests.cs`
-- `frontend/math-archive-web/src/api/analyticsApi.ts`
-- `frontend/math-archive-web/src/api/analyticsApi.test.tsx`
-- `frontend/math-archive-web/src/components/DocumentCard.tsx`
-- `frontend/math-archive-web/src/pages/DocumentDetailsPage.tsx`
-- `frontend/math-archive-web/src/pages/DocumentDetailsPage.test.tsx`
-- `frontend/math-archive-web/src/pages/admin/AnalyticsPage.tsx`
-- `frontend/math-archive-web/src/pages/admin/AnalyticsPage.test.tsx`
-- `docs/analytics.md`
-
-### Initial implementation verification
-
-Implementation verification: all 70 frontend tests passed with a single worker; all 49 non-database backend tests passed outside the Windows sandbox; backend and frontend builds passed; EF reported no pending model changes. The broad initial runs encountered UI timeouts and Windows Event Log permissions, resolved by those reruns. PostgreSQL integration tests could not execute because localhost:5433 was unavailable and Docker Desktop's Linux engine was not running. The frontend build used the existing three-page SEO fallback because the local API was unavailable; the existing large-chunk warning remains. The migration was generated but not applied to a live database in this session. Authenticated browser visual verification was not performed.
-
-Paths below are relative to the repository root.
-
-### Backend
-
-- `backend/src/MathArchive.Domain/Analytics/AnalyticsEvent.cs`
-- `backend/src/MathArchive.Application/Analytics/AnalyticsContracts.cs`
-- `backend/src/MathArchive.Application/Analytics/AnalyticsService.cs`
-- `backend/src/MathArchive.Application/DependencyInjection.cs`
-- `backend/src/MathArchive.Infrastructure/DependencyInjection.cs`
-- `backend/src/MathArchive.Infrastructure/Persistence/MathArchiveDbContext.cs`
-- `backend/src/MathArchive.Infrastructure/Persistence/AnalyticsEventConfiguration.cs`
-- `backend/src/MathArchive.Infrastructure/Persistence/AnalyticsRepository.cs`
-- `backend/src/MathArchive.Infrastructure/Migrations/20260831135409_AddAnalyticsEvents.cs`
-- `backend/src/MathArchive.Infrastructure/Migrations/20260831135409_AddAnalyticsEvents.Designer.cs`
-- `backend/src/MathArchive.Infrastructure/Migrations/MathArchiveDbContextModelSnapshot.cs`
-- `backend/src/MathArchive.Api/Controllers/AnalyticsController.cs`
-- `backend/src/MathArchive.Api/Controllers/AdminAnalyticsController.cs`
-- `backend/tests/MathArchive.Application.Tests/AnalyticsServiceTests.cs`
-- `backend/tests/MathArchive.Application.Tests/Integration/AnalyticsApiIntegrationTests.cs`
-- `backend/tests/MathArchive.Application.Tests/Integration/ApiIntegrationFixture.cs`
-
-### Frontend and documentation
-
-- `frontend/math-archive-web/src/api/analyticsApi.ts`
-- `frontend/math-archive-web/src/api/analyticsApi.test.tsx`
-- `frontend/math-archive-web/src/api/queryKeys.ts`
-- `frontend/math-archive-web/src/utils/analyticsDates.ts`
-- `frontend/math-archive-web/src/utils/analyticsDates.test.ts`
-- `frontend/math-archive-web/src/pages/admin/AnalyticsPage.tsx`
-- `frontend/math-archive-web/src/pages/admin/AnalyticsPage.test.tsx`
-- `frontend/math-archive-web/src/pages/DocumentDetailsPage.tsx`
-- `frontend/math-archive-web/src/pages/DocumentDetailsPage.test.tsx`
-- `frontend/math-archive-web/src/layouts/PublicLayout.tsx`
-- `frontend/math-archive-web/src/layouts/AdminLayout.tsx`
-- `frontend/math-archive-web/src/App.tsx`
-- `docs/analytics.md`
+These are historical implementation results, not a new test run or production deployment confirmation. The local rename migration was applied during that verification; production still requires coordinated backend/migration and frontend deployment. Run the commands above to verify the current checkout.

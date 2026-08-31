@@ -10,8 +10,8 @@ Prefer the smallest coherent change that fixes demonstrated behavior. Avoid spec
 
 ## Repository map
 
-- `backend/src/MathArchive.Domain`: document entity and domain enum.
-- `backend/src/MathArchive.Application`: document use cases, DTOs, validation, and storage/repository abstractions.
+- `backend/src/MathArchive.Domain`: document and analytics entities and enums.
+- `backend/src/MathArchive.Application`: document, storage audit, and analytics use cases, DTOs, validation, and storage/repository abstractions.
 - `backend/src/MathArchive.Infrastructure`: EF Core/PostgreSQL repository, migrations, local file storage, authentication implementations, and development seed data.
 - `backend/src/MathArchive.Api`: ASP.NET Core controllers, DI composition, ProblemDetails handling, health checks, and runtime configuration.
 - `backend/tests/MathArchive.Application.Tests`: xUnit unit, API, health, storage, and PostgreSQL integration tests.
@@ -101,11 +101,21 @@ When changing document behavior, verify both sides agree on:
 - string `DocumentType` values;
 - `DocumentDto` fields and date/number shapes;
 - multipart create/update field names and optional replacement file;
-- `search`, `grade`, `generalOnly`, `topic`, `documentType`, `page`, and `pageSize` parameters;
+- `search`, `grade`, `generalOnly`, `topic`, `documentType`, `createdFrom`, `createdTo`, `sort`, `page`, and `pageSize` parameters;
 - `PagedResult` fields and infinite-page progression;
 - content types, filenames, preview/download semantics, and ProblemDetails status codes.
 
 Avoid relying on a new undocumented assumption on only one side of the contract. Update focused backend and frontend tests together when the API changes.
+
+## Analytics invariants
+
+- Event names are `SiteVisit`, `DocumentPreview`, and `DocumentDownload`; reporting uses `summary.documentDownloads` and `documents[].downloadCount`.
+- Track previews only after successful intentional PDF/image preview navigation. Track downloads from the MathArchive card download, details download, and details open-file actions, not effects, raw file endpoints, or browser PDF controls.
+- Analytics action counts are separate from the document metadata `DownloadCount`. The open-file link uses `/preview` but records a `DocumentDownload` action.
+- Dispatch must not block file access. The public tracking helper intentionally uses credential-free `fetch` with `keepalive: true`, bypassing Axios authentication interceptors. Do not add blind retries that can double-count actions.
+- Reporting requires `AdminOnly`. Calendar dates use the browser timezone and become an inclusive UTC start and exclusive UTC end; material-list creation-date filters instead use inclusive UTC calendar dates.
+- Event names are persisted as strings. Renaming them requires a data migration for existing rows. Historical events survive document deletion; do not introduce cascading deletion.
+- See [analytics documentation](docs/analytics.md) for the exact API, privacy limitations, and verification commands.
 
 ## Deployment and operations
 
@@ -148,6 +158,8 @@ dotnet test backend/MathArchive.sln --no-build
 cd frontend/math-archive-web
 npm ci
 npm test
+npm run test:seo-generator
+$env:VITE_API_BASE_URL='http://localhost:5293'
 npm run build
 ```
 
@@ -172,3 +184,7 @@ Always account for one admin and a small audience. Do not inflate theoretical co
 6. Report files changed, behavior changed, validation results, environment blockers, and intentionally out-of-scope concerns.
 
 Preserve unrelated user changes in a dirty worktree. Do not modify backend and frontend areas outside the requested scope merely because adjacent cleanup is possible.
+
+## AI-assisted development
+
+Use the reusable workflow, prompts, and checklists in [`docs/ai-workflow/README.md`](docs/ai-workflow/README.md) for AI-assisted tasks. AI output requires human review, especially for authorization, API contracts, migrations, file deletion, CI, merge, and deployment. Never provide secrets or personal data to AI, and never invent test, PR, CI, or deployment results.

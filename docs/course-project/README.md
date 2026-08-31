@@ -67,6 +67,7 @@ Never perform steps 2-4 against the only production copy of a source document.
 ## Verification
 
 ```powershell
+docker compose up -d postgres
 dotnet restore backend/MathArchive.sln
 dotnet build backend/MathArchive.sln --no-restore
 dotnet test backend/MathArchive.sln --no-build
@@ -74,6 +75,7 @@ dotnet test backend/MathArchive.sln --no-build
 cd frontend/math-archive-web
 npm ci
 npm test
+$env:VITE_API_BASE_URL='http://localhost:5293'
 npm run build
 ```
 
