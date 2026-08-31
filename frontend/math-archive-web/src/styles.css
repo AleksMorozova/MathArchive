@@ -1058,28 +1058,84 @@ a {
   min-height: 100vh;
   display: flex !important;
   align-items: center;
-  background:
-    radial-gradient(circle at 22% 12%, rgba(241, 231, 216, 0.88), transparent 26rem),
-    radial-gradient(circle at 84% 78%, rgba(244, 235, 221, 0.84), transparent 24rem),
-    var(--bg);
+  background: transparent;
 }
 
 .login-page .content-panel {
   width: 100%;
 }
 
+.admin-shell,
+.admin-login-shell,
+.admin-navigation-drawer {
+  --primary: #007F99;
+  --primary-hover: #00697F;
+  --line: #CFE0EC;
+  --muted: #38516F;
+  --surface-glass: #FFFFFF;
+  --shadow-md: 0 14px 34px rgba(8, 43, 89, 0.09);
+  color: #082B59;
+}
+
+.admin-login-shell {
+  min-height: 100vh;
+  background-color: #F5FAFF;
+  background-image:
+    linear-gradient(rgba(31, 111, 157, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(31, 111, 157, 0.055) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+.admin-shell .content-panel,
+.admin-shell .admin-table,
+.admin-shell .state-box,
+.admin-shell .filters-bar,
+.admin-login-shell .content-panel {
+  border-color: #CFE0EC;
+  background: #FFFFFF;
+  box-shadow: 0 14px 34px rgba(8, 43, 89, 0.09);
+}
+
+.admin-shell .filters-bar {
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.admin-shell .filters-bar .MuiTextField-root {
+  min-width: min(180px, 100%);
+}
+
+.admin-shell .admin-sidebar .MuiButton-root.active,
+.admin-navigation-drawer .MuiDrawer-paper .MuiButton-root.active {
+  color: #082B59;
+  background: #FFF3D3;
+}
+
+.admin-shell .admin-sidebar .MuiButton-root:hover,
+.admin-navigation-drawer .MuiDrawer-paper .MuiButton-root:hover {
+  background: #EAF9FC;
+}
+
+.admin-shell .success-message {
+  background: #EDF8F1;
+  color: #24663F;
+  border-color: #BBDCC8;
+}
+
+.admin-login-shell .content-panel {
+  border-top: 5px solid #0097B2;
+}
+
 .admin-shell {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 270px 1fr;
-  background:
-    linear-gradient(135deg, rgba(217, 196, 165, 0.28), transparent 32rem),
-    var(--bg);
+  background: #F5FAFF;
 }
 
 .admin-sidebar {
   border-right: 1px solid var(--line);
-  background: rgba(255, 253, 248, 0.9);
+  background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(14px);
   padding: 26px;
   display: flex;
@@ -1089,6 +1145,7 @@ a {
 
 .admin-main {
   padding: 34px;
+  min-width: 0;
 }
 
 .admin-mobile-bar {
@@ -1103,7 +1160,7 @@ a {
 .admin-table .MuiTableCell-head {
   color: var(--muted);
   font-weight: 700;
-  background: rgba(244, 235, 221, 0.72);
+  background: #EDF8FB;
 }
 
 .admin-table .MuiTableRow-root {
@@ -1111,7 +1168,7 @@ a {
 }
 
 .admin-table .MuiTableRow-root:hover {
-  background: rgba(217, 196, 165, 0.20);
+  background: #F2FAFD;
 }
 
 .admin-form {
