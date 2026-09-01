@@ -330,6 +330,10 @@ MathArchive is an actively developed pet project built around a real use case.
 
 The current focus is keeping document publishing simple for the administrator while making materials easy to find and download for students and teachers.
 
+## License
+
+MathArchive is source-available for portfolio presentation, educational review, and demonstration, but it is not open-source software. Copyright © 2026 Oleksandra Morozova. All rights reserved. See the [LICENSE](LICENSE) file for permitted uses and restrictions. Third-party libraries and other third-party materials remain subject to their own licenses.
+
 ## AI-assisted development
 
 Reusable AI rules, prompts, checklists, and an evidence-based Storage Reconciliation example are documented in [`docs/ai-workflow/README.md`](docs/ai-workflow/README.md).
