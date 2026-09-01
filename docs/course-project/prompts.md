@@ -64,11 +64,23 @@ Run this prompt in a second tool and append its response plus your decisions bel
 
 > Review the storage-audit diff as a skeptical senior .NET/React engineer. Focus on data-loss risks, TOCTOU behavior, path safety, authorization, cancellation, API/frontend contract mismatches, and missing behavior-focused tests. Classify findings by severity for a single-admin educational archive. Do not suggest enterprise infrastructure without a demonstrated need.
 
-**Second tool:** _to be recorded_
+**Second tool:** GitHub Copilot
 
-**Accepted findings:** _to be recorded_
+**Accepted findings:**
 
-**Rejected findings and reasons:** _to be recorded_
+- Authorization behavior should be covered by integration tests that verify unauthenticated and non-admin clients cannot access the storage audit and cleanup endpoints.
+- Cancellation behavior should be documented: if cleanup is interrupted or times out, the administrator must run the audit again to obtain the authoritative current state.
+- A defensive path-traversal test would improve coverage even though cleanup does not accept filenames or physical paths from the client.
+
+**Rejected findings and reasons:**
+
+- The finding that the reference re-check scenario is incomplete was rejected. `StorageAuditServiceTests.DeleteOrphansAsync_rechecks_references_before_each_delete` already simulates a file becoming referenced after the initial audit and verifies that it is skipped during cleanup.
+- Distributed locking or stronger cross-resource transaction guarantees were not added. MathArchive has one administrator and one backend instance, while PostgreSQL and the filesystem cannot participate in one atomic transaction. Re-checking references before every deletion is proportionate to the demonstrated risk.
+
+**Result:**
+
+Copilot classified the feature as safe to ship for a single-admin educational archive. No P0 findings were reported. The review identified additional test and documentation improvements without finding a demonstrated data-loss defect in the implemented cleanup mechanism.
+
 
 ## Final assessment of AI
 
