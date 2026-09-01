@@ -1,4 +1,5 @@
 import { apiBaseUrl } from './apiConfig';
+import { authStorage } from './authStorage';
 import { httpClient } from './httpClient';
 
 type EventType = 'SiteVisit' | 'DocumentPreview' | 'DocumentDownload';
@@ -26,11 +27,16 @@ function getSessionId() {
 }
 
 export function trackEvent(eventType: EventType, documentId: string | null = null): void {
-  // Deliberately bypass auth interceptors: send no cookies/token and never alter login state.
+  // Bypass response interceptors so analytics failures never alter login state, but include the
+  // existing token so the backend can ignore authenticated administrator activity.
   try {
+    const token = authStorage.getToken();
     void fetch(`${apiBaseUrl}/api/analytics/events`, {
       method: 'POST', credentials: 'omit', keepalive: true,
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
       body: JSON.stringify({ sessionId: getSessionId(), eventType, documentId })
     }).catch(() => undefined);
   } catch { /* Analytics must never interrupt navigation or file access. */ }

@@ -2,7 +2,7 @@ import { StrictMode, useEffect } from 'react';
 import { render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-describe('anonymous analytics', () => {
+describe('analytics dispatch', () => {
   beforeEach(() => {
     vi.resetModules();
     localStorage.clear();
@@ -25,7 +25,7 @@ describe('anonymous analytics', () => {
     expect(JSON.parse(vi.mocked(fetch).mock.calls[1][1]!.body as string).sessionId).toBe(sessionId);
   });
 
-  it('reuses the anonymous UUID and sends only event fields, without credentials', async () => {
+  it('reuses the anonymous UUID and sends only event fields, without credentials or authorization', async () => {
     const { trackEvent } = await import('./analyticsApi');
     trackEvent('DocumentPreview', 'document-id');
     trackEvent('DocumentDownload', 'document-id');
@@ -36,6 +36,20 @@ describe('anonymous analytics', () => {
     });
     expect(payloads[0]).toEqual({ sessionId: localStorage.getItem('matharchive_session_id'), eventType: 'DocumentPreview', documentId: 'document-id' });
     expect(payloads[1]).toEqual({ ...payloads[0], eventType: 'DocumentDownload' });
+  });
+
+  it('includes the existing administrator token so the backend can ignore the event', async () => {
+    const payload = btoa(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600 }));
+    const token = `header.${payload}.signature`;
+    localStorage.setItem('mathArchiveAdminToken', token);
+    const { trackEvent } = await import('./analyticsApi');
+
+    trackEvent('SiteVisit');
+
+    expect(vi.mocked(fetch).mock.calls[0][1]!.headers).toEqual({
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    });
   });
 
   it('does not throw when storage, network, or fetch fail', async () => {

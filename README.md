@@ -292,7 +292,7 @@ The admin list reuses this endpoint with `sort=CreatedAtDescending` and class/da
 
 ### Analytics and file counters
 
-Analytics event types are `SiteVisit`, `DocumentPreview`, and `DocumentDownload`. The admin report returns `summary.documentDownloads` and per-document `downloadCount`, counting MathArchive file-open/download actions, not browser PDF-viewer activity. These period-filtered analytics counts are separate from the existing document metadata `downloadCount`, which increments only through the backend `/download` operation. Embedded previews use `/preview` and do not increment that counter.
+Analytics event types are `SiteVisit`, `DocumentPreview`, and `DocumentDownload`. New events authenticated with the `Admin` role are acknowledged but excluded from persistence and reports. The admin report returns `summary.documentDownloads` and per-document `downloadCount`, counting MathArchive file-open/download actions, not browser PDF-viewer activity. These period-filtered analytics counts are separate from the existing document metadata `downloadCount`, which increments only through the backend `/download` operation. Embedded previews use `/preview` and do not increment that counter.
 
 See the [analytics guide](docs/analytics.md) for tracking, privacy, date boundaries, migrations, and tests, and the [storage audit guide](docs/course-project/README.md) for reconciliation and cleanup.
 

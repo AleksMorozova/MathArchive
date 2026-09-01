@@ -89,6 +89,44 @@ public sealed class AnalyticsApiIntegrationTests(ApiIntegrationFixture fixture) 
     }
 
     [Theory]
+    [InlineData(AnalyticsEventType.SiteVisit)]
+    [InlineData(AnalyticsEventType.DocumentPreview)]
+    [InlineData(AnalyticsEventType.DocumentDownload)]
+    public async Task Public_endpoint_ignores_each_event_from_authenticated_admin(AnalyticsEventType type)
+    {
+        await using var db = Context();
+        var document = CreateDocument("Admin check");
+        db.Documents.Add(document);
+        await db.SaveChangesAsync();
+        using var admin = await fixture.CreateAuthorizedClientAsync();
+        var request = new RecordAnalyticsEvent(Guid.NewGuid(), type, type == AnalyticsEventType.SiteVisit ? null : document.Id);
+
+        var response = await admin.PostAsync("/api/analytics/events", JsonContent.Create(request, options: fixture.JsonOptions));
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Empty(await db.AnalyticsEvents.ToListAsync());
+        var report = await admin.GetFromJsonAsync<AnalyticsReport>(
+            "/api/admin/analytics?from=2020-01-01T00:00:00Z&to=2030-01-01T00:00:00Z",
+            fixture.JsonOptions);
+        Assert.Equal(new AnalyticsSummary(0, 0, 0), report!.Summary);
+        Assert.Empty(report.Documents);
+    }
+
+    [Fact]
+    public async Task Public_endpoint_records_event_from_authenticated_non_admin()
+    {
+        using var client = fixture.CreateForbiddenClient();
+        var request = new RecordAnalyticsEvent(Guid.NewGuid(), AnalyticsEventType.SiteVisit, null);
+
+        var response = await client.PostAsync("/api/analytics/events", JsonContent.Create(request, options: fixture.JsonOptions));
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        await using var db = Context();
+        var item = await db.AnalyticsEvents.SingleAsync();
+        Assert.Equal(AnalyticsEventType.SiteVisit, item.EventType);
+    }
+
+    [Theory]
     [InlineData("Unknown", null)]
     [InlineData("DocumentPreview", null)]
     [InlineData("DocumentDownload", "00000000-0000-0000-0000-000000000000")]

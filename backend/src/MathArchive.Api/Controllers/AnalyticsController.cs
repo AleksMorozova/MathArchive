@@ -13,6 +13,11 @@ public sealed class AnalyticsController(AnalyticsService service) : ControllerBa
     [RequestSizeLimit(1024)]
     public async Task<IActionResult> Record(RecordAnalyticsEvent request, CancellationToken cancellationToken)
     {
+        if (User.IsInRole("Admin"))
+        {
+            return NoContent();
+        }
+
         await service.RecordAsync(request, cancellationToken);
         return NoContent();
     }
