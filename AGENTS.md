@@ -112,7 +112,8 @@ Avoid relying on a new undocumented assumption on only one side of the contract.
 - Event names are `SiteVisit`, `DocumentPreview`, and `DocumentDownload`; reporting uses `summary.documentDownloads` and `documents[].downloadCount`.
 - Track previews only after successful intentional PDF/image preview navigation. Track downloads from the MathArchive card download, details download, and details open-file actions, not effects, raw file endpoints, or browser PDF controls.
 - Analytics action counts are separate from the document metadata `DownloadCount`. The open-file link uses `/preview` but records a `DocumentDownload` action.
-- Dispatch must not block file access. The public tracking helper intentionally uses credential-free `fetch` with `keepalive: true`, bypassing Axios authentication interceptors. Do not add blind retries that can double-count actions.
+- Dispatch must not block file access. The public tracking helper uses `fetch` with `keepalive: true`, attaches the existing JWT when available so the backend can ignore authenticated administrators, and bypasses Axios response interceptors. Do not add blind retries that can double-count actions.
+- The public event endpoint must return success without persistence for a request authenticated with the `Admin` role. Anonymous requests and authenticated non-admin requests remain countable; frontend suppression alone is insufficient.
 - Reporting requires `AdminOnly`. Calendar dates use the browser timezone and become an inclusive UTC start and exclusive UTC end; material-list creation-date filters instead use inclusive UTC calendar dates.
 - Event names are persisted as strings. Renaming them requires a data migration for existing rows. Historical events survive document deletion; do not introduce cascading deletion.
 - See [analytics documentation](docs/analytics.md) for the exact API, privacy limitations, and verification commands.
