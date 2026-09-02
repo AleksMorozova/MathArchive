@@ -410,9 +410,46 @@ a {
   font-weight: 760 !important;
 }
 
-.home-page .teacher-workplace,
 .home-page .hero-materials-summary p {
   color: #38516F;
+}
+
+.home-page .school-identity {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.home-page .school-logo {
+  display: block;
+  flex: 0 0 auto;
+  width: auto;
+  height: 54px;
+  object-fit: contain;
+}
+
+.home-page .school-identity-copy {
+  min-width: 0;
+}
+
+.home-page .school-name,
+.home-page .school-authority {
+  overflow-wrap: anywhere;
+}
+
+.home-page .school-name {
+  color: var(--home-navy);
+  font-size: 1rem;
+  font-weight: 750;
+  line-height: 1.3;
+}
+
+.home-page .school-authority {
+  color: #526A84;
+  font-size: 0.9rem;
+  line-height: 1.35;
 }
 
 .home-page .hero-materials-summary {
@@ -577,6 +614,14 @@ a {
   .home-page .teacher-introduction h1 {
     font-size: clamp(2.15rem, 11vw, 3rem);
     line-height: 1.06;
+  }
+
+  .home-page .school-logo {
+    height: 42px;
+  }
+
+  .home-page .school-identity {
+    gap: 14px;
   }
 
   .home-page .class-navigation-card {
