@@ -14,7 +14,12 @@ describe('HomePage', () => {
     expect(screen.queryByText('Бібліотека навчальних матеріалів')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: 'Морозова Тетяна Володимирівна' })).toBeInTheDocument();
     expect(screen.getByText('Вчитель математики з понад 30-річним досвідом')).toBeInTheDocument();
-    expect(screen.getByText('Ліцей №23 «Соборний» ДМР')).toBeInTheDocument();
+    expect(screen.getByText('Ліцей №23 «Соборний»')).toBeInTheDocument();
+    expect(screen.getByText('Дніпровської міської ради')).toBeInTheDocument();
+    const schoolLogo = document.querySelector<HTMLImageElement>('.school-logo');
+    expect(schoolLogo).toHaveAttribute('src', '/images/lyceum-23-logo.png');
+    expect(schoolLogo).toHaveAttribute('alt', '');
+    expect(screen.queryByText('Ліцей №23 «Соборний» ДМР')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 2, name: 'Навчальні матеріали з математики' })).toBeInTheDocument();
     expect(screen.getByText('Формули, контрольні та самостійні роботи, пам’ятки й методичні матеріали для учнів і вчителів.')).toBeInTheDocument();
     expect(document.querySelector('.teacher-summary-card')).not.toBeInTheDocument();

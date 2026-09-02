@@ -34,9 +34,22 @@ export function HomePage() {
             <Typography component="p" variant="h5" className="teacher-experience">
               Вчитель математики з понад 30-річним досвідом
             </Typography>
-            <Typography component="p" color="text.secondary" className="teacher-workplace">
-              Ліцей №23 «Соборний» ДМР
-            </Typography>
+            <Box className="school-identity">
+              <Box
+                component="img"
+                src="/images/lyceum-23-logo.png"
+                alt=""
+                className="school-logo"
+              />
+              <Box className="school-identity-copy">
+                <Typography component="p" className="school-name">
+                  Ліцей №23 «Соборний»
+                </Typography>
+                <Typography component="p" className="school-authority">
+                  Дніпровської міської ради
+                </Typography>
+              </Box>
+            </Box>
           </Box>
           <Box className="hero-materials-summary">
             <Typography component="h2" variant="h5">Навчальні матеріали з математики</Typography>
