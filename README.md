@@ -233,6 +233,20 @@ dotnet ef migrations add MigrationName `
   --startup-project backend/src/MathArchive.Api
 ```
 
+## Database Backups
+
+The `Database Backup` GitHub Actions workflow creates a PostgreSQL custom-format backup every Monday at 08:15 in the `Europe/Kyiv` timezone. The same process can be started manually from **GitHub → Actions → Database Backup → Run workflow**. Configure the production Neon connection string as the `DATABASE_CONNECTION_STRING` GitHub repository secret before the first run; never place it in the repository.
+
+After a successful run, open that workflow run and download the named backup artifact from its **Artifacts** section. Artifacts contain one timestamped `.dump` file and are retained for 90 days.
+
+To restore a downloaded backup manually, first select and verify the intended target database, then run:
+
+```bash
+pg_restore --clean --if-exists --no-owner --dbname="$DATABASE_CONNECTION_STRING" matharchive-YYYY-MM-DD-HHMMSS.dump
+```
+
+**Warning:** `--clean` drops existing database objects before recreating them and can replace or delete current data. Never run this command against production unless an intentional restore has been approved and the target connection has been verified. There is deliberately no automatic restore workflow.
+
 ## Application Routes
 
 ### Public
