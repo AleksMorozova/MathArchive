@@ -25,7 +25,8 @@ jobs:
       - name: Install PostgreSQL client
         run: |
           sudo apt-get update
-          sudo apt-get install --yes postgresql-client-16
+          sudo apt-get install --yes postgresql-client-18
+          pg_dump --version
 
       - name: Validate backup configuration
         shell: bash
@@ -46,7 +47,57 @@ jobs:
           artifact_name="matharchive-database-backup-${backup_timestamp}"
           backup_path="${RUNNER_TEMP}/${backup_filename}"
 
-          pg_dump --format=custom --file="${backup_path}" --dbname="${DATABASE_CONNECTION_STRING}"
+          BACKUP_PATH="${backup_path}" python3 <<'PY'
+          import os
+          import subprocess
+          import sys
+
+          connection_string = os.environ["DATABASE_CONNECTION_STRING"].strip()
+          backup_path = os.environ["BACKUP_PATH"]
+
+          if connection_string.startswith(("postgresql://", "postgres://")):
+              command = ["pg_dump", "--format=custom", f"--file={backup_path}", f"--dbname={connection_string}"]
+              environment = None
+          else:
+              # Parse the Npgsql/.NET key-value format without logging any values.
+              options = {}
+              for item in connection_string.split(";"):
+                  if not item.strip():
+                      continue
+                  if "=" not in item:
+                      print("Invalid Npgsql/.NET connection string format.", file=sys.stderr)
+                      sys.exit(1)
+                  key, value = item.split("=", 1)
+                  options["".join(key.lower().split())] = value.strip()
+
+              aliases = {
+                  "PGHOST": ("host", "server", "datasource"),
+                  "PGPORT": ("port",),
+                  "PGDATABASE": ("database", "initialcatalog"),
+                  "PGUSER": ("username", "userid", "user"),
+                  "PGPASSWORD": ("password",),
+                  "PGSSLMODE": ("sslmode",),
+                  "PGCHANNELBINDING": ("channelbinding",),
+              }
+              environment = os.environ.copy()
+              for variable, keys in aliases.items():
+                  value = next((options[key] for key in keys if key in options), None)
+                  if value:
+                      if variable == "PGSSLMODE":
+                          value = {"verifyca": "verify-ca", "verifyfull": "verify-full"}.get(value.lower(), value.lower())
+                      elif variable == "PGCHANNELBINDING":
+                          value = value.lower()
+                      environment[variable] = value
+
+              missing = [name for name in ("PGHOST", "PGDATABASE", "PGUSER", "PGPASSWORD") if not environment.get(name)]
+              if missing:
+                  print("Npgsql/.NET connection string is missing a required host, database, username, or password field.", file=sys.stderr)
+                  sys.exit(1)
+
+              command = ["pg_dump", "--format=custom", f"--file={backup_path}"]
+
+          subprocess.run(command, check=True, env=environment)
+          PY
 
           if [[ ! -f "${backup_path}" ]]; then
             echo "Backup failed: dump file was not created." >&2

@@ -235,7 +235,7 @@ dotnet ef migrations add MigrationName `
 
 ## Database Backups
 
-The `Database Backup` GitHub Actions workflow creates a PostgreSQL custom-format backup every Monday at 08:15 in the `Europe/Kyiv` timezone. The same process can be started manually from **GitHub → Actions → Database Backup → Run workflow**. Configure the production Neon connection string as the `DATABASE_CONNECTION_STRING` GitHub repository secret before the first run; never place it in the repository.
+The `Database Backup` GitHub Actions workflow creates a PostgreSQL custom-format backup every Monday at 08:15 in the `Europe/Kyiv` timezone. The same process can be started manually from **GitHub → Actions → Database Backup → Run workflow**. It installs the PostgreSQL 18 client to match the production Neon PostgreSQL 18 server; this is independent of the PostgreSQL 16 container used for local development and CI. Configure the production Neon connection string as the `DATABASE_CONNECTION_STRING` GitHub repository secret before the first run; never place it in the repository. The workflow accepts either the URI from Neon's **Connect** dialog (`postgresql://...` or `postgres://...`) or the Npgsql/.NET semicolon-separated form (`Host=...;Port=...;Database=...;Username=...;Password=...`). Preserve the SSL settings supplied by Neon.
 
 After a successful run, open that workflow run and download the named backup artifact from its **Artifacts** section. Artifacts contain one timestamped `.dump` file and are retained for 90 days.
 
