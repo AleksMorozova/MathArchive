@@ -24,6 +24,16 @@ jobs:
     steps:
       - name: Install PostgreSQL client
         run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes ca-certificates curl
+          sudo install --directory --mode=0755 /usr/share/postgresql-common/pgdg
+          sudo curl --fail --show-error --silent \
+            --output /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          . /etc/os-release
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
           sudo apt-get update
           sudo apt-get install --yes postgresql-client-18
           /usr/lib/postgresql/18/bin/pg_dump --version
