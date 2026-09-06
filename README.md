@@ -235,9 +235,25 @@ dotnet ef migrations add MigrationName `
 
 ## Database Backups
 
-The `Database Backup` GitHub Actions workflow creates a PostgreSQL custom-format backup every Monday at 08:15 in the `Europe/Kyiv` timezone. The same process can be started manually from **GitHub → Actions → Database Backup → Run workflow**. It installs the PostgreSQL 18 client to match the production Neon PostgreSQL 18 server; this is independent of the PostgreSQL 16 container used for local development and CI. Configure the production Neon connection string as the `DATABASE_CONNECTION_STRING` GitHub repository secret before the first run; never place it in the repository. The workflow accepts either the URI from Neon's **Connect** dialog (`postgresql://...` or `postgres://...`) or the Npgsql/.NET semicolon-separated form (`Host=...;Port=...;Database=...;Username=...;Password=...`). Preserve the SSL settings supplied by Neon.
+The `Database Backup` GitHub Actions workflow creates a PostgreSQL custom-format backup every Monday at 08:15 in the `Europe/Kyiv` timezone. The same process can be started manually from **GitHub → Actions → Database Backup → Run workflow**. It installs the PostgreSQL 18 client to match the production Neon PostgreSQL 18 server; this is independent of the PostgreSQL 16 container used for local development and CI. Configure the same production Neon connection string used by the deployed backend as the `DATABASE_CONNECTION_STRING` GitHub repository secret; never place it in the repository. Confirm the Neon project, branch, database, and role against the deployed backend configuration when setting or rotating this secret. The workflow accepts either the URI from Neon's **Connect** dialog (`postgresql://...` or `postgres://...`) or the Npgsql/.NET semicolon-separated form (`Host=...;Port=...;Database=...;Username=...;Password=...`). Preserve the SSL settings supplied by Neon.
 
-After a successful run, open that workflow run and download the named backup artifact from its **Artifacts** section. Artifacts contain one timestamped `.dump` file and are retained for 90 days.
+Before dumping, the workflow reports the source database, role, a non-reversible endpoint fingerprint, and `SELECT COUNT(*) FROM public.documents;` without logging the connection string or password. A zero document count aborts the run. A manual run can explicitly enable **Allow a backup when the production documents table is empty** for an intentional empty database. After dumping, the workflow restores the artifact into an ephemeral PostgreSQL 18 container and requires its document count to match the source count. The container is removed on success and failure. Only a verified dump is uploaded; artifacts contain one timestamped `.dump` file and are retained for 90 days.
+
+To create and verify a backup locally, install PostgreSQL 18 client tools and Docker, set the production connection string only in the current shell, and run:
+
+```powershell
+$env:DATABASE_CONNECTION_STRING = Read-Host "Production PostgreSQL connection string" -MaskInput
+try {
+  $timestamp = Get-Date -AsUTC -Format 'yyyy-MM-dd-HHmmss'
+  python .github/scripts/create-postgres-backup.py `
+    --output "matharchive-$timestamp.dump" `
+    --postgres-bin-dir "C:\Program Files\PostgreSQL\18\bin"
+} finally {
+  Remove-Item Env:DATABASE_CONNECTION_STRING
+}
+```
+
+The command succeeds only after restoring the dump into a temporary PostgreSQL 18 container and comparing `public.documents` row counts. For an intentionally empty source, add `--allow-empty-documents`. Do not use that override for routine production backups.
 
 To restore a downloaded backup manually, first select and verify the intended target database, then run:
 

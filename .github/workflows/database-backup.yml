@@ -5,6 +5,12 @@ on:
     - cron: '15 8 * * 1'
       timezone: Europe/Kyiv
   workflow_dispatch:
+    inputs:
+      allow_empty_documents:
+        description: Allow a backup when the production documents table is empty
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -20,8 +26,12 @@ jobs:
     timeout-minutes: 20
     env:
       DATABASE_CONNECTION_STRING: ${{ secrets.DATABASE_CONNECTION_STRING }}
+      ALLOW_EMPTY_DOCUMENTS: ${{ inputs.allow_empty_documents || 'false' }}
 
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
       - name: Install PostgreSQL client
         run: |
           set -euo pipefail
@@ -57,58 +67,11 @@ jobs:
           artifact_name="matharchive-database-backup-${backup_timestamp}"
           backup_path="${RUNNER_TEMP}/${backup_filename}"
 
-          BACKUP_PATH="${backup_path}" python3 <<'PY'
-          import os
-          import subprocess
-          import sys
-
-          connection_string = os.environ["DATABASE_CONNECTION_STRING"].strip()
-          backup_path = os.environ["BACKUP_PATH"]
-          pg_dump = "/usr/lib/postgresql/18/bin/pg_dump"
-
-          if connection_string.startswith(("postgresql://", "postgres://")):
-              command = [pg_dump, "--format=custom", f"--file={backup_path}", f"--dbname={connection_string}"]
-              environment = None
-          else:
-              # Parse the Npgsql/.NET key-value format without logging any values.
-              options = {}
-              for item in connection_string.split(";"):
-                  if not item.strip():
-                      continue
-                  if "=" not in item:
-                      print("Invalid Npgsql/.NET connection string format.", file=sys.stderr)
-                      sys.exit(1)
-                  key, value = item.split("=", 1)
-                  options["".join(key.lower().split())] = value.strip()
-
-              aliases = {
-                  "PGHOST": ("host", "server", "datasource"),
-                  "PGPORT": ("port",),
-                  "PGDATABASE": ("database", "initialcatalog"),
-                  "PGUSER": ("username", "userid", "user"),
-                  "PGPASSWORD": ("password",),
-                  "PGSSLMODE": ("sslmode",),
-                  "PGCHANNELBINDING": ("channelbinding",),
-              }
-              environment = os.environ.copy()
-              for variable, keys in aliases.items():
-                  value = next((options[key] for key in keys if key in options), None)
-                  if value:
-                      if variable == "PGSSLMODE":
-                          value = {"verifyca": "verify-ca", "verifyfull": "verify-full"}.get(value.lower(), value.lower())
-                      elif variable == "PGCHANNELBINDING":
-                          value = value.lower()
-                      environment[variable] = value
-
-              missing = [name for name in ("PGHOST", "PGDATABASE", "PGUSER", "PGPASSWORD") if not environment.get(name)]
-              if missing:
-                  print("Npgsql/.NET connection string is missing a required host, database, username, or password field.", file=sys.stderr)
-                  sys.exit(1)
-
-              command = [pg_dump, "--format=custom", f"--file={backup_path}"]
-
-          subprocess.run(command, check=True, env=environment)
-          PY
+          backup_arguments=(--output "${backup_path}")
+          if [[ "${ALLOW_EMPTY_DOCUMENTS}" == "true" ]]; then
+            backup_arguments+=(--allow-empty-documents)
+          fi
+          python3 .github/scripts/create-postgres-backup.py "${backup_arguments[@]}"
 
           if [[ ! -f "${backup_path}" ]]; then
             echo "Backup failed: dump file was not created." >&2
