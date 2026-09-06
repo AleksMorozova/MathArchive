@@ -147,13 +147,21 @@ def main() -> int:
             ],
             capture=True,
         )
-        for _ in range(30):
+        initialization_complete = False
+        for _ in range(60):
+            logs = subprocess.run(
+                ["docker", "logs", container_name],
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            ).stdout
+            initialization_complete = "PostgreSQL init process complete; ready for start up." in logs
             readiness = subprocess.run(
                 ["docker", "exec", container_name, "pg_isready", "--username=postgres"],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
-            if readiness.returncode == 0:
+            if initialization_complete and readiness.returncode == 0:
                 break
             time.sleep(1)
         else:
