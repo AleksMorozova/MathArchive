@@ -26,7 +26,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes postgresql-client-18
-          pg_dump --version
+          /usr/lib/postgresql/18/bin/pg_dump --version
 
       - name: Validate backup configuration
         shell: bash
@@ -54,9 +54,10 @@ jobs:
 
           connection_string = os.environ["DATABASE_CONNECTION_STRING"].strip()
           backup_path = os.environ["BACKUP_PATH"]
+          pg_dump = "/usr/lib/postgresql/18/bin/pg_dump"
 
           if connection_string.startswith(("postgresql://", "postgres://")):
-              command = ["pg_dump", "--format=custom", f"--file={backup_path}", f"--dbname={connection_string}"]
+              command = [pg_dump, "--format=custom", f"--file={backup_path}", f"--dbname={connection_string}"]
               environment = None
           else:
               # Parse the Npgsql/.NET key-value format without logging any values.
@@ -94,7 +95,7 @@ jobs:
                   print("Npgsql/.NET connection string is missing a required host, database, username, or password field.", file=sys.stderr)
                   sys.exit(1)
 
-              command = ["pg_dump", "--format=custom", f"--file={backup_path}"]
+              command = [pg_dump, "--format=custom", f"--file={backup_path}"]
 
           subprocess.run(command, check=True, env=environment)
           PY
