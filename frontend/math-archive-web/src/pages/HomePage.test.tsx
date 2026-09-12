@@ -13,7 +13,9 @@ describe('HomePage', () => {
 
     expect(screen.queryByText('Бібліотека навчальних матеріалів')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: 'Морозова Тетяна Володимирівна' })).toBeInTheDocument();
-    expect(screen.getByText('Вчитель математики з понад 30-річним досвідом')).toBeInTheDocument();
+    const experience = document.querySelector('.teacher-experience');
+    expect(experience).toHaveTextContent('Вчитель математики з понад 30-річним досвідом');
+    expect(experience?.querySelector('br')).toBeInTheDocument();
     expect(screen.getByText('Ліцей №23 «Соборний»')).toBeInTheDocument();
     expect(screen.getByText('Дніпровської міської ради')).toBeInTheDocument();
     const schoolLogo = document.querySelector<HTMLImageElement>('.school-logo');

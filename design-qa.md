@@ -1,48 +1,47 @@
-# Homepage design QA
+# MathArchive design QA
 
-This is a historical QA record of the homepage/public-page redesign, not a current release sign-off. Test counts, local URLs, and observed fixture issues describe that verification session. See the [README](README.md) for current setup and commands. Admin styling was subsequently updated separately.
+## Evidence
 
-## Sources and setup
+- Source visual truth: `C:\Users\pc\AppData\Local\Temp\codex-clipboard-e24a1450-170f-4fda-b0dc-c4e5be95373d.png` (no longer available on disk during final QA).
+- Implementation: `http://127.0.0.1:5175/`, inspected in the Codex in-app browser.
+- Implementation screenshot: captured in the in-app browser tool output; the browser did not expose a persistent screenshot path.
+- Viewport: 1265 × 712 browser capture at device scale 1.
+- State: desktop homepage, materials loading state, About page, and admin login page.
+- Source pixels and density normalization: unavailable because the temporary source file was removed before final QA.
 
-- Reference: `C:\Users\pc\AppData\Local\Temp\codex-clipboard-e24a1450-170f-4fda-b0dc-c4e5be95373d.png`
-- Implementation: `http://localhost:5174/`
-- Desktop comparison viewport: 1790 × 878 CSS pixels, homepage initial state.
-- Responsive verification viewport: 390 × 844 CSS pixels, homepage initial state and mobile navigation open state.
-- Rendering density: browser default for the selected Codex in-app browser.
+## Full-view comparison evidence
 
-## Visual comparison
+The rendered homepage visibly preserves the selected teacher-first two-column composition, graph-paper background, teacher and institution content, eight-card 4 × 2 grid, header, and footer. The redesign visibly removes the shared white grid panel and the public-header calculator icon. Navy, orange, yellow class accents, white surfaces, and pale blue-gray backgrounds are consistently applied.
 
-The reference and implementation desktop captures were placed side by side in one 3580 × 878 comparison image. Full-page comparison covered the header, teacher content, CTA, class navigation panel, mathematical background, and footer. Focused inspection covered the teacher heading/underline and the complete eight-card navigation panel.
+## Focused-region evidence
 
-### Findings and corrections
+- Header: brand text starts flush without an empty icon slot; active navigation uses pale orange.
+- Teacher block: the name is two lines at weight 700 with an orange underline; the subtitle has the requested explicit two-line break; the original Lyceum image renders without filters or distortion.
+- Class grid: individual white cards alternate only navy and yellow accents and sit directly on the grid background.
+- Public catalogue: filters, skeletons, cards, and selected navigation use the shared palette.
+- Authentication: white form surface, navy heading, orange submit action, neutral inputs, and graph-paper background.
 
-- P2: The first implementation rendered the class panel and cards smaller than the reference. Corrected the homepage container width, column proportions, panel height, and card height.
-- P2: Shared drawer selectors could have changed admin navigation colors. Scoped the new drawer colors to the public navigation and preserved the existing admin styling.
-- No remaining P0, P1, or P2 visual defects were found after the second desktop comparison.
-- Mobile layout has no horizontal overflow; the heading, CTA, and two-column class grid remain readable and usable.
+## Findings
 
-## Behavior and accessibility checks
+- No actionable P0/P1/P2 issue was visible in the routes and viewport that could be rendered.
+- Blocking evidence gap: the source mockup file is no longer present, so an equal-size source/implementation composite comparison cannot be produced.
+- Blocking coverage gap: the in-app browser exposes no viewport override, the local API is unavailable for populated document states, and protected admin routes require credentials that were not supplied.
 
-- CTA navigates to `/materials`.
-- All eight class links render; the 5th-grade link retains `/materials?class=5` and the existing route pattern remains unchanged.
-- Mobile menu opens and exposes `Головна`, `Матеріали`, and `Про сайт`.
-- Semantic heading order and link/button roles remain present in the browser accessibility snapshot.
-- Browser console: no warnings or errors during the verified homepage interactions.
+## Comparison history
 
-## Validation
+- Initial implementation showed a single shared class-card panel and turquoise accents.
+- Fixes applied: removed the panel treatment; centralized navy/orange tokens; constrained class-card accents to navy/yellow; removed the header icon; lightened the teacher heading; introduced explicit title/subtitle line breaks; aligned public/admin states.
+- Post-fix evidence: desktop browser captures of homepage, catalogue, About, and login show the corrected visual system with no console errors.
 
-- Frontend tests: 11 files, 57 tests passed.
-- Production build: passed. Vite retained its existing large-chunk warning. The optional public API SEO fetch was unavailable, so the existing build fallback generated the three stable SEO pages and base sitemap.
+## Implementation checklist
 
-## Final result
+- [x] Centralized public and admin palette.
+- [x] Removed public-header icon from markup.
+- [x] Preserved the Lyceum logo asset unchanged.
+- [x] Removed shared class-grid panel treatment.
+- [x] Added specified desktop line breaks and responsive grid behavior.
+- [x] Verified tests, SEO generator, TypeScript, and production bundle.
+- [ ] Reattach the source mockup for normalized final comparison.
+- [ ] Capture tablet/mobile and authenticated admin routes when the required browser capability and credentials are available.
 
-Passed.
-
-## Public-page extension
-
-- Verified the shared academic palette on `/materials`, a material details route, and `/about` at the desktop browser viewport.
-- Confirmed five seeded material cards load from the local API and public navigation remains functional.
-- Confirmed mathematical illustrations move over time; `prefers-reduced-motion` reduces them to a static state. The current CSS uses independent 8, 10, and 12 second animations after subsequent movement adjustments.
-- Confirmed the updated pages produce no browser console warnings or errors during the visual checks.
-- Local CORS preflight from `http://localhost:5174` returned `204`, echoed that origin, and allowed the established API methods.
-- The details preview reported a missing seeded physical file; this is existing local fixture/storage state rather than a CORS or redesign failure.
+final result: blocked
