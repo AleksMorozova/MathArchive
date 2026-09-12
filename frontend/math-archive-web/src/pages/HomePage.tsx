@@ -30,9 +30,9 @@ export function HomePage() {
       <Box className="hero">
         <Stack gap={3} className="hero-copy">
           <Box className="teacher-introduction">
-            <Typography variant="h1">Морозова Тетяна Володимирівна</Typography>
+            <Typography variant="h1">Морозова Тетяна<br />Володимирівна</Typography>
             <Typography component="p" variant="h5" className="teacher-experience">
-              Вчитель математики з понад 30-річним досвідом
+              Вчитель математики{' '}<br />з понад 30-річним досвідом
             </Typography>
             <Box className="school-identity">
               <Box

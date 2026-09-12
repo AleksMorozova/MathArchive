@@ -1,4 +1,3 @@
-import CalculateOutlinedIcon from '@mui/icons-material/CalculateOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
 import { AppBar, Box, Button, Container, Drawer, IconButton, Stack, Toolbar, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
@@ -33,8 +32,7 @@ export function PublicLayout() {
       <AppBar position="sticky" elevation={0} color="inherit" className="public-header">
         <Container maxWidth="lg">
           <Toolbar disableGutters className="header-toolbar">
-            <Stack component={Link} to="/" direction="row" alignItems="center" gap={1.25} className="brand-link">
-              <CalculateOutlinedIcon color="primary" />
+            <Stack component={Link} to="/" direction="row" alignItems="center" className="brand-link">
               <Box>
                 <Typography variant="h6" color="text.primary">MathArchive</Typography>
                 <Typography variant="caption" color="text.secondary">Навчальні матеріали з математики</Typography>
