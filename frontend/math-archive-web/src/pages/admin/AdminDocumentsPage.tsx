@@ -6,29 +6,47 @@ import { Box, Button, Card, CardContent, Dialog, DialogActions, DialogContent, D
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getApiErrorMessage } from '../../api/apiErrors';
 import { deleteDocument } from '../../api/documentsApi';
 import { queryKeys } from '../../api/queryKeys';
 import { FiltersBar } from '../../components/FiltersBar';
 import { EmptyState, ErrorState, LoadingState } from '../../components/StateView';
 import { documentTypeLabels } from '../../constants/documentTypes';
-import { useDocuments, useTopics } from '../../hooks/useDocuments';
+import { useDocuments } from '../../hooks/useDocuments';
 import type { DocumentDto, DocumentFilters } from '../../types/documents';
 import { formatDate } from '../../utils/format';
 
+function formatGradeLabel(grade: number | null) {
+  return grade === null ? 'Загальний матеріал' : `${grade} клас`;
+}
+
+const initialFilters: DocumentFilters = {
+  page: 1,
+  pageSize: 12,
+  search: '',
+  grade: '',
+  createdFrom: '',
+  createdTo: '',
+  sort: 'CreatedAtDescending'
+};
+
 export function AdminDocumentsPage() {
-  const [filters, setFilters] = useState<DocumentFilters>({ page: 1, pageSize: 12, search: '', grade: '', topic: '', documentType: '' });
+  const [filters, setFilters] = useState<DocumentFilters>(initialFilters);
   const [deleteTarget, setDeleteTarget] = useState<DocumentDto | null>(null);
   const [message, setMessage] = useState('');
   const isMobile = useMediaQuery('(max-width:760px)');
   const queryClient = useQueryClient();
   const documents = useDocuments(filters);
-  const topics = useTopics();
   const deleteMutation = useMutation({
     mutationFn: deleteDocument,
-    onSuccess: async () => {
+    onSuccess: async (_data, deletedId) => {
       setMessage('Матеріал успішно видалено');
       setDeleteTarget(null);
-      await queryClient.invalidateQueries({ queryKey: queryKeys.documents(filters) });
+      if (documents.data?.items.length === 1 && filters.page > 1) {
+        setFilters((current) => ({ ...current, page: current.page - 1 }));
+      }
+      queryClient.removeQueries({ queryKey: queryKeys.document(deletedId) });
+      await queryClient.invalidateQueries({ queryKey: ['documents'] });
     }
   });
 
@@ -41,9 +59,19 @@ export function AdminDocumentsPage() {
         <Button component={Link} to="/admin/documents/new" startIcon={<AddIcon />} variant="contained">Додати матеріал</Button>
       </Stack>
       {message && <Box className="success-message">{message}</Box>}
-      <FiltersBar filters={filters} topics={topics.data ?? []} onChange={updateFilters} onClear={() => setFilters({ page: 1, pageSize: 12, search: '', grade: '', topic: '', documentType: '' })} />
+      {deleteMutation.isError && <Box className="error-message">{getApiErrorMessage(deleteMutation.error, 'Не вдалося видалити матеріал.')}</Box>}
+      <FiltersBar
+        filters={filters}
+        topics={[]}
+        onChange={updateFilters}
+        onClear={() => setFilters(initialFilters)}
+        showTopic={false}
+        showDocumentType={false}
+        showCreatedDate
+      />
       {documents.isLoading && <LoadingState />}
-      {documents.isError && <ErrorState />}
+      {documents.isError && <ErrorState message={getApiErrorMessage(documents.error)} />}
+      {documents.data && <Typography color="text.secondary">Знайдено матеріалів: {documents.data.totalCount}</Typography>}
       {documents.data && documents.data.items.length === 0 && <EmptyState />}
       {documents.data && documents.data.items.length > 0 && (
         <>
@@ -68,7 +96,7 @@ export function AdminDocumentsPage() {
                 {documents.data.items.map((document) => (
                   <TableRow key={document.id}>
                     <TableCell>{document.title}</TableCell>
-                    <TableCell>{document.grade}</TableCell>
+                    <TableCell>{formatGradeLabel(document.grade)}</TableCell>
                     <TableCell>{document.topic}</TableCell>
                     <TableCell>{documentTypeLabels[document.documentType]}</TableCell>
                     <TableCell>{formatDate(document.createdAt)}</TableCell>
@@ -86,12 +114,23 @@ export function AdminDocumentsPage() {
           )}
         </>
       )}
-      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)}>
+      <Dialog open={!!deleteTarget} onClose={() => {
+        if (!deleteMutation.isPending) {
+          setDeleteTarget(null);
+        }
+      }}>
         <DialogTitle>Видалити матеріал?</DialogTitle>
         <DialogContent>Цю дію неможливо скасувати. Файл також буде видалено зі сховища.</DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteTarget(null)}>Скасувати</Button>
-          <Button color="error" variant="contained" onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}>Видалити</Button>
+          <Button onClick={() => setDeleteTarget(null)} disabled={deleteMutation.isPending}>Скасувати</Button>
+          <Button
+            color="error"
+            variant="contained"
+            disabled={deleteMutation.isPending}
+            onClick={() => deleteTarget && !deleteMutation.isPending && deleteMutation.mutate(deleteTarget.id)}
+          >
+            {deleteMutation.isPending ? 'Видаляємо…' : 'Видалити'}
+          </Button>
         </DialogActions>
       </Dialog>
     </Stack>
@@ -104,7 +143,7 @@ function AdminCard({ document, onDelete }: { document: DocumentDto; onDelete: (d
       <CardContent>
         <Stack gap={1}>
           <Typography variant="h6">{document.title}</Typography>
-          <Typography color="text.secondary">{document.grade} клас · {document.topic} · {documentTypeLabels[document.documentType]}</Typography>
+          <Typography color="text.secondary">{formatGradeLabel(document.grade)} · {document.topic} · {documentTypeLabels[document.documentType]}</Typography>
           <Actions document={document} onDelete={onDelete} />
         </Stack>
       </CardContent>

@@ -5,13 +5,14 @@ export type DocumentType =
   | 'Homework'
   | 'Theory'
   | 'MethodicalMaterial'
-  | 'Other';
+  | 'Other'
+  | 'Memo';
 
 export interface DocumentDto {
   id: string;
   title: string;
   description?: string | null;
-  grade: number;
+  grade: number | null;
   topic: string;
   documentType: DocumentType;
   originalFileName: string;
@@ -35,6 +36,9 @@ export interface DocumentFilters {
   grade?: string;
   topic?: string;
   documentType?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  sort?: 'CreatedAtDescending';
   page: number;
   pageSize: number;
 }

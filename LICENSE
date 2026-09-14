@@ -1,0 +1,40 @@
+MathArchive Source-Available License
+
+Copyright © 2026 Oleksandra Morozova. All rights reserved.
+
+MathArchive is not open-source software. The source code in this repository is
+made publicly available solely for portfolio presentation, educational review,
+and demonstration purposes.
+
+Permitted Uses
+
+You may:
+
+1. View and study the source code.
+2. Reference this repository and discuss its implementation.
+3. Use small code snippets for educational purposes, provided that you give
+   appropriate attribution to MathArchive and Oleksandra Morozova.
+
+Restrictions
+
+Except with the copyright holder's prior explicit written permission, you may
+not:
+
+1. Copy or redistribute substantial portions of the source code.
+2. Publish modified versions of the application.
+3. Deploy or host copies of MathArchive.
+4. Use the source code, or substantial portions of it, in commercial products.
+5. Sublicense or sell the source code.
+6. Create and distribute a substantially identical application based on this
+   repository.
+
+No rights are granted except those expressly stated in this license. All other
+rights are reserved by the copyright holder.
+
+Third-Party Materials
+
+This license applies only to the original MathArchive source code and materials
+owned by the copyright holder. It does not claim ownership of, or replace the
+applicable licenses for, third-party libraries, dependencies, frameworks, tools,
+or other third-party materials used by the project. Those materials remain
+subject to their respective copyright notices and license terms.

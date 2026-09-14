@@ -21,7 +21,11 @@ public sealed class DocumentRepository(MathArchiveDbContext dbContext) : IDocume
                 EF.Functions.ILike(x.Topic, pattern));
         }
 
-        if (parameters.Grade.HasValue)
+        if (parameters.GeneralOnly)
+        {
+            query = query.Where(x => x.Grade == null);
+        }
+        else if (parameters.Grade.HasValue)
         {
             query = query.Where(x => x.Grade == parameters.Grade.Value);
         }
@@ -36,12 +40,27 @@ public sealed class DocumentRepository(MathArchiveDbContext dbContext) : IDocume
             query = query.Where(x => x.DocumentType == parameters.DocumentType.Value);
         }
 
+        if (parameters.CreatedFrom.HasValue)
+        {
+            var createdFrom = new DateTimeOffset(parameters.CreatedFrom.Value.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+            query = query.Where(x => x.CreatedAt >= createdFrom);
+        }
+
+        if (parameters.CreatedTo.HasValue)
+        {
+            var createdTo = new DateTimeOffset(parameters.CreatedTo.Value.ToDateTime(TimeOnly.MaxValue), TimeSpan.Zero);
+            query = query.Where(x => x.CreatedAt <= createdTo);
+        }
+
         var totalCount = await query.CountAsync(cancellationToken);
         var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)parameters.PageSize);
 
-        var items = await query
+        var orderedQuery = parameters.Sort == DocumentSortOrder.CreatedAtDescending
+            ? query.OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id)
+            : query.OrderBy(x => x.Grade == null).ThenBy(x => x.Grade).ThenByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id);
+
+        var items = await orderedQuery
             .AsNoTracking()
-            .OrderByDescending(x => x.CreatedAt)
             .Skip((parameters.Page - 1) * parameters.PageSize)
             .Take(parameters.PageSize)
             .ToListAsync(cancellationToken);
@@ -62,6 +81,15 @@ public sealed class DocumentRepository(MathArchiveDbContext dbContext) : IDocume
             .Select(x => x.Topic)
             .Distinct()
             .OrderBy(x => x)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<DocumentStorageReference>> GetStorageReferencesAsync(CancellationToken cancellationToken)
+    {
+        return await dbContext.Documents
+            .AsNoTracking()
+            .OrderBy(x => x.Title)
+            .Select(x => new DocumentStorageReference(x.Id, x.Title, x.StoredFileName, x.FileSize))
             .ToListAsync(cancellationToken);
     }
 

@@ -7,7 +7,8 @@ export const documentTypeLabels: Record<DocumentType, string> = {
   Homework: 'Домашнє завдання',
   Theory: 'Теоретичний матеріал',
   MethodicalMaterial: 'Методичний матеріал',
-  Other: 'Інше'
+  Other: 'Інше',
+  Memo: 'Пам’ятка'
 };
 
 export const documentTypeOptions = Object.entries(documentTypeLabels).map(([value, label]) => ({

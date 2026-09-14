@@ -5,6 +5,7 @@
 **/.vite/
 **/coverage/
 **/TestResults/
+**/.test-bin/
 **/*.tsbuildinfo
 
 # Frontend dependencies and package-manager noise

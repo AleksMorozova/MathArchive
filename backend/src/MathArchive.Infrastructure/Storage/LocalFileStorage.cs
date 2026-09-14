@@ -1,9 +1,12 @@
 using MathArchive.Application.Files;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace MathArchive.Infrastructure.Storage;
 
-public sealed class LocalFileStorage(IOptions<LocalStorageOptions> options) : IFileStorage
+public sealed class LocalFileStorage(
+    IOptions<LocalStorageOptions> options,
+    ILogger<LocalFileStorage> logger) : IFileStorage
 {
     private readonly string rootPath = Path.GetFullPath(options.Value.RootPath);
 
@@ -15,17 +18,48 @@ public sealed class LocalFileStorage(IOptions<LocalStorageOptions> options) : IF
         var storedFileName = $"{Guid.NewGuid():N}{extension}";
         var targetPath = GetSafePath(storedFileName);
 
-        await using var targetStream = File.Create(targetPath);
-        await stream.CopyToAsync(targetStream, cancellationToken);
+        try
+        {
+            long length;
+            await using (var targetStream = File.Create(targetPath))
+            {
+                await stream.CopyToAsync(targetStream, cancellationToken);
+                length = targetStream.Length;
+            }
 
-        var length = targetStream.Length;
-        return new StoredFileResult(Path.GetFileName(originalFileName), storedFileName, contentType, length);
+            return new StoredFileResult(Path.GetFileName(originalFileName), storedFileName, contentType, length);
+        }
+        catch (Exception saveException)
+        {
+            try
+            {
+                if (File.Exists(targetPath))
+                {
+                    File.Delete(targetPath);
+                }
+            }
+            catch (Exception cleanupException)
+            {
+                logger.LogWarning(
+                    cleanupException,
+                    "Failed to remove partially written file {StoredFileName} after file save failed with {SaveExceptionType}.",
+                    storedFileName,
+                    saveException.GetType().Name);
+            }
+
+            throw;
+        }
     }
 
-    public Task<Stream> OpenReadAsync(string storedFileName, CancellationToken cancellationToken)
+    public Task<Stream?> TryOpenReadAsync(string storedFileName, CancellationToken cancellationToken)
     {
-        var stream = File.OpenRead(GetSafePath(storedFileName));
-        return Task.FromResult<Stream>(stream);
+        var path = GetSafePath(storedFileName);
+        if (!File.Exists(path))
+        {
+            return Task.FromResult<Stream?>(null);
+        }
+
+        return Task.FromResult<Stream?>(File.OpenRead(path));
     }
 
     public Task DeleteAsync(string storedFileName, CancellationToken cancellationToken)
@@ -37,6 +71,20 @@ public sealed class LocalFileStorage(IOptions<LocalStorageOptions> options) : IF
         }
 
         return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyList<StoredFileInfo>> ListAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        Directory.CreateDirectory(rootPath);
+
+        IReadOnlyList<StoredFileInfo> files = new DirectoryInfo(rootPath)
+            .EnumerateFiles("*", SearchOption.TopDirectoryOnly)
+            .Select(file => new StoredFileInfo(file.Name, file.Length, file.LastWriteTimeUtc))
+            .OrderBy(file => file.StoredFileName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return Task.FromResult(files);
     }
 
     private string GetSafePath(string storedFileName)

@@ -13,14 +13,18 @@ public sealed class DocumentsController(DocumentService documentService) : Contr
     public Task<PagedResult<DocumentDto>> GetDocuments(
         [FromQuery] string? search,
         [FromQuery] int? grade,
+        [FromQuery] bool generalOnly,
         [FromQuery] string? topic,
         [FromQuery] DocumentType? documentType,
+        [FromQuery] DateOnly? createdFrom,
+        [FromQuery] DateOnly? createdTo,
+        [FromQuery] DocumentSortOrder sort = DocumentSortOrder.Default,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 12,
         CancellationToken cancellationToken = default)
     {
         return documentService.SearchAsync(
-            new DocumentQueryParameters(search, grade, topic, documentType, page, pageSize),
+            new DocumentQueryParameters(search, grade, generalOnly, topic, documentType, createdFrom, createdTo, sort, page, pageSize),
             cancellationToken);
     }
 
@@ -34,7 +38,7 @@ public sealed class DocumentsController(DocumentService documentService) : Contr
     public async Task<ActionResult<DocumentDto>> GetDocument(Guid id, CancellationToken cancellationToken)
     {
         var document = await documentService.GetByIdAsync(id, cancellationToken);
-        return document is null ? NotFound() : Ok(document);
+        return document is null ? MaterialNotFound() : Ok(document);
     }
 
     [HttpGet("{id:guid}/download")]
@@ -42,7 +46,24 @@ public sealed class DocumentsController(DocumentService documentService) : Contr
     {
         var download = await documentService.PrepareDownloadAsync(id, cancellationToken);
         return download is null
-            ? NotFound()
+            ? MaterialNotFound()
             : File(download.Stream, download.ContentType, download.FileName);
+    }
+
+    [HttpGet("{id:guid}/preview")]
+    public async Task<IActionResult> Preview(Guid id, CancellationToken cancellationToken)
+    {
+        var preview = await documentService.PreparePreviewAsync(id, cancellationToken);
+        return preview is null
+            ? MaterialNotFound()
+            : File(preview.Stream, preview.ContentType);
+    }
+
+    private ObjectResult MaterialNotFound()
+    {
+        return Problem(
+            title: "Material not found",
+            detail: "The requested material was not found.",
+            statusCode: StatusCodes.Status404NotFound);
     }
 }

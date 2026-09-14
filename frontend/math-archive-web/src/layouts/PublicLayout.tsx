@@ -1,8 +1,9 @@
-import CalculateOutlinedIcon from '@mui/icons-material/CalculateOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
 import { AppBar, Box, Button, Container, Drawer, IconButton, Stack, Toolbar, Typography } from '@mui/material';
-import { useState } from 'react';
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { trackSiteVisit } from '../api/analyticsApi';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { MathBackground } from '../components/MathBackground';
 
 const links = [
   { to: '/', label: 'Головна' },
@@ -11,10 +12,13 @@ const links = [
 ];
 
 export function PublicLayout() {
+  useEffect(() => { trackSiteVisit(); }, []);
   const [open, setOpen] = useState(false);
+  const location = useLocation();
+  const mathBackgroundVariant = location.pathname === '/about' ? 'about' : 'default';
 
   const navigation = (
-    <Stack direction={{ xs: 'column', sm: 'row' }} gap={1}>
+    <Stack component="nav" aria-label="Основна навігація" direction={{ xs: 'column', sm: 'row' }} gap={1}>
       {links.map((link) => (
         <Button key={link.to} component={NavLink} to={link.to} onClick={() => setOpen(false)}>
           {link.label}
@@ -28,8 +32,7 @@ export function PublicLayout() {
       <AppBar position="sticky" elevation={0} color="inherit" className="public-header">
         <Container maxWidth="lg">
           <Toolbar disableGutters className="header-toolbar">
-            <Stack component={Link} to="/" direction="row" alignItems="center" gap={1.25} className="brand-link">
-              <CalculateOutlinedIcon color="primary" />
+            <Stack component={Link} to="/" direction="row" alignItems="center" className="brand-link">
               <Box>
                 <Typography variant="h6" color="text.primary">MathArchive</Typography>
                 <Typography variant="caption" color="text.secondary">Навчальні матеріали з математики</Typography>
@@ -42,10 +45,11 @@ export function PublicLayout() {
           </Toolbar>
         </Container>
       </AppBar>
-      <Drawer anchor="right" open={open} onClose={() => setOpen(false)}>
+      <Drawer anchor="right" open={open} onClose={() => setOpen(false)} className="public-navigation-drawer">
         <Box sx={{ width: 260, p: 2 }}>{navigation}</Box>
       </Drawer>
-      <Box component="main" className="main-content">
+      <Box component="main" className={`main-content public-main-content${location.pathname === '/' ? ' home-route' : ''}`}>
+        <MathBackground variant={mathBackgroundVariant} />
         <Outlet />
       </Box>
       <Box component="footer" className="footer">
@@ -56,3 +60,4 @@ export function PublicLayout() {
     </Box>
   );
 }
+

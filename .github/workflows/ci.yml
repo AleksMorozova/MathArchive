@@ -6,11 +6,13 @@ on:
       - main
       - master
       - develop
+      - stage
   pull_request:
     branches:
       - main
       - master
       - develop
+      - stage
   workflow_dispatch:
 
 permissions:
@@ -44,9 +46,11 @@ jobs:
       DOTNET_NOLOGO: true
       DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
       ConnectionStrings__DefaultConnection: Host=localhost;Port=5432;Database=matharchive;Username=matharchive;Password=matharchive
+      MATHARCHIVE_TEST_CONNECTION_STRING: Host=localhost;Port=5432;Database=postgres;Username=matharchive;Password=matharchive
       Jwt__SigningKey: ci-signing-key-for-matharchive-at-least-32-characters
       Admin__Username: admin
       Admin__PasswordHash: PBKDF2-SHA256$100000$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      AllowedOrigins__0: http://localhost:5173
 
     steps:
       - name: Checkout
@@ -82,6 +86,9 @@ jobs:
       run:
         working-directory: frontend/math-archive-web
 
+    env:
+      VITE_API_BASE_URL: https://matharchive.onrender.com
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -98,6 +105,9 @@ jobs:
 
       - name: Test frontend
         run: npm test
+
+      - name: Test SEO generator
+        run: npm run test:seo-generator
 
       - name: Build frontend
         run: npm run build

@@ -1,30 +1,57 @@
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import DownloadIcon from '@mui/icons-material/Download';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import { Box, Button, Card, CardContent, Chip, Stack, Typography } from '@mui/material';
-import { Link } from 'react-router-dom';
+import { Alert, Box, Button, Card, CardContent, Chip, Stack, Typography } from '@mui/material';
+import { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { getApiErrorMessage } from '../api/apiErrors';
 import { downloadDocument } from '../api/documentsApi';
-import { documentTypeLabels } from '../constants/documentTypes';
+import { trackEvent } from '../api/analyticsApi';
 import type { DocumentDto } from '../types/documents';
 
 export function DocumentCard({ document }: { document: DocumentDto }) {
+  const location = useLocation();
+  const [downloadError, setDownloadError] = useState('');
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    if (isDownloading) return;
+    trackEvent('DocumentDownload', document.id);
+    setDownloadError('');
+    setIsDownloading(true);
+    try {
+      await downloadDocument(document.id);
+    } catch (error) {
+      setDownloadError(getApiErrorMessage(error, 'Не вдалося завантажити файл.'));
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <Card className="document-card">
       <CardContent className="document-card-content">
-        <Stack gap={2} className="document-card-body">
-          <Box className="document-card-heading">
+        <Stack className="document-card-body">
+          <Stack direction="row" alignItems="flex-start" gap={1.5} className="document-card-heading">
+            <Box className="document-card-icon" aria-hidden="true"><DescriptionOutlinedIcon fontSize="small" /></Box>
             <Typography variant="h6" className="card-title">{document.title}</Typography>
-          </Box>
-          <Stack direction="row" gap={1} flexWrap="wrap" className="document-tags">
-            <Chip label={`${document.grade} клас`} />
-            <Chip label={document.topic} />
-            <Chip label={documentTypeLabels[document.documentType]} />
           </Stack>
-          <Box className="card-spacer" />
+          <Stack direction="row" gap={0.75} flexWrap="wrap" className="document-tags">
+            <Chip label={document.grade === null ? 'Загальний матеріал' : `${document.grade} клас`} size="small" />
+            <Chip label={document.topic} size="small" />
+          </Stack>
+          {downloadError && <Alert severity="error">{downloadError}</Alert>}
           <Stack direction="row" gap={1} className="card-actions">
-            <Button startIcon={<DownloadIcon />} variant="contained" onClick={() => downloadDocument(document.id)}>
+            <Button startIcon={<DownloadIcon />} variant="text" onClick={handleDownload} disabled={isDownloading}>
               Завантажити
             </Button>
-            <Button startIcon={<VisibilityIcon />} component={Link} to={`/materials/${document.id}`}>
+            <Button
+              startIcon={<VisibilityIcon />}
+              variant="text"
+              component={Link}
+              to={`/materials/${document.id}`}
+              state={{ from: location.pathname + location.search }}
+            >
               Переглянути
             </Button>
           </Stack>

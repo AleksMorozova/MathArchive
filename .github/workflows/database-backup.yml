@@ -1,0 +1,132 @@
+name: Database Backup
+
+on:
+  schedule:
+    - cron: '15 8 * * 1'
+      timezone: Europe/Kyiv
+  workflow_dispatch:
+    inputs:
+      allow_empty_documents:
+        description: Allow a backup when the production documents table is empty
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: database-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Backup production database
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_CONNECTION_STRING: ${{ secrets.DATABASE_CONNECTION_STRING }}
+      ALLOW_EMPTY_DOCUMENTS: ${{ inputs.allow_empty_documents || 'false' }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes ca-certificates curl
+          sudo install --directory --mode=0755 /usr/share/postgresql-common/pgdg
+          sudo curl --fail --show-error --silent \
+            --output /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          . /etc/os-release
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client-18
+          /usr/lib/postgresql/18/bin/pg_dump --version
+
+      - name: Validate backup configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${DATABASE_CONNECTION_STRING:-}" ]]; then
+            echo "Required repository secret DATABASE_CONNECTION_STRING is not configured." >&2
+            exit 1
+          fi
+
+      - name: Create and verify backup
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          backup_timestamp="$(date -u +'%Y-%m-%d-%H%M%S')"
+          backup_filename="matharchive-${backup_timestamp}.dump"
+          artifact_name="matharchive-database-backup-${backup_timestamp}"
+          backup_path="${RUNNER_TEMP}/${backup_filename}"
+
+          backup_arguments=(--output "${backup_path}")
+          if [[ "${ALLOW_EMPTY_DOCUMENTS}" == "true" ]]; then
+            backup_arguments+=(--allow-empty-documents)
+          fi
+          python3 .github/scripts/create-postgres-backup.py "${backup_arguments[@]}"
+
+          if [[ ! -f "${backup_path}" ]]; then
+            echo "Backup failed: dump file was not created." >&2
+            exit 1
+          fi
+
+          if [[ ! -s "${backup_path}" ]]; then
+            echo "Backup failed: dump file is empty." >&2
+            exit 1
+          fi
+
+          backup_size_bytes="$(stat --format='%s' "${backup_path}")"
+          backup_size_human="$(du --human-readable "${backup_path}" | cut --fields=1)"
+
+          {
+            echo "BACKUP_TIMESTAMP=${backup_timestamp}"
+            echo "BACKUP_FILENAME=${backup_filename}"
+            echo "BACKUP_PATH=${backup_path}"
+            echo "BACKUP_SIZE_BYTES=${backup_size_bytes}"
+            echo "BACKUP_SIZE_HUMAN=${backup_size_human}"
+            echo "ARTIFACT_NAME=${artifact_name}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ env.BACKUP_PATH }}
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+
+      - name: Write backup summary
+        shell: bash
+        env:
+          TRIGGER: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+
+          if [[ "${TRIGGER}" == "schedule" ]]; then
+            trigger_description="Scheduled"
+          else
+            trigger_description="Manual"
+          fi
+
+          {
+            echo "## Database backup successful"
+            echo
+            echo "| Detail | Value |"
+            echo "| --- | --- |"
+            echo "| Status | Success |"
+            echo "| Backup time | ${BACKUP_TIMESTAMP} UTC |"
+            echo "| Filename | \`${BACKUP_FILENAME}\` |"
+            echo "| File size | ${BACKUP_SIZE_HUMAN} (${BACKUP_SIZE_BYTES} bytes) |"
+            echo "| Artifact | \`${ARTIFACT_NAME}\` |"
+            echo "| Retention | 90 days |"
+            echo "| Trigger | ${trigger_description} |"
+          } >> "${GITHUB_STEP_SUMMARY}"

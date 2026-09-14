@@ -12,6 +12,11 @@ public sealed class AuthController(AdminAuthenticationService authenticationServ
     public ActionResult<LoginResponse> Login(LoginRequest request)
     {
         var token = authenticationService.Login(request.Username, request.Password);
-        return token is null ? Unauthorized() : Ok(new LoginResponse(token));
+        return token is null
+            ? Problem(
+                title: "Unauthorized",
+                detail: "Invalid username or password.",
+                statusCode: StatusCodes.Status401Unauthorized)
+            : Ok(new LoginResponse(token));
     }
 }

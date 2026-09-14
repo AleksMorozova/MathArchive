@@ -18,7 +18,7 @@ A single administrator can manage the archive through a protected admin panel.
 * Navigate by school grade and topic
 * Preview supported files
 * Download documents
-* View download statistics
+* Open the actual file in a new tab
 * Use the application without registration
 
 ### Administration
@@ -28,6 +28,10 @@ A single administrator can manage the archive through a protected admin panel.
 * Edit document metadata
 * Replace uploaded files
 * Delete documents
+* Filter materials by class and upload date, with newest-first sorting and a filtered total
+* View site openings, document previews, and file-open/download analytics for a selected period
+* Audit consistency between database records and stored files
+* Safely clean up unreferenced files after an explicit confirmation
 * Manage the archive through a dedicated admin interface
 
 ## Tech Stack
@@ -101,7 +105,7 @@ The current implementation stores files locally:
 storage/documents
 ```
 
-This keeps storage concerns outside controllers and application use cases and allows the local implementation to be replaced later with S3-compatible or cloud storage.
+This is the local development path. Production uses a Render Persistent Disk mounted at `/app/storage`, with `FileStorage__RootPath=/app/storage/documents`. The backend intentionally runs as a single instance. PostgreSQL stores metadata, not file contents; database and source-file backups are separate concerns.
 
 ## Security
 
@@ -116,7 +120,7 @@ This keeps storage concerns outside controllers and application use cases and al
 ## Prerequisites
 
 * .NET 9 SDK
-* Node.js and npm
+* Node.js 22 and npm (matching CI)
 * Docker Desktop or another Docker Compose runtime
 
 ## Local Development
@@ -130,7 +134,7 @@ docker compose up -d postgres
 Default local connection:
 
 ```text
-Host=localhost;Port=5432;Database=matharchive;Username=matharchive;Password=matharchive
+Host=localhost;Port=5433;Database=matharchive;Username=matharchive;Password=matharchive
 ```
 
 ### 2. Configure the administrator
@@ -163,7 +167,7 @@ Environment variable equivalents:
 Admin__Username=admin
 Admin__PasswordHash=PASTE_HASH_HERE
 Jwt__SigningKey=replace-with-a-long-random-development-key-at-least-32-characters
-ConnectionStrings__DefaultConnection=Host=localhost;Port=5432;Database=matharchive;Username=matharchive;Password=matharchive
+ConnectionStrings__DefaultConnection=Host=localhost;Port=5433;Database=matharchive;Username=matharchive;Password=matharchive
 FileStorage__RootPath=storage/documents
 ```
 
@@ -178,7 +182,7 @@ dotnet run --project backend/src/MathArchive.Api
 Swagger is available in development at:
 
 ```text
-https://localhost:7000/swagger
+http://localhost:5293/swagger
 ```
 
 Development seed data is applied when the application starts with an empty database.
@@ -187,17 +191,31 @@ Development seed data is applied when the application starts with an empty datab
 
 ```powershell
 cd frontend/math-archive-web
-npm install
+npm ci
 npm run dev
 ```
 
-Optional frontend environment variable:
+Vite normally starts at `http://localhost:5173` and selects another port if occupied. Optional frontend environment variable (in `.env.local` or the shell):
 
 ```text
-VITE_API_BASE_URL=http://localhost:5000
+VITE_API_BASE_URL=http://localhost:5293
 ```
 
+Development defaults to this API URL. Development CORS permits loopback origins on different ports; production uses configured allowed origins.
+
+For a production build, `VITE_API_BASE_URL` must point to the public API. The SEO generator fetches public material metadata. After retries, network failures or HTTP 502/503/504 responses use the three stable SEO pages and base sitemap as a fallback; invalid configuration, malformed data, and other HTTP failures fail the build.
+
+Google Search Console HTML-tag verification is optional and can be enabled in the Vercel project environment variables:
+
+```text
+VITE_GOOGLE_SITE_VERIFICATION=verification-token-from-google
+```
+
+Store only the token value, not the complete `<meta>` element. When configured, the production SEO generator includes the verification tag in the initial HTML of every public page. The build continues normally when this variable is absent.
+
 ## Database Migrations
+
+The backend applies migrations on startup when `Database:ApplyMigrationsOnStartup` is enabled (the default). Analytics includes a data migration that renames persisted event values; see [analytics migration behavior](docs/analytics.md#migration-and-deletion-behavior).
 
 Apply existing migrations:
 
@@ -215,6 +233,36 @@ dotnet ef migrations add MigrationName `
   --startup-project backend/src/MathArchive.Api
 ```
 
+## Database Backups
+
+The `Database Backup` GitHub Actions workflow creates a PostgreSQL custom-format backup every Monday at 08:15 in the `Europe/Kyiv` timezone. The same process can be started manually from **GitHub → Actions → Database Backup → Run workflow**. It installs the PostgreSQL 18 client to match the production Neon PostgreSQL 18 server; this is independent of the PostgreSQL 16 container used for local development and CI. Configure the same production Neon connection string used by the deployed backend as the `DATABASE_CONNECTION_STRING` GitHub repository secret; never place it in the repository. Confirm the Neon project, branch, database, and role against the deployed backend configuration when setting or rotating this secret. The workflow accepts either the URI from Neon's **Connect** dialog (`postgresql://...` or `postgres://...`) or the Npgsql/.NET semicolon-separated form (`Host=...;Port=...;Database=...;Username=...;Password=...`). Preserve the SSL settings supplied by Neon.
+
+Before dumping, the workflow reports the source database, role, a non-reversible endpoint fingerprint, and `SELECT COUNT(*) FROM public.documents;` without logging the connection string or password. A zero document count aborts the run. A manual run can explicitly enable **Allow a backup when the production documents table is empty** for an intentional empty database. After dumping, the workflow restores the artifact into an ephemeral PostgreSQL 18 container and requires its document count to match the source count. The container is removed on success and failure. Only a verified dump is uploaded; artifacts contain one timestamped `.dump` file and are retained for 90 days.
+
+To create and verify a backup locally, install PostgreSQL 18 client tools and Docker, set the production connection string only in the current shell, and run:
+
+```powershell
+$env:DATABASE_CONNECTION_STRING = Read-Host "Production PostgreSQL connection string" -MaskInput
+try {
+  $timestamp = Get-Date -AsUTC -Format 'yyyy-MM-dd-HHmmss'
+  python .github/scripts/create-postgres-backup.py `
+    --output "matharchive-$timestamp.dump" `
+    --postgres-bin-dir "C:\Program Files\PostgreSQL\18\bin"
+} finally {
+  Remove-Item Env:DATABASE_CONNECTION_STRING
+}
+```
+
+The command succeeds only after restoring the dump into a temporary PostgreSQL 18 container and comparing `public.documents` row counts. For an intentionally empty source, add `--allow-empty-documents`. Do not use that override for routine production backups.
+
+To restore a downloaded backup manually, first select and verify the intended target database, then run:
+
+```bash
+pg_restore --clean --if-exists --no-owner --dbname="$DATABASE_CONNECTION_STRING" matharchive-YYYY-MM-DD-HHMMSS.dump
+```
+
+**Warning:** `--clean` drops existing database objects before recreating them and can replace or delete current data. Never run this command against production unless an intentional restore has been approved and the target connection has been verified. There is deliberately no automatic restore workflow.
+
 ## Application Routes
 
 ### Public
@@ -223,6 +271,7 @@ dotnet ef migrations add MigrationName `
 /
 /materials
 /materials/:id
+/about
 ```
 
 ### Administration
@@ -232,7 +281,11 @@ dotnet ef migrations add MigrationName `
 /admin/documents
 /admin/documents/new
 /admin/documents/:id/edit
+/admin/storage
+/admin/analytics
 ```
+
+`/admin` redirects to `/admin/documents`. Admin pages other than login require authentication.
 
 ## API Endpoints
 
@@ -242,7 +295,9 @@ dotnet ef migrations add MigrationName `
 GET /api/documents
 GET /api/documents/topics
 GET /api/documents/{id}
+GET /api/documents/{id}/preview
 GET /api/documents/{id}/download
+POST /api/analytics/events
 ```
 
 ### Administration
@@ -250,15 +305,33 @@ GET /api/documents/{id}/download
 ```http
 POST   /api/auth/login
 POST   /api/admin/documents
+GET    /api/admin/storage/audit
+GET    /api/admin/analytics?from=<timestamp>&to=<timestamp>
+POST   /api/admin/storage/cleanup-orphans
 PUT    /api/admin/documents/{id}
 DELETE /api/admin/documents/{id}
 ```
 
+Login is public; the remaining administrative endpoints require the `Admin` role. The health endpoint is `GET /health`.
+
+### Material list contract
+
+`GET /api/documents` accepts `search`, `grade`, `generalOnly`, `topic`, `documentType`, `createdFrom`, `createdTo`, `sort`, `page`, and `pageSize`. Creation-date filters use inclusive UTC calendar dates (`YYYY-MM-DD`). The response contains `items`, `page`, `pageSize`, `totalCount`, and `totalPages`; filtering and sorting occur before pagination, so `totalCount` reflects all matching materials.
+
+The admin list reuses this endpoint with `sort=CreatedAtDescending` and class/date controls; topic and type controls are hidden there, but the API still supports them. The public default sort groups grades in ascending order, general materials last, then newest materials first within each group. General materials have `grade=null`; the public URL `class=general` maps to the API's `generalOnly=true`.
+
+### Analytics and file counters
+
+Analytics event types are `SiteVisit`, `DocumentPreview`, and `DocumentDownload`. New events authenticated with the `Admin` role are acknowledged but excluded from persistence and reports. The admin report returns `summary.documentDownloads` and per-document `downloadCount`, counting MathArchive file-open/download actions, not browser PDF-viewer activity. These period-filtered analytics counts are separate from the existing document metadata `downloadCount`, which increments only through the backend `/download` operation. Embedded previews use `/preview` and do not increment that counter.
+
+See the [analytics guide](docs/analytics.md) for tracking, privacy, date boundaries, migrations, and tests, and the [storage audit guide](docs/course-project/README.md) for reconciliation and cleanup.
+
 ## Tests
 
-Run backend tests:
+Run backend tests from the repository root. Integration tests create temporary PostgreSQL databases using local port `5433`; `MATHARCHIVE_TEST_CONNECTION_STRING` overrides the connection (CI uses port `5432`). Never point tests at production.
 
 ```powershell
+docker compose up -d postgres
 dotnet test backend/MathArchive.sln
 ```
 
@@ -267,6 +340,8 @@ Run frontend tests and production build:
 ```powershell
 cd frontend/math-archive-web
 npm test
+npm run test:seo-generator
+$env:VITE_API_BASE_URL='http://localhost:5293'
 npm run build
 ```
 
@@ -275,7 +350,7 @@ npm run build
 * Only one administrator is supported.
 * Files are stored locally instead of in cloud object storage.
 * PDF and image preview is supported.
-* Word and Excel documents are download-only.
+* Word and Excel documents have no embedded preview; file-open/download controls remain available, with handling determined by the browser.
 * There is no public registration or user profile system.
 * There is no moderation or multi-user administration workflow.
 
@@ -284,3 +359,11 @@ npm run build
 MathArchive is an actively developed pet project built around a real use case.
 
 The current focus is keeping document publishing simple for the administrator while making materials easy to find and download for students and teachers.
+
+## License
+
+MathArchive is source-available for portfolio presentation, educational review, and demonstration, but it is not open-source software. Copyright © 2026 Oleksandra Morozova. All rights reserved. See the [LICENSE](LICENSE) file for permitted uses and restrictions. Third-party libraries and other third-party materials remain subject to their own licenses.
+
+## AI-assisted development
+
+Reusable AI rules, prompts, checklists, and an evidence-based Storage Reconciliation example are documented in [`docs/ai-workflow/README.md`](docs/ai-workflow/README.md).

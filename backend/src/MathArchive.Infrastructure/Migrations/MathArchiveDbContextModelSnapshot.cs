@@ -22,6 +22,42 @@ namespace MathArchive.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("MathArchive.Domain.Analytics.AnalyticsEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("DocumentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("document_id");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("event_type");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("session_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentId")
+                        .HasDatabaseName("ix_analytics_events_document_id");
+
+                    b.HasIndex("CreatedAt", "EventType")
+                        .HasDatabaseName("ix_analytics_events_created_at_event_type");
+
+                    b.ToTable("analytics_events", (string)null);
+                });
+
             modelBuilder.Entity("MathArchive.Domain.Documents.Document", b =>
                 {
                     b.Property<Guid>("Id")
@@ -58,7 +94,7 @@ namespace MathArchive.Infrastructure.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("file_size");
 
-                    b.Property<int>("Grade")
+                    b.Property<int?>("Grade")
                         .HasColumnType("integer")
                         .HasColumnName("grade");
 
