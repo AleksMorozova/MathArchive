@@ -36,6 +36,7 @@ backend/src/MathArchive.Api/logs/
 # Local configuration and secrets
 backend/src/MathArchive.Api/appsettings.Local.json
 backend/src/MathArchive.Api/appsettings.*.local.json
+backend/src/MathArchive.Api/appsettings.Development.json
 .env
 .env.*
 !.env.example
