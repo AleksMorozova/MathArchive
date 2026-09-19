@@ -743,8 +743,7 @@ a {
 }
 
 .public-main-content:not(.home-route) .card-actions .MuiButton-root,
-.public-main-content:not(.home-route) .material-breadcrumbs a,
-.public-main-content:not(.home-route) .material-byline a {
+.public-main-content:not(.home-route) .material-breadcrumbs a {
   color: var(--public-navy);
 }
 
