@@ -109,7 +109,6 @@ if (generatedDynamicPages) {
       <article>
         <h1>${escapeHtml(document.title)}</h1>
         ${document.description ? `<p>${escapeHtml(document.description)}</p>` : ''}
-        <p class="material-byline"><span>Автор навчального матеріалу:</span> <a href="/about" rel="author">${escapeHtml(author.name)}</a>, ${escapeHtml(author.jobTitle.toLowerCase())} із понад 30-річним педагогічним досвідом</p>
         <dl>
           <dt>Клас</dt><dd>${escapeHtml(gradeLabel)}</dd>
           <dt>Тема</dt><dd>${escapeHtml(document.topic)}</dd>

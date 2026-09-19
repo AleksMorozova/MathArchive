@@ -104,10 +104,6 @@ export function DocumentDetailsPage() {
           <Stack gap={2}>
             <Typography component="h1" variant="h3">{document.title}</Typography>
             {document.description && <Typography color="text.secondary">{document.description}</Typography>}
-            <Typography component="p" className="material-byline" variant="body2" color="text.secondary">
-              <span>Автор навчального матеріалу:</span>{' '}
-              <MuiLink component={Link} to="/about" rel="author" underline="hover">Морозова Тетяна Володимирівна</MuiLink>, учитель математики із понад 30-річним педагогічним досвідом
-            </Typography>
             <Stack direction="row" gap={1} flexWrap="wrap">
               <Chip label={document.grade === null ? 'Загальний матеріал' : `Клас: ${document.grade}`} />
               <Chip label={`Тема: ${document.topic}`} />

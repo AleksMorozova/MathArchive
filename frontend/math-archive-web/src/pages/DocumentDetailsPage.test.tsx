@@ -121,8 +121,8 @@ describe('DocumentDetailsPage', () => {
     expect(screen.getByRole('navigation', { name: 'Breadcrumb' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Головна' })).toHaveAttribute('href', '/');
     expect(screen.getByRole('link', { name: 'Матеріали' })).toHaveAttribute('href', '/materials');
-    expect(screen.getByRole('link', { name: 'Морозова Тетяна Володимирівна' })).toHaveAttribute('href', '/about');
-    expect(screen.getByRole('link', { name: 'Морозова Тетяна Володимирівна' })).toHaveAttribute('rel', 'author');
+    expect(screen.queryByText('Автор навчального матеріалу:')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Морозова Тетяна Володимирівна' })).not.toBeInTheDocument();
   });
 
   it('shows technical file metadata for authenticated admin users', () => {
