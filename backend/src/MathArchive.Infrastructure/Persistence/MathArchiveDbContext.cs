@@ -7,10 +7,12 @@ public sealed class MathArchiveDbContext(DbContextOptions<MathArchiveDbContext> 
 {
     public DbSet<Document> Documents => Set<Document>();
     public DbSet<MathArchive.Domain.Analytics.AnalyticsEvent> AnalyticsEvents => Set<MathArchive.Domain.Analytics.AnalyticsEvent>();
+    public DbSet<MathArchive.Domain.AiUsage.AiUsageRecord> AiUsageRecords => Set<MathArchive.Domain.AiUsage.AiUsageRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new DocumentConfiguration());
         modelBuilder.ApplyConfiguration(new AnalyticsEventConfiguration());
+        modelBuilder.ApplyConfiguration(new AiUsageRecordConfiguration());
     }
 }

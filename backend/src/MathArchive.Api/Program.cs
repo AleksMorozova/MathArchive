@@ -5,6 +5,7 @@ using MathArchive.Api.Errors;
 using MathArchive.Api.Health;
 using MathArchive.Api.Startup;
 using MathArchive.Application;
+using MathArchive.Application.Ai;
 using MathArchive.Infrastructure;
 using MathArchive.Infrastructure.Auth;
 using MathArchive.Infrastructure.Persistence;
@@ -16,6 +17,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
+using System.Threading.RateLimiting;
 
 if (args is ["hash-password", var password])
 {
@@ -95,6 +97,7 @@ if (string.IsNullOrWhiteSpace(jwtOptions.SigningKey))
 }
 
 ValidateAdminConfiguration(builder.Configuration, builder.Environment.IsDevelopment());
+ValidateOpenAiPricing(builder.Configuration);
 
 var signingKey = Encoding.UTF8.GetBytes(jwtOptions.SigningKey);
 
@@ -139,38 +142,54 @@ builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
 });
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("AiAnalysis", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.User.Identity?.Name ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 20,
+            Window = TimeSpan.FromHours(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
+});
 
 builder.Services.AddHealthChecks()
     .AddCheck<DatabaseHealthCheck>("database")
     .AddCheck<FileStorageHealthCheck>("file_storage");
 
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(options =>
+if (builder.Environment.IsDevelopment())
 {
-    options.SwaggerDoc("v1", new OpenApiInfo { Title = "MathArchive API", Version = "v1" });
-    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen(options =>
     {
-        Name = "Authorization",
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
-        BearerFormat = "JWT",
-        In = ParameterLocation.Header
-    });
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
+        options.SwaggerDoc("v1", new OpenApiInfo { Title = "MathArchive API", Version = "v1" });
+        options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
         {
-            new OpenApiSecurityScheme
+            Name = "Authorization",
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            In = ParameterLocation.Header
+        });
+        options.AddSecurityRequirement(new OpenApiSecurityRequirement
+        {
             {
-                Reference = new OpenApiReference
+                new OpenApiSecurityScheme
                 {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            []
-        }
+                    Reference = new OpenApiReference
+                    {
+                        Type = ReferenceType.SecurityScheme,
+                        Id = "Bearer"
+                    }
+                },
+                []
+            }
+        });
     });
-});
+}
 
 var app = builder.Build();
 
@@ -186,8 +205,11 @@ if (builder.Configuration.GetValue("Database:ApplyMigrationsOnStartup", true))
         app.Lifetime.ApplicationStopping);
 }
 
-app.UseSwagger();
-app.UseSwaggerUI();
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 app.UseForwardedHeaders();
 app.UseExceptionHandler();
@@ -200,6 +222,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 app.MapHealthChecks("/health", new HealthCheckOptions
 {
     ResponseWriter = WriteHealthResponseAsync
@@ -231,6 +254,24 @@ static void ValidateAdminConfiguration(IConfiguration configuration, bool isDeve
     if (!IsValidAdminPasswordHash(adminOptions.PasswordHash))
     {
         throw new InvalidOperationException("Admin:PasswordHash must be configured with a valid PBKDF2-SHA256 hash.");
+    }
+}
+
+static void ValidateOpenAiPricing(IConfiguration configuration)
+{
+    var options = configuration.GetSection("OpenAI").Get<OpenAiOptions>() ?? new OpenAiOptions();
+    foreach (var (model, pricing) in options.Pricing)
+    {
+        if (pricing.InputPerMillionTokensUsd < 0 || pricing.OutputPerMillionTokensUsd < 0)
+            throw new InvalidOperationException($"OpenAI pricing for model '{model}' cannot be negative.");
+    }
+    if (!string.IsNullOrWhiteSpace(options.Model))
+    {
+        var calculator = new OpenAiUsageCostCalculator(Microsoft.Extensions.Options.Options.Create(options));
+        if (calculator.Calculate(options.Model, 1, 1) is null)
+            Console.Error.WriteLine($"Warning: OpenAI pricing is unavailable for configured model '{options.Model}'. AI usage costs will not be calculated.");
+        else
+            Console.WriteLine($"OpenAI pricing is configured for model '{options.Model}'.");
     }
 }
 

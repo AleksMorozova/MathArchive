@@ -114,6 +114,13 @@ describe('AdminDocumentsPage', () => {
       expect.any(AbortSignal)
     ));
   });
+
+  it('offers both manual and AI-assisted creation', async () => {
+    renderPage(createQueryClient());
+
+    expect(await screen.findByRole('link', { name: 'Додати матеріал' })).toHaveAttribute('href', '/admin/documents/new');
+    expect(screen.getByRole('link', { name: 'Додати з AI' })).toHaveAttribute('href', '/admin/documents/ai');
+  });
 });
 
 function renderPage(queryClient: QueryClient) {

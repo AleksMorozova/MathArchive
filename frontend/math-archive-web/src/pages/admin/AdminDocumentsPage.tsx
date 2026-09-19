@@ -2,10 +2,11 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { Box, Button, Card, CardContent, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Pagination, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography, useMediaQuery } from '@mui/material';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { getApiErrorMessage } from '../../api/apiErrors';
 import { deleteDocument } from '../../api/documentsApi';
 import { queryKeys } from '../../api/queryKeys';
@@ -31,9 +32,10 @@ const initialFilters: DocumentFilters = {
 };
 
 export function AdminDocumentsPage() {
+  const location = useLocation();
   const [filters, setFilters] = useState<DocumentFilters>(initialFilters);
   const [deleteTarget, setDeleteTarget] = useState<DocumentDto | null>(null);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState((location.state as { message?: string } | null)?.message ?? '');
   const isMobile = useMediaQuery('(max-width:760px)');
   const queryClient = useQueryClient();
   const documents = useDocuments(filters);
@@ -56,7 +58,10 @@ export function AdminDocumentsPage() {
     <Stack gap={3}>
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" gap={2}>
         <Typography variant="h3">Матеріали</Typography>
-        <Button component={Link} to="/admin/documents/new" startIcon={<AddIcon />} variant="contained">Додати матеріал</Button>
+        <Stack direction={{ xs: 'column', sm: 'row' }} gap={1}>
+          <Button component={Link} to="/admin/documents/new" startIcon={<AddIcon />} variant="contained">Додати матеріал</Button>
+          <Button component={Link} to="/admin/documents/ai" startIcon={<AutoAwesomeIcon />} variant="outlined">Додати з AI</Button>
+        </Stack>
       </Stack>
       {message && <Box className="success-message">{message}</Box>}
       {deleteMutation.isError && <Box className="error-message">{getApiErrorMessage(deleteMutation.error, 'Не вдалося видалити матеріал.')}</Box>}

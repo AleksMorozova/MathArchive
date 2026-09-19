@@ -27,6 +27,34 @@ public sealed class DocumentServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_allows_multiple_documents_with_the_same_topic()
+    {
+        var repository = new FakeDocumentRepository();
+        var service = CreateService(repository, new FakeFileStorage());
+
+        await service.CreateAsync(CreateCommand(), CancellationToken.None);
+        await service.CreateAsync(CreateCommand(), CancellationToken.None);
+
+        Assert.Equal(2, repository.Documents.Count);
+        Assert.All(repository.Documents, document => Assert.Equal("Алгебра", document.Topic));
+    }
+
+    [Fact]
+    public async Task CreateAsync_rejects_unknown_document_type()
+    {
+        var repository = new FakeDocumentRepository();
+        var service = CreateService(repository, new FakeFileStorage());
+        var command = new CreateDocumentCommand(
+            new DocumentMetadata("Матеріал", null, 7, "Алгебра", (DocumentType)999),
+            UploadedFile("material.pdf"));
+
+        await Assert.ThrowsAsync<FluentValidation.ValidationException>(() =>
+            service.CreateAsync(command, CancellationToken.None));
+
+        Assert.Empty(repository.Documents);
+    }
+
+    [Fact]
     public async Task CreateAsync_when_file_save_fails_does_not_create_database_record()
     {
         var repository = new FakeDocumentRepository();

@@ -1,5 +1,6 @@
 using FluentValidation;
 using MathArchive.Application.Documents;
+using MathArchive.Application.Ai;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -47,6 +48,20 @@ public sealed class GlobalExceptionHandler(
                 Title = "Material file not found",
                 Status = StatusCodes.Status404NotFound,
                 Detail = "The file associated with this material is unavailable."
+            },
+            AiLimitExceededException => new ProblemDetails
+            {
+                Type = "about:blank",
+                Title = "AI usage limit reached",
+                Status = StatusCodes.Status429TooManyRequests,
+                Detail = "Місячний ліміт використання AI вичерпано."
+            },
+            MaterialAnalysisException analysisException => new ProblemDetails
+            {
+                Type = "about:blank",
+                Title = "Material analysis failed",
+                Status = analysisException.StatusCode,
+                Detail = "Не вдалося проаналізувати матеріал. Ви можете повторити спробу або заповнити поля вручну."
             },
             BadHttpRequestException => new ProblemDetails
             {
@@ -123,6 +138,8 @@ public sealed class GlobalExceptionHandler(
     {
         return exception is ValidationException
             or MaterialFileNotFoundException
+            or MaterialAnalysisException
+            or AiLimitExceededException
             or BadHttpRequestException
             or DbUpdateConcurrencyException
             or OperationCanceledException

@@ -4,6 +4,8 @@ import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 import MenuIcon from '@mui/icons-material/Menu';
 import StorageIcon from '@mui/icons-material/Storage';
 import BarChartIcon from '@mui/icons-material/BarChart';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import DataUsageIcon from '@mui/icons-material/DataUsage';
 import { Box, Button, Drawer, IconButton, Stack, Typography } from '@mui/material';
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
@@ -23,17 +25,23 @@ export function AdminLayout() {
 
   const nav = (
     <Stack gap={1}>
-      <Button component={NavLink} to="/admin/documents" startIcon={<LibraryBooksIcon />} onClick={() => setOpen(false)}>
+      <Button component={NavLink} to="/admin/documents" end startIcon={<LibraryBooksIcon />} onClick={() => setOpen(false)}>
         Матеріали
       </Button>
-      <Button component={NavLink} to="/admin/documents/new" startIcon={<AddIcon />} onClick={() => setOpen(false)}>
+      <Button component={NavLink} to="/admin/documents/new" end startIcon={<AddIcon />} onClick={() => setOpen(false)}>
         Додати матеріал
       </Button>
-      <Button component={NavLink} to="/admin/storage" startIcon={<StorageIcon />} onClick={() => setOpen(false)}>
+      <Button component={NavLink} to="/admin/documents/ai" end startIcon={<AutoAwesomeIcon />} onClick={() => setOpen(false)}>
+        Додати з AI
+      </Button>
+      <Button component={NavLink} to="/admin/storage" end startIcon={<StorageIcon />} onClick={() => setOpen(false)}>
         Сховище
       </Button>
-      <Button component={NavLink} to="/admin/analytics" startIcon={<BarChartIcon />} onClick={() => setOpen(false)}>
+      <Button component={NavLink} to="/admin/analytics" end startIcon={<BarChartIcon />} onClick={() => setOpen(false)}>
         Статистика
+      </Button>
+      <Button component={NavLink} to="/admin/ai-usage" end startIcon={<DataUsageIcon />} onClick={() => setOpen(false)}>
+        Використання AI
       </Button>
       <Button startIcon={<LogoutIcon />} onClick={signOut}>Вийти</Button>
     </Stack>

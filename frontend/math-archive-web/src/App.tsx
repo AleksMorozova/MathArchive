@@ -15,6 +15,8 @@ const DocumentFormPage = lazy(() => import('./pages/admin/DocumentFormPage').the
 const LoginPage = lazy(() => import('./pages/admin/LoginPage').then((module) => ({ default: module.LoginPage })));
 const StorageAuditPage = lazy(() => import('./pages/admin/StorageAuditPage').then((module) => ({ default: module.StorageAuditPage })));
 const AnalyticsPage = lazy(() => import('./pages/admin/AnalyticsPage').then((module) => ({ default: module.AnalyticsPage })));
+const AiMaterialFormPage = lazy(() => import('./pages/admin/AiMaterialFormPage').then((module) => ({ default: module.AiMaterialFormPage })));
+const AiUsagePage = lazy(() => import('./pages/admin/AiUsagePage').then((module) => ({ default: module.AiUsagePage })));
 
 const router = createBrowserRouter([
   {
@@ -39,9 +41,11 @@ const router = createBrowserRouter([
       { index: true, element: <Navigate to="/admin/documents" replace /> },
       { path: 'documents', element: <AdminDocumentsPage /> },
       { path: 'documents/new', element: <DocumentFormPage mode="create" /> },
+      { path: 'documents/ai', element: <AiMaterialFormPage /> },
       { path: 'documents/:id/edit', element: <DocumentFormPage mode="edit" /> },
       { path: 'storage', element: <StorageAuditPage /> },
-      { path: 'analytics', element: <AnalyticsPage /> }
+      { path: 'analytics', element: <AnalyticsPage /> },
+      { path: 'ai-usage', element: <AiUsagePage /> }
     ]
   }
 ]);

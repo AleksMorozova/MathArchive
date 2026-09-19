@@ -4,7 +4,7 @@ import { Alert, Box, Button, LinearProgress, MenuItem, Stack, TextField, Typogra
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { z } from 'zod';
 import { fieldNameFromProblemDetails, getApiErrorMessage, hasValidationErrors, isApiError } from '../../api/apiErrors';
 import { createDocument, updateDocument } from '../../api/documentsApi';
@@ -37,6 +37,8 @@ interface DocumentFormPageProps {
 export function DocumentFormPage({ mode }: DocumentFormPageProps) {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const initialFile = mode === 'create' ? (location.state as { file?: File } | null)?.file : undefined;
   const queryClient = useQueryClient();
   const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState('');
@@ -71,7 +73,7 @@ export function DocumentFormPage({ mode }: DocumentFormPageProps) {
       grade: null,
       topic: '',
       documentType: '',
-      file: undefined
+      file: initialFile
     }
   });
 
