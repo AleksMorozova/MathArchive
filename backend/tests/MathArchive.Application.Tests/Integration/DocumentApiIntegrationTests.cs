@@ -32,11 +32,79 @@ public sealed class DocumentApiIntegrationTests(ApiIntegrationFixture fixture) :
         Assert.Equal("Valid upload", document.Title);
         Assert.Equal(7, document.Grade);
         Assert.Equal(DocumentType.Formula, document.DocumentType);
+        Assert.Equal(0, document.DisplayOrder);
 
         var persisted = await fixture.FindDocumentAsync(document.Id);
         Assert.NotNull(persisted);
         Assert.Equal("material.pdf", persisted.OriginalFileName);
         Assert.True(File.Exists(Path.Combine(fixture.StorageRoot, persisted.StoredFileName)));
+    }
+
+    [Fact]
+    public async Task DocumentOrder_NormalizesSelectedClassAndPublicListPlacesUnorderedDocumentsLast()
+    {
+        using var client = await fixture.CreateAuthorizedClientAsync();
+        using var firstUpload = CreateDocumentForm(title: "First ordered", grade: 7);
+        using var secondUpload = CreateDocumentForm(title: "Second ordered", grade: 7);
+        using var otherClassUpload = CreateDocumentForm(title: "Other class", grade: 8);
+        var first = await ReadJsonAsync<DocumentDto>(await client.PostAsync("/api/admin/documents", firstUpload));
+        var second = await ReadJsonAsync<DocumentDto>(await client.PostAsync("/api/admin/documents", secondUpload));
+        var otherClass = await ReadJsonAsync<DocumentDto>(await client.PostAsync("/api/admin/documents", otherClassUpload));
+
+        var reorderResponse = await client.PutAsJsonAsync(
+            "/api/admin/classes/7/documents/order",
+            new { documentIds = new[] { second.Id, first.Id } });
+
+        Assert.Equal(HttpStatusCode.OK, reorderResponse.StatusCode);
+        var reordered = await ReadJsonAsync<List<DocumentDto>>(reorderResponse);
+        Assert.Equal([second.Id, first.Id], reordered.Select(item => item.Id));
+        Assert.Equal([1, 2], reordered.Select(item => item.DisplayOrder));
+        Assert.Equal(0, (await fixture.FindDocumentAsync(otherClass.Id))?.DisplayOrder);
+
+        using var unorderedUpload = CreateDocumentForm(title: "New unordered", grade: 7);
+        var unordered = await ReadJsonAsync<DocumentDto>(await client.PostAsync("/api/admin/documents", unorderedUpload));
+        var publicPage = await ReadJsonAsync<PagedResult<DocumentDto>>(
+            await client.GetAsync("/api/documents?grade=7&page=1&pageSize=12"));
+        var relevantIds = publicPage.Items.Select(item => item.Id).ToList();
+        Assert.Equal([second.Id, first.Id, unordered.Id], relevantIds);
+        Assert.Equal(0, publicPage.Items[^1].DisplayOrder);
+    }
+
+    [Fact]
+    public async Task DocumentOrder_RejectsMissingDuplicateUnknownAndOtherClassIds()
+    {
+        using var client = await fixture.CreateAuthorizedClientAsync();
+        using var firstUpload = CreateDocumentForm(title: "Order validation first", grade: 7);
+        using var secondUpload = CreateDocumentForm(title: "Order validation second", grade: 7);
+        using var otherUpload = CreateDocumentForm(title: "Order validation other", grade: 8);
+        var first = await ReadJsonAsync<DocumentDto>(await client.PostAsync("/api/admin/documents", firstUpload));
+        var second = await ReadJsonAsync<DocumentDto>(await client.PostAsync("/api/admin/documents", secondUpload));
+        var other = await ReadJsonAsync<DocumentDto>(await client.PostAsync("/api/admin/documents", otherUpload));
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync(
+            "/api/admin/classes/7/documents/order", new { documentIds = new[] { first.Id } })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync(
+            "/api/admin/classes/7/documents/order", new { documentIds = new[] { first.Id, first.Id } })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync(
+            "/api/admin/classes/7/documents/order", new { documentIds = new[] { first.Id, Guid.NewGuid() } })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync(
+            "/api/admin/classes/7/documents/order", new { documentIds = new[] { first.Id, other.Id } })).StatusCode);
+
+        Assert.Equal(0, (await fixture.FindDocumentAsync(first.Id))?.DisplayOrder);
+        Assert.Equal(0, (await fixture.FindDocumentAsync(second.Id))?.DisplayOrder);
+        Assert.Equal(0, (await fixture.FindDocumentAsync(other.Id))?.DisplayOrder);
+    }
+
+    [Fact]
+    public async Task DocumentOrder_RequiresAdministrator()
+    {
+        using var anonymous = fixture.CreateClient();
+        using var nonAdmin = fixture.CreateForbiddenClient();
+
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await anonymous.GetAsync("/api/admin/classes/7/documents/order")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await nonAdmin.PutAsJsonAsync("/api/admin/classes/7/documents/order", new { documentIds = Array.Empty<Guid>() })).StatusCode);
     }
 
 

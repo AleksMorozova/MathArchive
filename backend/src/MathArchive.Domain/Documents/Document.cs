@@ -45,9 +45,15 @@ public sealed class Document
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
     public int DownloadCount { get; private set; }
+    public int DisplayOrder { get; private set; }
 
     public void UpdateMetadata(string title, string? description, int? grade, string topic, DocumentType documentType, DateTimeOffset updatedAt)
     {
+        if (Grade != grade)
+        {
+            DisplayOrder = 0;
+        }
+
         Title = title.Trim();
         Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
         Grade = grade;
@@ -68,5 +74,15 @@ public sealed class Document
     public void IncrementDownloadCount()
     {
         DownloadCount++;
+    }
+
+    public void SetDisplayOrder(int displayOrder)
+    {
+        if (displayOrder < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(displayOrder));
+        }
+
+        DisplayOrder = displayOrder;
     }
 }

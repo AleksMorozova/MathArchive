@@ -9,6 +9,8 @@ public interface IDocumentRepository
 
     Task<Document?> GetByIdAsync(Guid id, bool track, CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<Document>> GetByGradeAsync(int grade, bool track, CancellationToken cancellationToken);
+
     Task<IReadOnlyList<string>> GetTopicsAsync(CancellationToken cancellationToken);
 
     Task<IReadOnlyList<DocumentStorageReference>> GetStorageReferencesAsync(CancellationToken cancellationToken) =>

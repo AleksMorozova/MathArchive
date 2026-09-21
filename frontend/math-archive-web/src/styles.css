@@ -719,7 +719,6 @@ a {
   box-shadow: 0 20px 42px rgba(8, 43, 89, 0.15);
 }
 
-.public-main-content:not(.home-route) .document-card-icon,
 .public-main-content:not(.home-route) .feature-icon {
   color: var(--public-orange);
   border-color: rgba(241, 106, 34, 0.20);
@@ -1002,22 +1001,11 @@ a {
   min-width: 0;
 }
 
-.document-card-icon {
-  width: 34px;
-  height: 34px;
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  color: var(--primary-hover);
-  background: rgba(255, 240, 232, 0.86);
-  border: 1px solid rgba(214, 225, 236, 0.5);
-}
-
 .card-title {
+  flex: 1 1 auto;
   min-width: 0;
   line-height: 1.25;
+  overflow-wrap: anywhere;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;

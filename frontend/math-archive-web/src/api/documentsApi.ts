@@ -76,6 +76,16 @@ export async function deleteDocument(id: string) {
   await httpClient.delete(`/api/admin/documents/${id}`);
 }
 
+export async function getDocumentOrder(grade: number) {
+  const response = await httpClient.get<DocumentDto[]>(`/api/admin/classes/${grade}/documents/order`);
+  return response.data;
+}
+
+export async function saveDocumentOrder(grade: number, documentIds: string[]) {
+  const response = await httpClient.put<DocumentDto[]>(`/api/admin/classes/${grade}/documents/order`, { documentIds });
+  return response.data;
+}
+
 function saveBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');

@@ -71,6 +71,7 @@ public sealed class StorageAuditServiceTests
             Task.FromResult(OnReferencesRead?.Invoke(++reads) ?? References);
         public Task<MathArchive.Application.Common.PagedResult<Document>> SearchAsync(DocumentQueryParameters parameters, CancellationToken cancellationToken) => throw new NotSupportedException();
         public Task<Document?> GetByIdAsync(Guid id, bool track, CancellationToken cancellationToken) => throw new NotSupportedException();
+        public Task<IReadOnlyList<Document>> GetByGradeAsync(int grade, bool track, CancellationToken cancellationToken) => throw new NotSupportedException();
         public Task<IReadOnlyList<string>> GetTopicsAsync(CancellationToken cancellationToken) => throw new NotSupportedException();
         public void Add(Document document) => throw new NotSupportedException();
         public void Remove(Document document) => throw new NotSupportedException();

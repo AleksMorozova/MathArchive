@@ -18,6 +18,7 @@ public static class DocumentMapper
             document.FileSize,
             document.CreatedAt,
             document.UpdatedAt,
-            document.DownloadCount);
+            document.DownloadCount,
+            document.DisplayOrder);
     }
 }

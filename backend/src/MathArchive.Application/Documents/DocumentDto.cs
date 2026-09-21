@@ -14,4 +14,5 @@ public sealed record DocumentDto(
     long FileSize,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    int DownloadCount);
+    int DownloadCount,
+    int DisplayOrder);

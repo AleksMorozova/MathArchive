@@ -1,7 +1,6 @@
-import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import DownloadIcon from '@mui/icons-material/Download';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import { Alert, Box, Button, Card, CardContent, Chip, Stack, Typography } from '@mui/material';
+import { Alert, Button, Card, CardContent, Chip, Stack, Typography } from '@mui/material';
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { getApiErrorMessage } from '../api/apiErrors';
@@ -9,7 +8,7 @@ import { downloadDocument } from '../api/documentsApi';
 import { trackEvent } from '../api/analyticsApi';
 import type { DocumentDto } from '../types/documents';
 
-export function DocumentCard({ document }: { document: DocumentDto }) {
+export function DocumentCard({ document, ordinal }: { document: DocumentDto; ordinal?: number }) {
   const location = useLocation();
   const [downloadError, setDownloadError] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
@@ -33,7 +32,7 @@ export function DocumentCard({ document }: { document: DocumentDto }) {
       <CardContent className="document-card-content">
         <Stack className="document-card-body">
           <Stack direction="row" alignItems="flex-start" gap={1.5} className="document-card-heading">
-            <Box className="document-card-icon" aria-hidden="true"><DescriptionOutlinedIcon fontSize="small" /></Box>
+            {ordinal !== undefined && <Chip label={`№ ${ordinal}`} size="small" color="primary" />}
             <Typography variant="h6" className="card-title">{document.title}</Typography>
           </Stack>
           <Stack direction="row" gap={0.75} flexWrap="wrap" className="document-tags">

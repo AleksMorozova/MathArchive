@@ -145,9 +145,9 @@ export function MaterialsPage() {
               <EmptyState />
             ) : (
               <Grid container spacing={2.25} alignItems="flex-start" className="materials-grid">
-                {loadedDocuments.map((document) => (
+                {loadedDocuments.map((document, index) => (
                   <Grid key={document.id} size={{ xs: 12, md: 6, lg: 4 }} sx={{ display: 'flex' }}>
-                    <DocumentCard document={document} />
+                    <DocumentCard document={document} ordinal={classFilter && classFilter !== 'general' ? index + 1 : undefined} />
                   </Grid>
                 ))}
                 {documents.isFetchingNextPage && Array.from({ length: 3 }, (_, index) => (
