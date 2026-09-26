@@ -107,7 +107,7 @@ public sealed class MaterialAnalysisService(
     {
         var gradeValue = Clean(result.Grade, 2);
         var typeValue = Clean(result.Type, 100);
-        int? grade = int.TryParse(gradeValue, out var parsedGrade) && parsedGrade is >= 1 and <= 11 ? parsedGrade : null;
+        int? grade = int.TryParse(gradeValue, out var parsedGrade) && parsedGrade is >= 5 and <= 11 ? parsedGrade : null;
         var type = types.FirstOrDefault(x => string.Equals(x, typeValue, StringComparison.OrdinalIgnoreCase));
         var generatedTopic = Clean(result.Topic, 150);
         var generatedTitle = Clean(result.Title, 200);

@@ -105,6 +105,7 @@ public sealed class MaterialAnalysisServiceTests
 
     [Theory]
     [InlineData("0")]
+    [InlineData("4")]
     [InlineData("12")]
     [InlineData("unknown")]
     public async Task Analyze_ClearsInvalidGrade(string grade)
