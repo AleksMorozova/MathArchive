@@ -80,7 +80,8 @@ builder.Services.AddCors(options =>
         }
 
         policy.WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-            .WithHeaders(HeaderNames.Authorization, HeaderNames.ContentType);
+            .WithHeaders(HeaderNames.Authorization, HeaderNames.ContentType)
+            .WithExposedHeaders("Content-Disposition");
     });
 });
 
