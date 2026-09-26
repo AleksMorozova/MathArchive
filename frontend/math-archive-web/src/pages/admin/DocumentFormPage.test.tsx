@@ -18,17 +18,29 @@ describe('DocumentFormPage', () => {
     vi.clearAllMocks();
   });
 
-  it('shows Ukrainian validation messages for required fields', async () => {
+  it('transitions from the file picker to the ready state and preserves form validation', async () => {
     const user = userEvent.setup();
     const queryClient = createQueryClient();
 
     renderForm(queryClient);
 
-    await user.click(screen.getByRole('button', { name: 'Зберегти' }));
+    expect(screen.getByRole('button', { name: 'Оберіть файл' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Завантажити' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Файл не вибрано')).not.toBeInTheDocument();
+
+    await user.upload(
+      document.querySelector('input[type="file"]') as HTMLInputElement,
+      new File(['content'], 'criteria.pdf', { type: 'application/pdf' })
+    );
+
+    expect(screen.getByText('criteria.pdf')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Завантажити' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Оберіть файл' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Завантажити' }));
 
     expect(await screen.findByText('Введіть назву матеріалу')).toBeInTheDocument();
     expect(screen.getByText('Вкажіть тему')).toBeInTheDocument();
-    expect(screen.getAllByText('Оберіть файл').length).toBeGreaterThan(0);
     expect(screen.getByText('Оберіть клас')).toBeInTheDocument();
   });
 
@@ -47,7 +59,7 @@ describe('DocumentFormPage', () => {
 
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     await user.upload(fileInput, new File(['content'], 'criteria.pdf', { type: 'application/pdf' }));
-    await user.click(screen.getByRole('button', { name: 'Зберегти' }));
+    await user.click(screen.getByRole('button', { name: 'Завантажити' }));
 
     await waitFor(() => expect(createDocument).toHaveBeenCalled());
     const formData = vi.mocked(createDocument).mock.calls[0][0] as FormData;
@@ -74,10 +86,45 @@ describe('DocumentFormPage', () => {
       new File(['content'], 'criteria.pdf', { type: 'application/pdf' })
     );
 
-    await user.dblClick(screen.getByRole('button', { name: 'Зберегти' }));
+    await user.dblClick(screen.getByRole('button', { name: 'Завантажити' }));
 
     await waitFor(() => expect(createDocument).toHaveBeenCalledTimes(1));
-    expect(screen.getByRole('button', { name: 'Зберігаємо…' })).toBeDisabled();
+    expect(screen.getByText('Завантаження...')).toBeInTheDocument();
+  });
+
+  it('shows real upload progress and transitions to the success state', async () => {
+    const user = userEvent.setup();
+    const queryClient = createQueryClient();
+    let resolveUpload!: (value: ReturnType<typeof createLoadedDocument>) => void;
+    vi.mocked(createDocument).mockImplementationOnce((_data, onUploadProgress) => {
+      onUploadProgress?.(42);
+      return new Promise((resolve) => { resolveUpload = resolve; });
+    });
+
+    renderForm(queryClient);
+    await fillValidCreateForm(user);
+    await user.click(screen.getByRole('button', { name: 'Завантажити' }));
+
+    expect(await screen.findByText('Завантаження...')).toBeInTheDocument();
+    expect(document.querySelector('.animated-upload-progress')).toHaveStyle({ '--upload-progress': '42%' });
+    expect(screen.queryByRole('button', { name: 'Оберіть файл' })).not.toBeInTheDocument();
+
+    await act(async () => resolveUpload(createLoadedDocument()));
+    expect(await screen.findByText('Завантажено')).toBeInTheDocument();
+  });
+
+  it('keeps the selected file available for retry after an upload error', async () => {
+    const user = userEvent.setup();
+    const queryClient = createQueryClient();
+    vi.mocked(createDocument).mockRejectedValueOnce(new Error('Upload failed'));
+
+    renderForm(queryClient);
+    await fillValidCreateForm(user);
+    await user.click(screen.getByRole('button', { name: 'Завантажити' }));
+
+    expect(await screen.findByText('Не вдалося зберегти матеріал.')).toBeInTheDocument();
+    expect(screen.getByText('criteria.pdf')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Повторити' })).toBeInTheDocument();
   });
 
   it('shows a loading state instead of the edit form while the document is loading', () => {
@@ -185,6 +232,19 @@ function createQueryClient() {
       mutations: { retry: false }
     }
   });
+}
+
+async function fillValidCreateForm(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByLabelText('Назва'), 'Критерії оцінювання');
+  await user.type(screen.getByLabelText('Тема'), 'Оцінювання');
+  await user.click(screen.getByLabelText('Призначення'));
+  await user.click(screen.getByRole('option', { name: 'Загальний матеріал' }));
+  await user.click(screen.getByLabelText('Тип матеріалу'));
+  await user.click(screen.getByRole('option', { name: 'Методичний матеріал' }));
+  await user.upload(
+    document.querySelector('input[type="file"]') as HTMLInputElement,
+    new File(['content'], 'criteria.pdf', { type: 'application/pdf' })
+  );
 }
 
 function createLoadedDocument() {
