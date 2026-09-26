@@ -195,6 +195,33 @@ public sealed class DocumentServiceTests
     }
 
     [Fact]
+    public async Task PrepareDownloadAsync_uses_sanitized_title_timestamp_and_original_extension()
+    {
+        var document = CreateDocument("stored.pdf", "  Похідна: правила / приклади..  ", "random-upload.PDF");
+        var service = CreateService(new FakeDocumentRepository(document), new FakeFileStorage());
+
+        var download = await service.PrepareDownloadAsync(document.Id, CancellationToken.None);
+
+        Assert.NotNull(download);
+        Assert.Equal("Похідна-правила-приклади_2026-07-11_12-00-00.PDF", download.FileName);
+        Assert.DoesNotContain("random-upload", download.FileName);
+    }
+
+    [Fact]
+    public async Task SearchAsync_when_end_date_precedes_start_date_fails_validation_before_query()
+    {
+        var repository = new FakeDocumentRepository();
+        var service = CreateService(repository, new FakeFileStorage());
+        var query = new DocumentQueryParameters(null, null, false, null, null,
+            new DateOnly(2026, 9, 10), new DateOnly(2026, 9, 9), DocumentSortOrder.CreatedAtDescending);
+
+        await Assert.ThrowsAsync<FluentValidation.ValidationException>(() =>
+            service.SearchAsync(query, CancellationToken.None));
+
+        Assert.Equal(0, repository.SearchCount);
+    }
+
+    [Fact]
     public async Task PreparePreviewAsync_opens_file_without_incrementing_download_count()
     {
         var document = CreateDocument(storedFileName: "stored.pdf");
@@ -239,15 +266,15 @@ public sealed class DocumentServiceTests
         return new UploadedFile(new MemoryStream([1, 2, 3]), fileName, "application/pdf", 3);
     }
 
-    private static Document CreateDocument(string storedFileName)
+    private static Document CreateDocument(string storedFileName, string title = "Формули", string originalFileName = "formulas.pdf")
     {
         return new Document(
-            "Формули",
+            title,
             null,
             7,
             "Алгебра",
             DocumentType.Formula,
-            "formulas.pdf",
+            originalFileName,
             storedFileName,
             "application/pdf",
             3,
@@ -309,9 +336,11 @@ public sealed class DocumentServiceTests
         public bool FailSaveChanges { get; init; }
         public List<Document> Documents { get; } = [.. documents];
         public int SaveCount { get; private set; }
+        public int SearchCount { get; private set; }
 
         public Task<PagedResult<Document>> SearchAsync(DocumentQueryParameters parameters, CancellationToken cancellationToken)
         {
+            SearchCount++;
             return Task.FromResult(new PagedResult<Document>(Documents, 1, 12, Documents.Count, Documents.Count > 0 ? 1 : 0));
         }
 

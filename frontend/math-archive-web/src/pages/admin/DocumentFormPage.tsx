@@ -11,6 +11,7 @@ import { createDocument, updateDocument } from '../../api/documentsApi';
 import { queryKeys } from '../../api/queryKeys';
 import { ErrorState, LoadingState } from '../../components/StateView';
 import { documentTypeOptions } from '../../constants/documentTypes';
+import { schoolGrades } from '../../constants/grades';
 import { useDocument } from '../../hooks/useDocuments';
 import { formatFileSize } from '../../utils/format';
 
@@ -22,7 +23,7 @@ const schema = z.object({
   title: z.string().min(1, 'Введіть назву матеріалу').max(200, 'Назва не може містити більше ніж 200 символів'),
   description: z.string().max(2000, 'Опис не може містити більше ніж 2000 символів').optional(),
   materialScope: z.enum(materialScopes),
-  grade: z.number().min(1, 'Оберіть клас').max(11, 'Оберіть клас').nullable(),
+  grade: z.number().min(5, 'Оберіть клас від 5 до 11').max(11, 'Оберіть клас від 5 до 11').nullable(),
   topic: z.string().min(1, 'Вкажіть тему').max(150, 'Тема не може містити більше ніж 150 символів'),
   documentType: z.string().min(1, 'Оберіть тип матеріалу'),
   file: z.instanceof(File).optional()
@@ -187,7 +188,7 @@ export function DocumentFormPage({ mode }: DocumentFormPageProps) {
             render={({ field }) => (
               <TextField select label="Клас" value={field.value ?? ''} onChange={(event) => field.onChange(event.target.value === '' ? null : Number(event.target.value))} error={!!form.formState.errors.grade} helperText={form.formState.errors.grade?.message}>
                 <MenuItem value="">Оберіть клас</MenuItem>
-                {Array.from({ length: 11 }, (_, index) => index + 1).map((grade) => <MenuItem key={grade} value={grade}>{grade} клас</MenuItem>)}
+                {schoolGrades.map((grade) => <MenuItem key={grade} value={grade}>{grade} клас</MenuItem>)}
               </TextField>
             )}
           />

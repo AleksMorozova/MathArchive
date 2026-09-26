@@ -48,8 +48,8 @@ public sealed class DocumentRepository(MathArchiveDbContext dbContext) : IDocume
 
         if (parameters.CreatedTo.HasValue)
         {
-            var createdTo = new DateTimeOffset(parameters.CreatedTo.Value.ToDateTime(TimeOnly.MaxValue), TimeSpan.Zero);
-            query = query.Where(x => x.CreatedAt <= createdTo);
+            var createdToExclusive = new DateTimeOffset(parameters.CreatedTo.Value.AddDays(1).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+            query = query.Where(x => x.CreatedAt < createdToExclusive);
         }
 
         var totalCount = await query.CountAsync(cancellationToken);

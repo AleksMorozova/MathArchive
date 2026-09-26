@@ -16,6 +16,14 @@ public sealed class DocumentService(
 {
     public async Task<PagedResult<DocumentDto>> SearchAsync(DocumentQueryParameters parameters, CancellationToken cancellationToken)
     {
+        if (parameters.CreatedFrom.HasValue && parameters.CreatedTo.HasValue && parameters.CreatedFrom > parameters.CreatedTo)
+        {
+            throw new ValidationException([
+                new FluentValidation.Results.ValidationFailure(nameof(parameters.CreatedTo),
+                    "The end date must be on or after the start date.")
+            ]);
+        }
+
         var result = await documentRepository.SearchAsync(Normalize(parameters), cancellationToken);
 
         return new PagedResult<DocumentDto>(
@@ -189,7 +197,10 @@ public sealed class DocumentService(
                 await documentRepository.SaveChangesAsync(cancellationToken);
             }
 
-            return new DocumentDownload(stream, document.OriginalFileName, document.ContentType);
+            var fileName = incrementDownloadCount
+                ? DownloadFileName.Create(document.Title, document.OriginalFileName, clock.UtcNow)
+                : document.OriginalFileName;
+            return new DocumentDownload(stream, fileName, document.ContentType);
         }
         catch
         {

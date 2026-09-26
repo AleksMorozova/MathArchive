@@ -9,6 +9,7 @@ import { analyzeMaterial } from '../../api/aiApi';
 import { getApiErrorMessage } from '../../api/apiErrors';
 import { createDocument } from '../../api/documentsApi';
 import { documentTypeOptions } from '../../constants/documentTypes';
+import { schoolGrades } from '../../constants/grades';
 import type { DocumentType } from '../../types/documents';
 import { formatFileSize } from '../../utils/format';
 
@@ -105,7 +106,7 @@ export function AiMaterialFormPage() {
             error={analyzed && !values.title.trim()} helperText={analyzed && !values.title.trim() ? 'AI не визначив назву. Введіть назву матеріалу.' : undefined} />
           <TextField label="Опис" multiline minRows={4} value={values.description} onChange={(e) => set('description', e.target.value)} inputProps={{ maxLength: 2000 }} />
           <TextField select label="Клас" value={values.grade ?? ''} onChange={(e) => set('grade', e.target.value === '' ? null : Number(e.target.value))} required>
-            <MenuItem value="">Оберіть клас</MenuItem>{Array.from({ length: 11 }, (_, i) => i + 1).map((grade) => <MenuItem key={grade} value={grade}>{grade} клас</MenuItem>)}
+            <MenuItem value="">Оберіть клас</MenuItem>{schoolGrades.map((grade) => <MenuItem key={grade} value={grade}>{grade} клас</MenuItem>)}
           </TextField>
           <TextField label="Тема" value={values.topic} onChange={(e) => set('topic', e.target.value)} required inputProps={{ maxLength: 150 }} />
           <TextField select label="Тип матеріалу" value={values.documentType} onChange={(e) => set('documentType', e.target.value)} required

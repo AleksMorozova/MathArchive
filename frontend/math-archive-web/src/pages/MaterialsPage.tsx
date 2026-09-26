@@ -10,7 +10,7 @@ import type { DocumentFilters } from '../types/documents';
 import { Seo } from '../seo/Seo';
 import { getMaterialsSeo } from '../seo/seoConfig';
 
-const materialClassOptions = [5, 6, 7, 8, 9, 10, 11];
+import { schoolGrades } from '../constants/grades';
 
 export function MaterialsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -123,7 +123,7 @@ export function MaterialsPage() {
             showGrade
             showTopic
             showDocumentType={false}
-            gradeOptions={materialClassOptions}
+            gradeOptions={[...schoolGrades]}
             topicMode="text"
             compact
           />

@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { deleteDocument, getDocuments } from '../../api/documentsApi';
 import { queryKeys } from '../../api/queryKeys';
 import { AdminDocumentsPage } from './AdminDocumentsPage';
+import { presetDates } from '../../utils/analyticsDates';
 
 vi.mock('../../api/documentsApi', () => ({
   deleteDocument: vi.fn(async () => undefined),
@@ -107,12 +108,47 @@ describe('AdminDocumentsPage', () => {
       expect.any(AbortSignal)
     );
 
-    await user.type(screen.getByLabelText('Дата від'), '2026-08-01');
+    await user.type(screen.getByLabelText('Від'), '2026-08-01');
 
     await waitFor(() => expect(getDocuments).toHaveBeenLastCalledWith(
       expect.objectContaining({ createdFrom: '2026-08-01', sort: 'CreatedAtDescending', page: 1 }),
       expect.any(AbortSignal)
     ));
+  });
+
+  it('applies quick date ranges to the backend query and clears only date filters', async () => {
+    const user = userEvent.setup();
+    renderPage(createQueryClient());
+    await screen.findByText('Пам’ятка з геометрії');
+
+    await user.click(screen.getByRole('button', { name: 'Останні 7 днів' }));
+    const expected = presetDates(7);
+    await waitFor(() => expect(getDocuments).toHaveBeenLastCalledWith(
+      expect.objectContaining({ createdFrom: expected.from, createdTo: expected.to, page: 1 }),
+      expect.any(AbortSignal)
+    ));
+
+    await user.click(screen.getByRole('button', { name: 'Очистити дати' }));
+    await waitFor(() => expect(getDocuments).toHaveBeenLastCalledWith(
+      expect.objectContaining({ createdFrom: '', createdTo: '', page: 1 }),
+      expect.any(AbortSignal)
+    ));
+  });
+
+  it('shows a clear validation error and does not query an invalid custom range', async () => {
+    const user = userEvent.setup();
+    renderPage(createQueryClient());
+    await screen.findByText('Пам’ятка з геометрії');
+    const callsBefore = vi.mocked(getDocuments).mock.calls.length;
+
+    await user.type(screen.getByLabelText('Від'), '2026-09-10');
+    await user.type(screen.getByLabelText('До'), '2026-09-09');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Дата «До» не може бути раніше за дату «Від».');
+    expect(vi.mocked(getDocuments).mock.calls.length).toBeGreaterThanOrEqual(callsBefore);
+    expect(vi.mocked(getDocuments).mock.calls.at(-1)?.[0]).not.toEqual(expect.objectContaining({
+      createdFrom: '2026-09-10', createdTo: '2026-09-09'
+    }));
   });
 
   it('offers both manual and AI-assisted creation', async () => {

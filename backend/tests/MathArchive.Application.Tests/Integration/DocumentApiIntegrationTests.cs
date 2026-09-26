@@ -116,6 +116,18 @@ public sealed class DocumentApiIntegrationTests(ApiIntegrationFixture fixture) :
     }
 
     [Fact]
+    public async Task GetDocuments_WhenDateRangeIsInvalid_ReturnsValidationProblemDetails()
+    {
+        using var client = fixture.CreateClient();
+
+        var response = await client.GetAsync("/api/documents?createdFrom=2026-09-10&createdTo=2026-09-09");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await ReadJsonAsync<ValidationProblemDetails>(response);
+        Assert.Contains("CreatedTo", problem.Errors.Keys);
+    }
+
+    [Fact]
     public async Task GetDocuments_WhenSearchMatchesTopicPartiallyAndCaseInsensitively_ReturnsMatches()
     {
         using var client = await fixture.CreateAuthorizedClientAsync();
@@ -327,7 +339,9 @@ public sealed class DocumentApiIntegrationTests(ApiIntegrationFixture fixture) :
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("application/pdf", response.Content.Headers.ContentType?.MediaType);
-        Assert.Contains("material.pdf", response.Content.Headers.ContentDisposition?.FileNameStar ?? response.Content.Headers.ContentDisposition?.FileName ?? string.Empty);
+        var downloadName = response.Content.Headers.ContentDisposition?.FileNameStar ?? response.Content.Headers.ContentDisposition?.FileName ?? string.Empty;
+        Assert.StartsWith("Downloadable_", downloadName);
+        Assert.EndsWith(".pdf", downloadName);
         Assert.Equal(bytes, await response.Content.ReadAsByteArrayAsync());
 
         var persisted = await fixture.FindDocumentAsync(document.Id);
