@@ -13,13 +13,12 @@ public sealed class AiUsageRepository(MathArchiveDbContext dbContext) : IAiUsage
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<AiUsageSummaryData> GetSummaryAsync(DateTimeOffset todayStart, DateTimeOffset monthStart, CancellationToken cancellationToken)
+    public async Task<AiUsageSummaryData> GetSummaryAsync(AiUsageQuery query, CancellationToken cancellationToken)
     {
-        var records = dbContext.AiUsageRecords.AsNoTracking().Where(x => x.StartedAt >= monthStart);
+        var records = ApplyFilters(dbContext.AiUsageRecords.AsNoTracking(), query);
         var aggregate = await records.GroupBy(_ => 1).Select(group => new
         {
-            RequestsToday = group.Count(x => x.StartedAt >= todayStart),
-            RequestsThisMonth = group.Count(),
+            Requests = group.Count(),
             Succeeded = group.Count(x => x.Status == AiRequestStatus.Succeeded),
             Failed = group.Count(x => x.Status != AiRequestStatus.Succeeded),
             InputTokens = group.Sum(x => (long?)x.InputTokens) ?? 0,
@@ -31,8 +30,8 @@ public sealed class AiUsageRepository(MathArchiveDbContext dbContext) : IAiUsage
         }).SingleOrDefaultAsync(cancellationToken);
 
         return aggregate is null
-            ? new AiUsageSummaryData(0, 0, 0, 0, 0, 0, 0, null, null)
-            : new AiUsageSummaryData(aggregate.RequestsToday, aggregate.RequestsThisMonth, aggregate.Succeeded,
+            ? new AiUsageSummaryData(0, 0, 0, 0, 0, 0, null, null)
+            : new AiUsageSummaryData(aggregate.Requests, aggregate.Succeeded,
                 aggregate.Failed, aggregate.InputTokens, aggregate.OutputTokens, aggregate.TotalTokens,
                 aggregate.PricedCount == 0 ? null : aggregate.Cost, aggregate.AverageDuration);
     }
@@ -60,12 +59,7 @@ public sealed class AiUsageRepository(MathArchiveDbContext dbContext) : IAiUsage
 
     public async Task<PagedResult<AiUsageItem>> GetHistoryAsync(AiUsageQuery query, CancellationToken cancellationToken)
     {
-        var records = dbContext.AiUsageRecords.AsNoTracking().AsQueryable();
-        if (query.From.HasValue) records = records.Where(x => x.StartedAt >= query.From.Value);
-        if (query.To.HasValue) records = records.Where(x => x.StartedAt < query.To.Value);
-        if (query.Status.HasValue) records = records.Where(x => x.Status == query.Status.Value);
-        if (!string.IsNullOrWhiteSpace(query.Model)) records = records.Where(x => x.Model == query.Model);
-        if (!string.IsNullOrWhiteSpace(query.Operation)) records = records.Where(x => x.Operation == query.Operation);
+        var records = ApplyFilters(dbContext.AiUsageRecords.AsNoTracking(), query);
         var totalCount = await records.CountAsync(cancellationToken);
         var items = await records.OrderByDescending(x => x.StartedAt).ThenByDescending(x => x.Id)
             .Skip((query.Page - 1) * query.PageSize).Take(query.PageSize)
@@ -74,5 +68,23 @@ public sealed class AiUsageRepository(MathArchiveDbContext dbContext) : IAiUsage
             .ToListAsync(cancellationToken);
         return new PagedResult<AiUsageItem>(items, query.Page, query.PageSize, totalCount,
             (int)Math.Ceiling(totalCount / (double)query.PageSize));
+    }
+
+    private static IQueryable<AiUsageRecord> ApplyFilters(IQueryable<AiUsageRecord> records, AiUsageQuery query)
+    {
+        if (query.From.HasValue) records = records.Where(x => x.StartedAt >= query.From.Value);
+        if (query.To.HasValue) records = records.Where(x => x.StartedAt < query.To.Value);
+        if (query.Status.HasValue) records = records.Where(x => x.Status == query.Status.Value);
+        if (!string.IsNullOrWhiteSpace(query.Model))
+        {
+            var model = query.Model.ToLower();
+            records = records.Where(x => x.Model.Trim().ToLower() == model);
+        }
+        if (!string.IsNullOrWhiteSpace(query.Operation))
+        {
+            var operation = query.Operation.ToLower();
+            records = records.Where(x => x.Operation.Trim().ToLower() == operation);
+        }
+        return records;
     }
 }

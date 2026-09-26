@@ -97,9 +97,10 @@ public sealed class MaterialAnalysisService(
         var configured = options.Value;
         if (!configured.BlockRequestsWhenLimitReached || configured.MonthlyWarningLimitUsd <= 0) return;
         var now = clock.UtcNow;
-        var todayStart = new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, TimeSpan.Zero);
-        var summary = await usageRepository.GetSummaryAsync(todayStart, new DateTimeOffset(now.Year, now.Month, 1, 0, 0, 0, TimeSpan.Zero), cancellationToken);
-        if (summary.EstimatedCostThisMonthUsd >= configured.MonthlyWarningLimitUsd) throw new AiLimitExceededException();
+        var summary = await usageRepository.GetSummaryAsync(
+            new AiUsageQuery(new DateTimeOffset(now.Year, now.Month, 1, 0, 0, 0, TimeSpan.Zero),
+                null, null, null, null), cancellationToken);
+        if (summary.EstimatedCostUsd >= configured.MonthlyWarningLimitUsd) throw new AiLimitExceededException();
     }
 
     private static MaterialAnalysisResult Normalize(OpenAiAnalysisResult result, IReadOnlyList<string> types)

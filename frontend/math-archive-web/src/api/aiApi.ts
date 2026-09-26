@@ -10,8 +10,8 @@ export async function analyzeMaterial(file: File, signal?: AbortSignal) {
   return response.data;
 }
 
-export async function getAiUsageSummary(signal?: AbortSignal) {
-  const response = await httpClient.get<AiUsageSummary>('/api/admin/ai-usage/summary', { signal });
+export async function getAiUsageSummary(filters: Omit<AiUsageFilters, 'page' | 'pageSize'>, signal?: AbortSignal) {
+  const response = await httpClient.get<AiUsageSummary>('/api/admin/ai-usage/summary', { signal, params: filters });
   return response.data;
 }
 

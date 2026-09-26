@@ -8,6 +8,7 @@ using MathArchive.Application;
 using MathArchive.Application.Ai;
 using MathArchive.Infrastructure;
 using MathArchive.Infrastructure.Auth;
+using MathArchive.Infrastructure.Ai;
 using MathArchive.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -260,6 +261,7 @@ static void ValidateAdminConfiguration(IConfiguration configuration, bool isDeve
 static void ValidateOpenAiPricing(IConfiguration configuration)
 {
     var options = configuration.GetSection("OpenAI").Get<OpenAiOptions>() ?? new OpenAiOptions();
+    OpenAiPricingConfiguration.ApplyRootPricing(configuration, options);
     foreach (var (model, pricing) in options.Pricing)
     {
         if (pricing.InputPerMillionTokensUsd < 0 || pricing.OutputPerMillionTokensUsd < 0)

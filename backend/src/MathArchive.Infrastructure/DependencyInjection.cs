@@ -20,6 +20,8 @@ public static class DependencyInjection
         services.Configure<AdminOptions>(configuration.GetSection("Admin"));
         services.Configure<JwtOptions>(configuration.GetSection("Jwt"));
         services.Configure<OpenAiOptions>(configuration.GetSection("OpenAI"));
+        services.PostConfigure<OpenAiOptions>(options =>
+            OpenAiPricingConfiguration.ApplyRootPricing(configuration, options));
 
         services.AddDbContext<MathArchiveDbContext>(options =>
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
@@ -27,6 +29,7 @@ public static class DependencyInjection
         services.AddScoped<IDocumentRepository, DocumentRepository>();
         services.AddScoped<MathArchive.Application.Analytics.IAnalyticsRepository, AnalyticsRepository>();
         services.AddScoped<IAiUsageRepository, AiUsageRepository>();
+        services.AddHostedService<AiUsageCostBackfillService>();
         services.AddHttpClient<IOpenAiMaterialClient, OpenAiMaterialClient>(client =>
         {
             client.BaseAddress = new Uri("https://api.openai.com/v1/");

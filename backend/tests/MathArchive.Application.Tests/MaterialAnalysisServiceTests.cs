@@ -248,7 +248,7 @@ public sealed class MaterialAnalysisServiceTests
         public bool Fail { get; init; }
         public List<AiUsageRecord> Records { get; } = [];
         public Task AddAsync(AiUsageRecord record, CancellationToken cancellationToken) { if (Fail) throw new InvalidOperationException(); Records.Add(record); return Task.CompletedTask; }
-        public Task<AiUsageSummaryData> GetSummaryAsync(DateTimeOffset todayStart, DateTimeOffset monthStart, CancellationToken cancellationToken) => Task.FromResult(new AiUsageSummaryData(0, 0, 0, 0, 0, 0, 0, null, null));
+        public Task<AiUsageSummaryData> GetSummaryAsync(AiUsageQuery query, CancellationToken cancellationToken) => Task.FromResult(new AiUsageSummaryData(0, 0, 0, 0, 0, 0, null, null));
         public Task<PagedResult<AiUsageItem>> GetHistoryAsync(AiUsageQuery query, CancellationToken cancellationToken) => throw new NotSupportedException();
         public Task<AiCostRecalculationResult> RecalculateMissingCostsAsync(IOpenAiUsageCostCalculator calculator, CancellationToken cancellationToken) => throw new NotSupportedException();
     }

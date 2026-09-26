@@ -12,7 +12,10 @@ namespace MathArchive.Api.Controllers;
 public sealed class AdminAiUsageController(AiUsageService service) : ControllerBase
 {
     [HttpGet("summary")]
-    public Task<AiUsageSummary> Summary(CancellationToken cancellationToken) => service.GetSummaryAsync(cancellationToken);
+    public Task<AiUsageSummary> Summary([FromQuery] DateTimeOffset? from, [FromQuery] DateTimeOffset? to,
+        [FromQuery] AiRequestStatus? status, [FromQuery] string? model, [FromQuery] string? operation,
+        CancellationToken cancellationToken) =>
+        service.GetSummaryAsync(new AiUsageQuery(from, to, status, model, operation), cancellationToken);
 
     [HttpPost("recalculate-costs")]
     public Task<AiCostRecalculationResult> RecalculateCosts(CancellationToken cancellationToken) =>

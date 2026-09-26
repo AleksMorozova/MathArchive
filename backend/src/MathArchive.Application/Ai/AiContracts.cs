@@ -17,8 +17,8 @@ public interface IOpenAiMaterialClient
         CancellationToken cancellationToken);
 }
 
-public sealed record AiUsageSummary(int RequestsToday, int RequestsThisMonth, int Succeeded, int Failed,
-    long InputTokens, long OutputTokens, long TotalTokens, decimal? EstimatedCostThisMonthUsd,
+public sealed record AiUsageSummary(int RequestsForPeriod, int Succeeded, int Failed,
+    long InputTokens, long OutputTokens, long TotalTokens, decimal? EstimatedCostUsd,
     decimal? AverageDurationMilliseconds, decimal? MonthlyWarningLimitUsd, int LimitUsagePercent,
     bool LimitReached, bool IsBlocked);
 public sealed record AiUsageItem(Guid Id, DateTimeOffset StartedAt, string Operation, string Model,
@@ -30,15 +30,15 @@ public sealed record AiUsageQuery(DateTimeOffset? From, DateTimeOffset? To, AiRe
 public interface IAiUsageRepository
 {
     Task AddAsync(AiUsageRecord record, CancellationToken cancellationToken);
-    Task<AiUsageSummaryData> GetSummaryAsync(DateTimeOffset todayStart, DateTimeOffset monthStart, CancellationToken cancellationToken);
+    Task<AiUsageSummaryData> GetSummaryAsync(AiUsageQuery query, CancellationToken cancellationToken);
     Task<PagedResult<AiUsageItem>> GetHistoryAsync(AiUsageQuery query, CancellationToken cancellationToken);
     Task<AiCostRecalculationResult> RecalculateMissingCostsAsync(IOpenAiUsageCostCalculator calculator, CancellationToken cancellationToken);
 }
 
 public sealed record AiCostRecalculationResult(int Updated, int Skipped);
 
-public sealed record AiUsageSummaryData(int RequestsToday, int RequestsThisMonth, int Succeeded, int Failed,
-    long InputTokens, long OutputTokens, long TotalTokens, decimal? EstimatedCostThisMonthUsd,
+public sealed record AiUsageSummaryData(int Requests, int Succeeded, int Failed,
+    long InputTokens, long OutputTokens, long TotalTokens, decimal? EstimatedCostUsd,
     decimal? AverageDurationMilliseconds);
 
 public interface IOpenAiUsageCostCalculator
