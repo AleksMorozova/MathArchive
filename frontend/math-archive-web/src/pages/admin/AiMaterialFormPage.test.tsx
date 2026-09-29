@@ -35,6 +35,32 @@ describe('AiMaterialFormPage', () => {
     expect(createDocument).not.toHaveBeenCalled();
   });
 
+  it('starts with generated image and analyzed metadata and publishes that same file after review', async () => {
+    const user = userEvent.setup();
+    const generatedFile = new File([new Uint8Array([1, 2, 3])], 'matharchive-2026-09-28-1630.png', { type: 'image/png' });
+    renderPage({
+      file: generatedFile,
+      analysis: {
+        title: 'Одночлени', grade: 7, topic: 'Одночлени', documentType: 'Memo',
+        description: 'Правила та приклади дій з одночленами.',
+        confidence: { title: .9, grade: .9, topic: .9, type: .9 }, requiresReview: false
+      },
+      fromImageTransformation: true
+    });
+
+    expect(screen.getByLabelText(/Назва/)).toHaveValue('Одночлени');
+    expect(screen.getByLabelText(/Тема/)).toHaveValue('Одночлени');
+    expect(screen.getByDisplayValue('Правила та приклади дій з одночленами.')).toBeInTheDocument();
+    expect(analyzeMaterial).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Підтвердити та опублікувати' }));
+    await waitFor(() => expect(createDocument).toHaveBeenCalledTimes(1));
+    const body = vi.mocked(createDocument).mock.calls[0][0];
+    expect(body.get('file')).toBe(generatedFile);
+    expect(body.get('title')).toBe('Одночлени');
+    expect(body.get('grade')).toBe('7');
+    expect(body.get('topic')).toBe('Одночлени');
+  });
+
   it('keeps the file after an analysis failure and permits retry', async () => {
     const user = userEvent.setup();
     vi.mocked(analyzeMaterial).mockRejectedValueOnce(new Error('offline'));
@@ -118,7 +144,7 @@ async function analyze(user: ReturnType<typeof userEvent.setup>) {
   await screen.findByLabelText(/Назва/);
 }
 
-function renderPage() {
+function renderPage(state?: unknown) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-  return render(<QueryClientProvider client={client}><MemoryRouter><AiMaterialFormPage /></MemoryRouter></QueryClientProvider>);
+  return render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[{ pathname: '/admin/documents/ai', state }]}><AiMaterialFormPage /></MemoryRouter></QueryClientProvider>);
 }

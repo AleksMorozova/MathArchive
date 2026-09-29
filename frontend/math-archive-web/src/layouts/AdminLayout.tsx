@@ -6,6 +6,7 @@ import StorageIcon from '@mui/icons-material/Storage';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import DataUsageIcon from '@mui/icons-material/DataUsage';
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import { Box, Button, Drawer, IconButton, Stack, Typography } from '@mui/material';
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
@@ -33,6 +34,9 @@ export function AdminLayout() {
       </Button>
       <Button component={NavLink} to="/admin/documents/ai" end startIcon={<AutoAwesomeIcon />} onClick={() => setOpen(false)}>
         Додати з AI
+      </Button>
+      <Button component={NavLink} to="/admin/image-transform" end startIcon={<AutoFixHighIcon />} onClick={() => setOpen(false)}>
+        Переробити зображення
       </Button>
       <Button component={NavLink} to="/admin/storage" end startIcon={<StorageIcon />} onClick={() => setOpen(false)}>
         Сховище

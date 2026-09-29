@@ -17,6 +17,7 @@ public static class DependencyInjection
         services.AddScoped<IValidator<Analytics.RecordAnalyticsEvent>, Analytics.RecordAnalyticsEventValidator>();
         services.AddScoped<StorageAuditService>();
         services.AddScoped<IMaterialAnalysisService, MaterialAnalysisService>();
+        services.AddScoped<IImagePosterService, ImagePosterService>();
         services.AddScoped<AiUsageService>();
         services.AddSingleton<IOpenAiUsageCostCalculator, OpenAiUsageCostCalculator>();
         services.AddSingleton<IClock, SystemClock>();

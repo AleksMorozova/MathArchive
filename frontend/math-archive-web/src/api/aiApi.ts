@@ -1,4 +1,4 @@
-import type { AiUsageFilters, AiUsageHistory, AiUsageSummary, MaterialAnalysisResult } from '../types/ai';
+import type { AiUsageFilters, AiUsageHistory, AiUsageSummary, GeneratedPosterResult, MaterialAnalysisResult } from '../types/ai';
 import { httpClient } from './httpClient';
 
 export async function analyzeMaterial(file: File, signal?: AbortSignal) {
@@ -8,6 +8,23 @@ export async function analyzeMaterial(file: File, signal?: AbortSignal) {
     signal, headers: { 'Content-Type': 'multipart/form-data' }
   });
   return response.data;
+}
+
+export async function transformImagePoster(file: File, signal?: AbortSignal): Promise<GeneratedPosterResult> {
+  const data = new FormData();
+  data.append('file', file);
+  const response = await httpClient.post<Blob>('/api/admin/image-poster/transform', data, {
+    signal,
+    headers: { 'Content-Type': 'multipart/form-data' },
+    responseType: 'blob'
+  });
+  const disposition = response.headers['content-disposition'] as string | undefined;
+  const encodedName = disposition?.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+  const quotedName = disposition?.match(/filename="?([^";]+)"?/i)?.[1];
+  return {
+    image: response.data,
+    fileName: encodedName ? decodeURIComponent(encodedName) : quotedName ?? 'matharchive-poster.png'
+  };
 }
 
 export async function getAiUsageSummary(filters: Omit<AiUsageFilters, 'page' | 'pageSize'>, signal?: AbortSignal) {
