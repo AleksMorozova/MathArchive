@@ -33,6 +33,20 @@ public sealed class AiMaterialAnalysisSecurityIntegrationTests
     }
 
     [Fact]
+    public async Task ImagePoster_RequiresAuthenticatedAdministrator()
+    {
+        using var environment = RequiredEnvironment.Apply();
+        await using var factory = CreateFactory("Production", imagePosterService: new StubImagePosterService());
+        using var anonymous = factory.CreateClient();
+        using var forbidden = CreateAuthenticatedClient(factory, includeAdminRole: false);
+
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await anonymous.PostAsync("/api/admin/image-poster/transform", Content())).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await forbidden.PostAsync("/api/admin/image-poster/transform", Content())).StatusCode);
+    }
+
+    [Fact]
     public async Task Analyze_AllowsTwentyRequestsAndRejectsTwentyFirst()
     {
         using var environment = RequiredEnvironment.Apply();
@@ -70,7 +84,8 @@ public sealed class AiMaterialAnalysisSecurityIntegrationTests
 
     private static WebApplicationFactory<Program> CreateFactory(
         string environment,
-        IMaterialAnalysisService? analysisService = null)
+        IMaterialAnalysisService? analysisService = null,
+        IImagePosterService? imagePosterService = null)
     {
         return new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
@@ -92,6 +107,14 @@ public sealed class AiMaterialAnalysisSecurityIntegrationTests
                 {
                     services.RemoveAll<IMaterialAnalysisService>();
                     services.AddSingleton(analysisService);
+                });
+            }
+            if (imagePosterService is not null)
+            {
+                builder.ConfigureServices(services =>
+                {
+                    services.RemoveAll<IImagePosterService>();
+                    services.AddSingleton(imagePosterService);
                 });
             }
         });
@@ -191,6 +214,16 @@ public sealed class AiMaterialAnalysisSecurityIntegrationTests
                 "Похідна", 10, "Похідна", "Theory", "Правила диференціювання.",
                 new FieldConfidence(1, 1, 1, 1), false));
         }
+    }
+
+    private sealed class StubImagePosterService : IImagePosterService
+    {
+        public Task<GeneratedPoster> TransformAsync(
+            MathArchive.Application.Files.UploadedFile image,
+            string? adminId,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(new GeneratedPoster(
+                [137, 80, 78, 71, 13, 10, 26, 10], "matharchive-test.png", "image/png"));
     }
 }
 

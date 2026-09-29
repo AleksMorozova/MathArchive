@@ -17,6 +17,7 @@ const StorageAuditPage = lazy(() => import('./pages/admin/StorageAuditPage').the
 const AnalyticsPage = lazy(() => import('./pages/admin/AnalyticsPage').then((module) => ({ default: module.AnalyticsPage })));
 const AiMaterialFormPage = lazy(() => import('./pages/admin/AiMaterialFormPage').then((module) => ({ default: module.AiMaterialFormPage })));
 const AiUsagePage = lazy(() => import('./pages/admin/AiUsagePage').then((module) => ({ default: module.AiUsagePage })));
+const ImagePosterPage = lazy(() => import('./pages/admin/ImagePosterPage').then((module) => ({ default: module.ImagePosterPage })));
 
 const router = createBrowserRouter([
   {
@@ -42,6 +43,7 @@ const router = createBrowserRouter([
       { path: 'documents', element: <AdminDocumentsPage /> },
       { path: 'documents/new', element: <DocumentFormPage mode="create" /> },
       { path: 'documents/ai', element: <AiMaterialFormPage /> },
+      { path: 'image-transform', element: <ImagePosterPage /> },
       { path: 'documents/:id/edit', element: <DocumentFormPage mode="edit" /> },
       { path: 'storage', element: <StorageAuditPage /> },
       { path: 'analytics', element: <AnalyticsPage /> },

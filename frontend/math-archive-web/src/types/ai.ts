@@ -19,3 +19,9 @@ export interface AiUsageItem {
 }
 export interface AiUsageFilters { from?: string; to?: string; status?: string; model?: string; operation?: string; page: number; pageSize: number }
 export type AiUsageHistory = PagedResult<AiUsageItem>;
+export interface GeneratedPosterResult { image: Blob; fileName: string }
+export interface AiMaterialDraftState {
+  file: File;
+  analysis: MaterialAnalysisResult;
+  fromImageTransformation?: boolean;
+}

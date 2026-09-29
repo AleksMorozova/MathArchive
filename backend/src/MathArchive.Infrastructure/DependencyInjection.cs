@@ -35,6 +35,11 @@ public static class DependencyInjection
             client.BaseAddress = new Uri("https://api.openai.com/v1/");
             client.Timeout = Timeout.InfiniteTimeSpan;
         });
+        services.AddHttpClient<IOpenAiImagePosterClient, OpenAiImagePosterClient>(client =>
+        {
+            client.BaseAddress = new Uri("https://api.openai.com/v1/");
+            client.Timeout = Timeout.InfiniteTimeSpan;
+        });
         services.AddScoped<IFileStorage, LocalFileStorage>();
         services.AddSingleton<AdminPasswordHasher>();
         services.AddScoped<JwtTokenService>();
