@@ -1,4 +1,4 @@
-# MathArchive
+# MathArchive project
 
 > A full-stack archive for educational mathematics materials.
 
