@@ -346,7 +346,11 @@ public sealed class DocumentServiceTests
         return new UploadedFile(new MemoryStream([1, 2, 3]), fileName, "application/pdf", 3);
     }
 
-    private static Document CreateDocument(string storedFileName, int? grade = 7)
+    private static Document CreateDocument(
+        string storedFileName,
+        string title = "Формули",
+        string originalFileName = "formulas.pdf",
+        int? grade = 7)
     {
         return new Document(
             title,
