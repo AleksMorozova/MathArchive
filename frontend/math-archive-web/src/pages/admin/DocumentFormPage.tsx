@@ -1,18 +1,19 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
-import { Alert, Box, Button, LinearProgress, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import AttachFileRoundedIcon from '@mui/icons-material/AttachFileRounded';
+import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
+import { Alert, Box, Button, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { z } from 'zod';
 import { fieldNameFromProblemDetails, getApiErrorMessage, hasValidationErrors, isApiError } from '../../api/apiErrors';
 import { createDocument, updateDocument } from '../../api/documentsApi';
 import { queryKeys } from '../../api/queryKeys';
 import { ErrorState, LoadingState } from '../../components/StateView';
 import { documentTypeOptions } from '../../constants/documentTypes';
+import { schoolGrades } from '../../constants/grades';
 import { useDocument } from '../../hooks/useDocuments';
-import { formatFileSize } from '../../utils/format';
 
 const allowedExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'png', 'jpg', 'jpeg'];
 const maxFileSize = 20 * 1024 * 1024;
@@ -22,7 +23,7 @@ const schema = z.object({
   title: z.string().min(1, 'Введіть назву матеріалу').max(200, 'Назва не може містити більше ніж 200 символів'),
   description: z.string().max(2000, 'Опис не може містити більше ніж 2000 символів').optional(),
   materialScope: z.enum(materialScopes),
-  grade: z.number().min(1, 'Оберіть клас').max(11, 'Оберіть клас').nullable(),
+  grade: z.number().min(5, 'Оберіть клас від 5 до 11').max(11, 'Оберіть клас від 5 до 11').nullable(),
   topic: z.string().min(1, 'Вкажіть тему').max(150, 'Тема не може містити більше ніж 150 символів'),
   documentType: z.string().min(1, 'Оберіть тип матеріалу'),
   file: z.instanceof(File).optional()
@@ -93,6 +94,7 @@ export function DocumentFormPage({ mode }: DocumentFormPageProps) {
   }, [existing, form]);
 
   const materialScope = form.watch('materialScope');
+  const selectedFile = form.watch('file');
 
   useEffect(() => {
     if (materialScope === 'general') {
@@ -150,6 +152,7 @@ export function DocumentFormPage({ mode }: DocumentFormPageProps) {
   return (
     <Box component="form" className="content-panel admin-form" onSubmit={form.handleSubmit((values) => {
       if (!mutation.isPending) {
+        setProgress(0);
         mutation.mutate(values);
       }
     })}>
@@ -187,7 +190,7 @@ export function DocumentFormPage({ mode }: DocumentFormPageProps) {
             render={({ field }) => (
               <TextField select label="Клас" value={field.value ?? ''} onChange={(event) => field.onChange(event.target.value === '' ? null : Number(event.target.value))} error={!!form.formState.errors.grade} helperText={form.formState.errors.grade?.message}>
                 <MenuItem value="">Оберіть клас</MenuItem>
-                {Array.from({ length: 11 }, (_, index) => index + 1).map((grade) => <MenuItem key={grade} value={grade}>{grade} клас</MenuItem>)}
+                {schoolGrades.map((grade) => <MenuItem key={grade} value={grade}>{grade} клас</MenuItem>)}
               </TextField>
             )}
           />
@@ -201,23 +204,65 @@ export function DocumentFormPage({ mode }: DocumentFormPageProps) {
           control={form.control}
           name="file"
           render={({ field: { onChange, value } }) => (
-            <Stack gap={1}>
-              <Button component="label" variant="outlined" startIcon={<UploadFileIcon />}>
-                {mode === 'edit' ? 'Замінити файл' : 'Оберіть файл'}
-                <input hidden type="file" onChange={(event) => onChange(event.target.files?.[0])} />
-              </Button>
-              {value && <Typography color="text.secondary">{value.name} · {formatFileSize(value.size)}</Typography>}
+            <Stack gap={1} alignItems="flex-start">
+              {!value ? (
+                <Button
+                  component="label"
+                  variant="outlined"
+                  className="animated-file-picker"
+                  startIcon={<AttachFileRoundedIcon />}
+                  disabled={mutation.isPending}
+                >
+                  Оберіть файл
+                  <input hidden type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" onChange={(event) => onChange(event.target.files?.[0])} />
+                </Button>
+              ) : (
+                <Box
+                  className={`animated-upload-control${mutation.isPending ? ' is-uploading' : ''}${message ? ' is-success' : ''}`}
+                  aria-live="polite"
+                  sx={mutation.isError ? { borderColor: 'error.main' } : undefined}
+                >
+                  {mutation.isPending ? (
+                    <>
+                      <Typography component="span" className="animated-upload-status">Завантаження...</Typography>
+                      <Box
+                        className={`animated-upload-progress${progress > 0 ? ' is-determinate' : ' is-indeterminate'}`}
+                        sx={progress > 0 ? { '--upload-progress': `${progress}%` } : undefined}
+                        aria-hidden="true"
+                      />
+                    </>
+                  ) : message ? (
+                    <Stack direction="row" alignItems="center" justifyContent="center" gap={1} className="animated-upload-success">
+                      <CheckRoundedIcon aria-hidden="true" />
+                      <Typography component="span" className="animated-upload-status">Завантажено</Typography>
+                    </Stack>
+                  ) : (
+                    <>
+                      <Button
+                        component="label"
+                        className="animated-upload-file-choice"
+                        startIcon={<AttachFileRoundedIcon />}
+                        aria-label={`Замінити файл ${value.name}`}
+                      >
+                        <span className="animated-upload-file-name" title={value.name}>{value.name}</span>
+                        <input hidden type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" onChange={(event) => onChange(event.target.files?.[0])} />
+                      </Button>
+                      <Button type="submit" variant="contained">
+                        {mutation.isError ? 'Повторити' : 'Завантажити'}
+                      </Button>
+                    </>
+                  )}
+                </Box>
+              )}
               {form.formState.errors.file?.message && <Typography color="error">{form.formState.errors.file.message}</Typography>}
             </Stack>
           )}
         />
-        {progress > 0 && progress < 100 && <LinearProgress variant="determinate" value={progress} />}
-        <Stack direction="row" gap={1}>
-          <Button type="submit" variant="contained" disabled={mutation.isPending}>
-            {mutation.isPending ? 'Зберігаємо…' : mode === 'create' ? 'Зберегти' : 'Зберегти зміни'}
+        {mode === 'edit' && !selectedFile && (
+          <Button type="submit" variant="contained" disabled={mutation.isPending} sx={{ alignSelf: 'flex-start' }}>
+            {mutation.isPending ? 'Зберігаємо…' : 'Зберегти зміни'}
           </Button>
-          <Button component={Link} to="/admin/documents">Скасувати</Button>
-        </Stack>
+        )}
       </Stack>
     </Box>
   );

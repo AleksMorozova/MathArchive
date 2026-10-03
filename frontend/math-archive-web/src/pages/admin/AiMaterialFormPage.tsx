@@ -4,12 +4,14 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { Alert, Box, Button, CircularProgress, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { DragEvent, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { analyzeMaterial } from '../../api/aiApi';
 import { getApiErrorMessage } from '../../api/apiErrors';
 import { createDocument } from '../../api/documentsApi';
 import { documentTypeOptions } from '../../constants/documentTypes';
+import { schoolGrades } from '../../constants/grades';
 import type { DocumentType } from '../../types/documents';
+import type { AiMaterialDraftState, MaterialAnalysisResult } from '../../types/ai';
 import { formatFileSize } from '../../utils/format';
 
 const allowedExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'png', 'jpg', 'jpeg'];
@@ -22,12 +24,27 @@ export const normalizeAiValue = (value?: string | null) =>
     ? value.trim()
     : '';
 
+function valuesFromAnalysis(result: MaterialAnalysisResult): Values {
+  const documentType = documentTypeOptions.some((option) => option.value === result.documentType)
+    ? result.documentType as DocumentType
+    : '';
+  return {
+    title: normalizeAiValue(result.title),
+    description: normalizeAiValue(result.description),
+    grade: result.grade,
+    topic: normalizeAiValue(result.topic),
+    documentType
+  };
+}
+
 export function AiMaterialFormPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const initialDraft = location.state as AiMaterialDraftState | null;
   const queryClient = useQueryClient();
-  const [file, setFile] = useState<File>();
-  const [values, setValues] = useState<Values>(emptyValues);
-  const [analyzed, setAnalyzed] = useState(false);
+  const [file, setFile] = useState<File | undefined>(initialDraft?.file);
+  const [values, setValues] = useState<Values>(() => initialDraft?.analysis ? valuesFromAnalysis(initialDraft.analysis) : emptyValues);
+  const [analyzed, setAnalyzed] = useState(!!initialDraft?.analysis);
   const [fileError, setFileError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const previewUrl = useMemo(() => file?.type.startsWith('image/') && typeof URL.createObjectURL === 'function' ? URL.createObjectURL(file) : undefined, [file]);
@@ -45,11 +62,7 @@ export function AiMaterialFormPage() {
   const analysis = useMutation({
     mutationFn: () => analyzeMaterial(file!),
     onSuccess: (result) => {
-      const documentType = documentTypeOptions.some((option) => option.value === result.documentType)
-        ? result.documentType as DocumentType
-        : '';
-      setValues({ title: normalizeAiValue(result.title), description: normalizeAiValue(result.description), grade: result.grade,
-        topic: normalizeAiValue(result.topic), documentType });
+      setValues(valuesFromAnalysis(result));
       setAnalyzed(true);
     }
   });
@@ -105,7 +118,7 @@ export function AiMaterialFormPage() {
             error={analyzed && !values.title.trim()} helperText={analyzed && !values.title.trim() ? 'AI не визначив назву. Введіть назву матеріалу.' : undefined} />
           <TextField label="Опис" multiline minRows={4} value={values.description} onChange={(e) => set('description', e.target.value)} inputProps={{ maxLength: 2000 }} />
           <TextField select label="Клас" value={values.grade ?? ''} onChange={(e) => set('grade', e.target.value === '' ? null : Number(e.target.value))} required>
-            <MenuItem value="">Оберіть клас</MenuItem>{Array.from({ length: 11 }, (_, i) => i + 1).map((grade) => <MenuItem key={grade} value={grade}>{grade} клас</MenuItem>)}
+            <MenuItem value="">Оберіть клас</MenuItem>{schoolGrades.map((grade) => <MenuItem key={grade} value={grade}>{grade} клас</MenuItem>)}
           </TextField>
           <TextField label="Тема" value={values.topic} onChange={(e) => set('topic', e.target.value)} required inputProps={{ maxLength: 150 }} />
           <TextField select label="Тип матеріалу" value={values.documentType} onChange={(e) => set('documentType', e.target.value)} required

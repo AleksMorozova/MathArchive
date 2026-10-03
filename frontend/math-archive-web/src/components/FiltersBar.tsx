@@ -2,6 +2,7 @@ import ClearIcon from '@mui/icons-material/Clear';
 import SearchIcon from '@mui/icons-material/Search';
 import { Button, InputAdornment, MenuItem, Stack, TextField } from '@mui/material';
 import { documentTypeOptions } from '../constants/documentTypes';
+import { schoolGrades } from '../constants/grades';
 import type { DocumentFilters } from '../types/documents';
 
 interface FiltersBarProps {
@@ -30,7 +31,7 @@ export function FiltersBar({
   showDocumentType = true,
   showCreatedDate = false,
   compact = false,
-  gradeOptions = Array.from({ length: 11 }, (_, index) => index + 1),
+  gradeOptions = [...schoolGrades],
   topicMode = 'select'
 }: FiltersBarProps) {
   const hasSelectedFilters = Boolean(
@@ -84,14 +85,14 @@ export function FiltersBar({
       {showCreatedDate && (
         <>
           <TextField
-            label="Дата від"
+            label="Від"
             type="date"
             value={filters.createdFrom ?? ''}
             onChange={(event) => onChange({ createdFrom: event.target.value })}
             slotProps={{ inputLabel: { shrink: true } }}
           />
           <TextField
-            label="Дата до"
+            label="До"
             type="date"
             value={filters.createdTo ?? ''}
             onChange={(event) => onChange({ createdTo: event.target.value })}

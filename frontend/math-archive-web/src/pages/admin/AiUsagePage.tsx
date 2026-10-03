@@ -13,7 +13,11 @@ const money = (value: number | null) => value === null ? 'Не розрахов�
 
 export function AiUsagePage() {
   const [filters, setFilters] = useState(initialFilters);
-  const summary = useQuery({ queryKey: ['ai-usage', 'summary'], queryFn: ({ signal }) => getAiUsageSummary(signal) });
+  const summaryFilters = {
+    from: filters.from, to: filters.to, status: filters.status,
+    model: filters.model, operation: filters.operation
+  };
+  const summary = useQuery({ queryKey: ['ai-usage', 'summary', summaryFilters], queryFn: ({ signal }) => getAiUsageSummary(summaryFilters, signal) });
   const history = useQuery({ queryKey: ['ai-usage', 'history', filters], queryFn: ({ signal }) => getAiUsageHistory(filters, signal) });
   const update = (next: Partial<AiUsageFilters>) => setFilters((current) => ({ ...current, ...next, page: next.page ?? 1 }));
   const setPreset = (days?: number, currentMonth = false) => {
@@ -30,10 +34,10 @@ export function AiUsagePage() {
       {summary.data.limitUsagePercent >= 80 && <Alert severity={summary.data.limitReached ? 'error' : 'warning'}>{summary.data.limitReached ? 'Місячний ліміт використання AI вичерпано.' : 'Використано понад 80% місячного ліміту AI.'}</Alert>}
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 2 }}>
         {[
-          ['Запитів за сьогодні', summary.data.requestsToday], ['Запитів за місяць', summary.data.requestsThisMonth],
+          ['Запитів за вибраний період', summary.data.requestsForPeriod],
           ['Успішних', summary.data.succeeded], ['З помилкою', summary.data.failed], ['Вхідних токенів', summary.data.inputTokens],
           ['Вихідних токенів', summary.data.outputTokens], ['Усього токенів', summary.data.totalTokens],
-          ['Орієнтовна вартість за місяць', money(summary.data.estimatedCostThisMonthUsd)],
+          ['Орієнтовна вартість за вибраний період', money(summary.data.estimatedCostUsd)],
           ['Середній час відповіді', summary.data.averageDurationMilliseconds === null ? '—' : `${Math.round(summary.data.averageDurationMilliseconds)} мс`]
         ].map(([label, value]) => <Card key={label}><CardContent><Typography color="text.secondary" variant="body2">{label}</Typography><Typography variant="h5">{value}</Typography></CardContent></Card>)}
       </Box>

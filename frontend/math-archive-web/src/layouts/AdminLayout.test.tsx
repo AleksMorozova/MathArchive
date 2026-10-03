@@ -16,12 +16,22 @@ describe('AdminLayout navigation', () => {
       'Матеріали',
       'Додати матеріал',
       'Додати з AI',
+      'Переробити зображення',
       'Сховище',
       'Статистика',
       'Використання AI'
     ]);
     expect(within(navigation).getByRole('link', { name: 'Додати з AI' })).toHaveAttribute('href', '/admin/documents/ai');
     expect(within(navigation).getByRole('link', { name: 'Використання AI' })).toHaveAttribute('href', '/admin/ai-usage');
+    expect(within(navigation).getByRole('link', { name: 'Переробити зображення' })).toHaveAttribute('href', '/admin/image-transform');
+  });
+
+  it('marks image transformation active on its route', () => {
+    renderLayout('/admin/image-transform');
+    const navigation = document.querySelector<HTMLElement>('.admin-sidebar')!;
+
+    expect(within(navigation).getByRole('link', { name: 'Переробити зображення' })).toHaveClass('active');
+    expect(within(navigation).getByRole('link', { name: 'Додати з AI' })).not.toHaveClass('active');
   });
 
   it('marks only AI creation active on its route', () => {
@@ -49,6 +59,7 @@ function renderLayout(initialPath: string) {
       <Routes>
         <Route path="/admin" element={<AdminLayout />}>
           <Route path="documents/ai" element={<div>AI form</div>} />
+          <Route path="image-transform" element={<div>Image transform</div>} />
         </Route>
       </Routes>
     </MemoryRouter>

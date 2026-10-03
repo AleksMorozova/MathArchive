@@ -17,6 +17,7 @@ import { documentTypeLabels } from '../../constants/documentTypes';
 import { useDocuments } from '../../hooks/useDocuments';
 import type { DocumentDto, DocumentFilters } from '../../types/documents';
 import { formatDate } from '../../utils/format';
+import { presetDates } from '../../utils/analyticsDates';
 
 function formatGradeLabel(grade: number | null) {
   return grade === null ? 'Загальний матеріал' : `${grade} клас`;
@@ -39,7 +40,8 @@ export function AdminDocumentsPage() {
   const [message, setMessage] = useState((location.state as { message?: string } | null)?.message ?? '');
   const isMobile = useMediaQuery('(max-width:760px)');
   const queryClient = useQueryClient();
-  const documents = useDocuments(filters);
+  const hasInvalidDateRange = Boolean(filters.createdFrom && filters.createdTo && filters.createdFrom > filters.createdTo);
+  const documents = useDocuments(filters, !hasInvalidDateRange);
   const deleteMutation = useMutation({
     mutationFn: deleteDocument,
     onSuccess: async (_data, deletedId) => {
@@ -67,6 +69,27 @@ export function AdminDocumentsPage() {
       </Stack>
       {message && <Box className="success-message">{message}</Box>}
       {deleteMutation.isError && <Box className="error-message">{getApiErrorMessage(deleteMutation.error, 'Не вдалося видалити матеріал.')}</Box>}
+      <Stack direction={{ xs: 'column', sm: 'row' }} gap={1} alignItems={{ sm: 'center' }}>
+        <Typography color="text.secondary">Дата додавання:</Typography>
+        <Button
+          variant={isDatePresetActive(filters, 1) ? 'contained' : 'outlined'}
+          onClick={() => updateFilters(datePreset(1))}
+        >
+          Сьогодні
+        </Button>
+        <Button
+          variant={isDatePresetActive(filters, 7) ? 'contained' : 'outlined'}
+          onClick={() => updateFilters(datePreset(7))}
+        >
+          Останні 7 днів
+        </Button>
+        <Button
+          onClick={() => updateFilters({ createdFrom: '', createdTo: '' })}
+          disabled={!filters.createdFrom && !filters.createdTo}
+        >
+          Очистити дати
+        </Button>
+      </Stack>
       <FiltersBar
         filters={filters}
         topics={[]}
@@ -76,6 +99,7 @@ export function AdminDocumentsPage() {
         showDocumentType={false}
         showCreatedDate
       />
+      {hasInvalidDateRange && <Box className="error-message" role="alert">Дата «До» не може бути раніше за дату «Від».</Box>}
       {documents.isLoading && <LoadingState />}
       {documents.isError && <ErrorState message={getApiErrorMessage(documents.error)} />}
       {documents.data && <Typography color="text.secondary">Знайдено матеріалів: {documents.data.totalCount}</Typography>}
@@ -142,6 +166,16 @@ export function AdminDocumentsPage() {
       </Dialog>
     </Stack>
   );
+}
+
+function datePreset(days: number) {
+  const { from, to } = presetDates(days);
+  return { createdFrom: from, createdTo: to };
+}
+
+function isDatePresetActive(filters: DocumentFilters, days: number) {
+  const preset = datePreset(days);
+  return filters.createdFrom === preset.createdFrom && filters.createdTo === preset.createdTo;
 }
 
 function AdminCard({ document, onDelete }: { document: DocumentDto; onDelete: (document: DocumentDto) => void }) {

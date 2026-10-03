@@ -3,10 +3,11 @@ import { getDocument, getDocuments, getTopics } from '../api/documentsApi';
 import { queryKeys } from '../api/queryKeys';
 import type { DocumentFilters } from '../types/documents';
 
-export function useDocuments(filters: DocumentFilters) {
+export function useDocuments(filters: DocumentFilters, enabled = true) {
   return useQuery({
     queryKey: queryKeys.documents(filters),
-    queryFn: ({ signal }) => getDocuments(filters, signal)
+    queryFn: ({ signal }) => getDocuments(filters, signal),
+    enabled
   });
 }
 

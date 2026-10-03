@@ -8,6 +8,7 @@ using MathArchive.Application;
 using MathArchive.Application.Ai;
 using MathArchive.Infrastructure;
 using MathArchive.Infrastructure.Auth;
+using MathArchive.Infrastructure.Ai;
 using MathArchive.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -79,7 +80,8 @@ builder.Services.AddCors(options =>
         }
 
         policy.WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-            .WithHeaders(HeaderNames.Authorization, HeaderNames.ContentType);
+            .WithHeaders(HeaderNames.Authorization, HeaderNames.ContentType)
+            .WithExposedHeaders("Content-Disposition");
     });
 });
 
@@ -260,6 +262,7 @@ static void ValidateAdminConfiguration(IConfiguration configuration, bool isDeve
 static void ValidateOpenAiPricing(IConfiguration configuration)
 {
     var options = configuration.GetSection("OpenAI").Get<OpenAiOptions>() ?? new OpenAiOptions();
+    OpenAiPricingConfiguration.ApplyRootPricing(configuration, options);
     foreach (var (model, pricing) in options.Pricing)
     {
         if (pricing.InputPerMillionTokensUsd < 0 || pricing.OutputPerMillionTokensUsd < 0)

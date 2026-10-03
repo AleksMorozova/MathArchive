@@ -11,6 +11,11 @@ OpenAI__ApiKey
 OpenAI__Model
 OpenAI__AnalysisTimeoutSeconds=60
 OpenAI__MaximumPagesToAnalyze=3
+OpenAI__ImageModel=gpt-image-2
+OpenAI__ImageQuality=medium
+OpenAI__ImageSize=1024x1536
+OpenAI__ImageTimeoutSeconds=180
+OpenAI__MaximumImageUploadBytes=10485760
 OpenAI__MonthlyWarningLimitUsd=5
 OpenAI__BlockRequestsWhenLimitReached=false
 OpenAI__TelemetryRetentionDays=365
@@ -33,6 +38,16 @@ Do not use this endpoint to retroactively claim exact historical OpenAI billing:
 
 The backend calls the Responses API with image/file input and strict JSON Schema output. It instructs the model to consider at most the configured number of informative pages. Suggested descriptions are natural Ukrainian plain text: one to three concise sentences, preferably 150–350 characters, summarizing only educational information supported by the material. They exclude unsupported facts and formats, exhaustive transcription, visual or OCR commentary, promotional language, direct address, Markdown, and other publication-inappropriate formatting. Visible authorship, names, initials, signatures, schools, organizations, copyright, social accounts, websites, watermarks, logos, and branding are also excluded. Audience references use Ukrainian school terminology such as **учні** or **школярі**; every grammatical form beginning with **студент** is prohibited. The application rejects a generated description containing that prohibited term or recognizable attribution or branding markers and leaves it empty for administrator review. The direct-file API does not physically split PDF or Office files before upload, so `MaximumPagesToAnalyze` limits model analysis rather than transmitted bytes. The normal 20 MB upload limit still applies.
 
+## MathArchive poster transformation
+
+The admin page `/admin/image-transform` sends one validated PNG, JPEG, or WEBP reference image to the OpenAI Image API `POST /v1/images/edits`. The default `gpt-image-2` configuration requests one medium-quality `1024x1536` PNG. The source and generated image are held only for the request/response and are not persisted or published automatically. The endpoint is admin-only and shares the existing AI rate limit of 20 requests per hour and the configured monthly cost-control check.
+
+Only the administrator's uploaded educational image is sent as visual input. It supplies content, not visual style. The fixed MathArchive palette, layout, typography, cleanup, translation, and mathematical-accuracy rules are maintained in the dedicated backend prompt and applied to every request; there is no second image or visual-template configuration.
+
+The repository currently contains no official МТВ/open-book logo asset. V1 therefore instructs the image model to render a small restrained МТВ identity. For deterministic programmatic logo compositing, first add an approved transparent logo asset; do not substitute the lyceum logo or favicon.
+
+Image-generation cost is recorded only when the API returns token usage and matching `OpenAI__Pricing__...` values are configured for `OpenAI__ImageModel`. Otherwise the admin telemetry correctly displays the cost as not calculated. Consult current OpenAI pricing before adding those values; image-model pricing can differ from text-model pricing.
+
 ## Local verification
 
 1. Apply the `AddAiUsageTelemetry` migration to a local database.
@@ -42,5 +57,6 @@ The backend calls the Responses API with image/file input and strict JSON Schema
 5. Review or edit the generated title, topic, grade, material type, and description, then publish. Topic is ordinary document text: AI does not load or match a topic dictionary, and duplicate topic names are allowed.
 6. Confirm the document appears in the catalog and inspect `/admin/ai-usage`.
 7. Temporarily unset the API key to verify that failure retains the file and values and that manual creation remains available.
+8. Open `/admin/image-transform`, upload a supported image, create a poster, compare both previews, and download the generated PNG.
 
 Telemetry stores only model, status, usage, duration, safe error metadata, request ID, estimated cost, and authenticated admin name. It never stores prompts, filenames, file content, base64, recognized text, API keys, full responses, or stack traces. `TelemetryRetentionDays` records the intended retention period; automatic deletion is deliberately deferred until the small single-admin project has enough volume to justify scheduled cleanup.

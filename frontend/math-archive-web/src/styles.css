@@ -1012,6 +1012,143 @@ a {
   overflow: hidden;
 }
 
+.animated-file-picker {
+  color: var(--text) !important;
+  border-color: var(--primary) !important;
+  background: var(--paper);
+  transition: color 240ms ease, background-color 240ms ease, border-color 240ms ease, box-shadow 240ms ease;
+}
+
+.animated-file-picker:hover {
+  color: var(--text) !important;
+  background: var(--primary-soft);
+  border-color: var(--primary) !important;
+}
+
+.animated-upload-control {
+  position: relative;
+  width: 100%;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  overflow: hidden;
+  padding: 4px 4px 4px 18px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  transition: background-color 280ms ease, border-color 280ms ease, color 280ms ease, box-shadow 280ms ease;
+  animation: upload-ready-in 260ms ease both;
+}
+
+.animated-upload-control.is-uploading,
+.animated-upload-control.is-success {
+  justify-content: center;
+  padding: 4px 18px;
+  color: var(--paper);
+  border-color: var(--primary-hover);
+  background: var(--primary-hover);
+  box-shadow: 0 10px 24px rgba(16, 47, 91, 0.18);
+}
+
+.animated-upload-file-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.animated-upload-file-choice {
+  flex: 1 1 auto;
+  min-width: 0 !important;
+  justify-content: flex-start !important;
+  overflow: hidden;
+  padding-inline: 10px !important;
+  color: var(--text) !important;
+  background: transparent !important;
+}
+
+.animated-upload-file-choice .MuiButton-startIcon {
+  flex: 0 0 auto;
+  color: var(--primary);
+}
+
+.animated-upload-status {
+  color: inherit;
+  font-weight: 700;
+}
+
+.animated-upload-success {
+  animation: upload-success-in 280ms ease both;
+}
+
+.animated-upload-success svg {
+  color: var(--primary);
+}
+
+.animated-upload-progress {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  overflow: hidden;
+}
+
+.animated-upload-progress::after {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--upload-progress, 0%);
+  background: var(--primary);
+  content: '';
+  transition: width 280ms ease;
+}
+
+.animated-upload-progress.is-indeterminate::after {
+  width: 42%;
+  animation: upload-progress-indeterminate 1.15s ease-in-out infinite;
+}
+
+@keyframes upload-progress-indeterminate {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(340%); }
+}
+
+@keyframes upload-success-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes upload-ready-in {
+  from { opacity: 0; transform: scale(0.99); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animated-upload-control,
+  .animated-file-picker,
+  .animated-upload-progress::after {
+    transition-duration: 1ms;
+  }
+
+  .animated-upload-progress.is-indeterminate::after {
+    width: 100%;
+    animation: none;
+    opacity: 0.7;
+  }
+
+  .animated-upload-success {
+    animation: none;
+  }
+
+  .animated-upload-control {
+    animation: none;
+  }
+}
+
 .document-tags {
   align-content: flex-start;
 }

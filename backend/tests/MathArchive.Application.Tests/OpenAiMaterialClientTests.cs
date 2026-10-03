@@ -50,6 +50,9 @@ public sealed class OpenAiMaterialClientTests
         Assert.Equal("string", topic.GetProperty("type").GetString());
         Assert.Equal(1, topic.GetProperty("minLength").GetInt32());
         Assert.False(topic.TryGetProperty("enum", out _));
+        var gradeValues = schema.GetProperty("properties").GetProperty("grade").GetProperty("enum")
+            .EnumerateArray().Select(x => x.GetString()!).ToArray();
+        Assert.Equal(["5", "6", "7", "8", "9", "10", "11"], gradeValues);
         var typeValues = schema.GetProperty("properties").GetProperty("type").GetProperty("enum")
             .EnumerateArray().Select(x => x.GetString()!).ToArray();
         Assert.Equal(["Theory", "Memo"], typeValues);

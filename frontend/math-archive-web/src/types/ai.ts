@@ -7,8 +7,8 @@ export interface MaterialAnalysisResult {
 }
 export type AiRequestStatus = 'Succeeded' | 'Failed' | 'TimedOut' | 'Cancelled';
 export interface AiUsageSummary {
-  requestsToday: number; requestsThisMonth: number; succeeded: number; failed: number;
-  inputTokens: number; outputTokens: number; totalTokens: number; estimatedCostThisMonthUsd: number | null;
+  requestsForPeriod: number; succeeded: number; failed: number;
+  inputTokens: number; outputTokens: number; totalTokens: number; estimatedCostUsd: number | null;
   averageDurationMilliseconds: number | null; monthlyWarningLimitUsd: number | null; limitUsagePercent: number;
   limitReached: boolean; isBlocked: boolean;
 }
@@ -19,3 +19,9 @@ export interface AiUsageItem {
 }
 export interface AiUsageFilters { from?: string; to?: string; status?: string; model?: string; operation?: string; page: number; pageSize: number }
 export type AiUsageHistory = PagedResult<AiUsageItem>;
+export interface GeneratedPosterResult { image: Blob; fileName: string }
+export interface AiMaterialDraftState {
+  file: File;
+  analysis: MaterialAnalysisResult;
+  fromImageTransformation?: boolean;
+}
