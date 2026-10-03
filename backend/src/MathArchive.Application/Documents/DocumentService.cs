@@ -1,4 +1,5 @@
 using FluentValidation;
+using FluentValidation.Results;
 using MathArchive.Application.Common;
 using MathArchive.Application.Files;
 using MathArchive.Domain.Documents;
@@ -43,6 +44,51 @@ public sealed class DocumentService(
     public Task<IReadOnlyList<string>> GetTopicsAsync(CancellationToken cancellationToken)
     {
         return documentRepository.GetTopicsAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<DocumentDto>> GetOrderForGradeAsync(int grade, CancellationToken cancellationToken)
+    {
+        ValidateOrderGrade(grade);
+        var documents = await documentRepository.GetByGradeAsync(grade, track: false, cancellationToken);
+        return documents.Select(DocumentMapper.ToDto).ToList();
+    }
+
+    public async Task<IReadOnlyList<DocumentDto>> ReorderForGradeAsync(
+        int grade,
+        IReadOnlyList<Guid>? documentIds,
+        CancellationToken cancellationToken)
+    {
+        ValidateOrderGrade(grade);
+        if (documentIds is null)
+        {
+            throw OrderValidation("documentIds", "Document IDs are required.");
+        }
+
+        if (documentIds.Count != documentIds.Distinct().Count())
+        {
+            throw OrderValidation("documentIds", "Document IDs must not contain duplicates.");
+        }
+
+        var documents = await documentRepository.GetByGradeAsync(grade, track: true, cancellationToken);
+        var documentsById = documents.ToDictionary(document => document.Id);
+        var invalidIds = documentIds.Where(id => !documentsById.ContainsKey(id)).ToList();
+        if (invalidIds.Count > 0)
+        {
+            throw OrderValidation("documentIds", "Every document ID must exist and belong to the selected class.");
+        }
+
+        if (documentIds.Count != documents.Count)
+        {
+            throw OrderValidation("documentIds", "The order must include every document in the selected class exactly once.");
+        }
+
+        for (var index = 0; index < documentIds.Count; index++)
+        {
+            documentsById[documentIds[index]].SetDisplayOrder(index + 1);
+        }
+
+        await documentRepository.SaveChangesAsync(cancellationToken);
+        return documentIds.Select(id => DocumentMapper.ToDto(documentsById[id])).ToList();
     }
 
     public async Task<DocumentDto> CreateAsync(CreateDocumentCommand command, CancellationToken cancellationToken)
@@ -232,5 +278,18 @@ public sealed class DocumentService(
             Page = Math.Max(1, parameters.Page),
             PageSize = Math.Clamp(parameters.PageSize, 1, 60)
         };
+    }
+
+    private static void ValidateOrderGrade(int grade)
+    {
+        if (grade is < 5 or > 11)
+        {
+            throw OrderValidation("grade", "Class must be between 5 and 11.");
+        }
+    }
+
+    private static ValidationException OrderValidation(string propertyName, string message)
+    {
+        return new ValidationException([new ValidationFailure(propertyName, message)]);
     }
 }

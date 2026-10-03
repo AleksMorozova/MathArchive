@@ -25,11 +25,13 @@ public sealed class DocumentConfiguration : IEntityTypeConfiguration<Document>
         builder.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(x => x.UpdatedAt).HasColumnName("updated_at").IsRequired();
         builder.Property(x => x.DownloadCount).HasColumnName("download_count").IsRequired();
+        builder.Property(x => x.DisplayOrder).HasColumnName("display_order").HasDefaultValue(0).IsRequired();
 
         builder.HasIndex(x => x.Grade).HasDatabaseName("ix_documents_grade");
         builder.HasIndex(x => x.DocumentType).HasDatabaseName("ix_documents_document_type");
         builder.HasIndex(x => x.CreatedAt).HasDatabaseName("ix_documents_created_at");
         builder.HasIndex(x => x.Title).HasDatabaseName("ix_documents_title");
         builder.HasIndex(x => x.Topic).HasDatabaseName("ix_documents_topic");
+        builder.HasIndex(x => new { x.Grade, x.DisplayOrder }).HasDatabaseName("ix_documents_grade_display_order");
     }
 }

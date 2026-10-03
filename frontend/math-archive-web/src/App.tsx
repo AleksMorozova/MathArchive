@@ -11,6 +11,7 @@ import { LoadingState } from './components/StateView';
 
 const AdminLayout = lazy(() => import('./layouts/AdminLayout').then((module) => ({ default: module.AdminLayout })));
 const AdminDocumentsPage = lazy(() => import('./pages/admin/AdminDocumentsPage').then((module) => ({ default: module.AdminDocumentsPage })));
+const AdminDocumentOrderPage = lazy(() => import('./pages/admin/AdminDocumentOrderPage').then((module) => ({ default: module.AdminDocumentOrderPage })));
 const DocumentFormPage = lazy(() => import('./pages/admin/DocumentFormPage').then((module) => ({ default: module.DocumentFormPage })));
 const LoginPage = lazy(() => import('./pages/admin/LoginPage').then((module) => ({ default: module.LoginPage })));
 const StorageAuditPage = lazy(() => import('./pages/admin/StorageAuditPage').then((module) => ({ default: module.StorageAuditPage })));
@@ -41,6 +42,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/admin/documents" replace /> },
       { path: 'documents', element: <AdminDocumentsPage /> },
+      { path: 'materials/order', element: <AdminDocumentOrderPage /> },
       { path: 'documents/new', element: <DocumentFormPage mode="create" /> },
       { path: 'documents/ai', element: <AiMaterialFormPage /> },
       { path: 'image-transform', element: <ImagePosterPage /> },

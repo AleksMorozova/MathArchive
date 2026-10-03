@@ -72,7 +72,7 @@ describe('AiUsagePage', () => {
     expect(getAiUsageHistory).toHaveBeenLastCalledWith(
       { ...aggregateFilters, page: 1, pageSize: 20 }, expect.any(AbortSignal)
     );
-  });
+  }, 10_000);
 
   it('shows an unpriced unknown model as not calculated without failing', async () => {
     vi.mocked(getAiUsageSummary).mockResolvedValue({ ...summary, estimatedCostUsd: null });

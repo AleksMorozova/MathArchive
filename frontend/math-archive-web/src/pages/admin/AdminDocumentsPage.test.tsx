@@ -156,6 +156,7 @@ describe('AdminDocumentsPage', () => {
 
     expect(await screen.findByRole('link', { name: 'Додати матеріал' })).toHaveAttribute('href', '/admin/documents/new');
     expect(screen.getByRole('link', { name: 'Додати з AI' })).toHaveAttribute('href', '/admin/documents/ai');
+    expect(screen.getByRole('link', { name: 'Змінити порядок' })).toHaveAttribute('href', '/admin/materials/order');
   });
 });
 
@@ -191,6 +192,7 @@ function createDocument() {
     fileSize: 1024,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
-    downloadCount: 3
+    downloadCount: 3,
+    displayOrder: 0
   };
 }

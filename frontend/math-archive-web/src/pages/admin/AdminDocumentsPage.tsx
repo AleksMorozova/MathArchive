@@ -3,6 +3,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import SwapVertIcon from '@mui/icons-material/SwapVert';
 import { Box, Button, Card, CardContent, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Pagination, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography, useMediaQuery } from '@mui/material';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -61,6 +62,7 @@ export function AdminDocumentsPage() {
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" gap={2}>
         <Typography variant="h3">Матеріали</Typography>
         <Stack direction={{ xs: 'column', sm: 'row' }} gap={1}>
+          <Button component={Link} to="/admin/materials/order" startIcon={<SwapVertIcon />} variant="outlined">Змінити порядок</Button>
           <Button component={Link} to="/admin/documents/new" startIcon={<AddIcon />} variant="contained">Додати матеріал</Button>
           <Button component={Link} to="/admin/documents/ai" startIcon={<AutoAwesomeIcon />} variant="outlined">Додати з AI</Button>
         </Stack>

@@ -213,7 +213,8 @@ function createDocument(): DocumentDto {
     fileSize: 2048,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
-    downloadCount: 12
+    downloadCount: 12,
+    displayOrder: 0
   };
 }
 

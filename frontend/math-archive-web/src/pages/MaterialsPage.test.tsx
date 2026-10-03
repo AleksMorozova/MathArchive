@@ -72,6 +72,25 @@ describe('MaterialsPage', () => {
     expect(screen.getByText('7 клас')).toBeInTheDocument();
     expect(screen.getByText('Алгебра')).toBeInTheDocument();
     expect(screen.queryByText('Теоретичний матеріал')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('DescriptionOutlinedIcon')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Завантажити' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Переглянути' })).toBeInTheDocument();
+  });
+
+  it('shows result ordinals only when one class is selected', () => {
+    useInfiniteDocumentsMock.mockReturnValue(createInfiniteDocumentsResult({
+      data: {
+        pages: [createPage({ page: 1, totalPages: 1, items: [createDocument('first')] })],
+        pageParams: [1]
+      }
+    }));
+
+    const rendered = renderMaterialsPage('/materials?class=7');
+    expect(screen.getByText('№ 1')).toBeInTheDocument();
+
+    rendered.unmount();
+    renderMaterialsPage('/materials');
+    expect(screen.queryByText('№ 1')).not.toBeInTheDocument();
   });
 
   it('debounces topic text changes and preserves selected class', async () => {
@@ -295,7 +314,8 @@ function createDocument(id: string): DocumentDto {
     fileSize: 1024,
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
-    downloadCount: 0
+    downloadCount: 0,
+    displayOrder: 0
   };
 }
 

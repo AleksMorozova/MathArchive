@@ -21,6 +21,7 @@ export interface DocumentDto {
   createdAt: string;
   updatedAt: string;
   downloadCount: number;
+  displayOrder: number;
 }
 
 export interface PagedResult<T> {
