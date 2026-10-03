@@ -145,7 +145,16 @@ public sealed class DocumentRepository(MathArchiveDbContext dbContext) : IDocume
             var state = await dbContext.Set<MathArchive.Domain.Assistant.RagIndexState>().FindAsync([entry.Entity.Id], cancellationToken);
             if (state is null) dbContext.Add(state = new MathArchive.Domain.Assistant.RagIndexState { MaterialId = entry.Entity.Id });
             state.Status = "Pending";
-            if (entry.Property(nameof(Document.StoredFileName)).IsModified) state.ApprovedText = null;
+            if (entry.Property(nameof(Document.StoredFileName)).IsModified)
+            {
+                state.ApprovedText = null;
+                state.ExtractedText = null;
+                state.SourceFingerprint = "";
+                state.ExtractionMethod = "";
+                state.ExtractionStatus = "Pending";
+                state.ExtractedAt = null;
+                state.ExtractionError = null;
+            }
         }
         await dbContext.SaveChangesAsync(cancellationToken);
     }

@@ -332,7 +332,8 @@ public sealed class DocumentServiceTests
     private sealed class FailingIndexer : MathArchive.Application.Assistant.IRagIndexer
     {
         public Task IndexAsync(Guid materialId, bool force, CancellationToken ct) => throw new InvalidOperationException("Embedding provider unavailable");
-        public Task ReindexAsync(CancellationToken ct) => throw new NotSupportedException();
+        public Task ReindexAsync(CancellationToken ct, bool allowVision = false) => throw new NotSupportedException();
+        public Task ExtractVisionAsync(Guid materialId, CancellationToken ct) => throw new NotSupportedException();
     }
     private static DocumentService CreateService(FakeDocumentRepository repository, FakeFileStorage storage)
     {

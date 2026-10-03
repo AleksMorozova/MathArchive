@@ -7,11 +7,23 @@ using Microsoft.Extensions.Options;
 
 namespace MathArchive.Infrastructure.Assistant;
 
-public sealed class OpenAiAssistantProvider(HttpClient http, IOptions<OpenAiOptions> options) : IAssistantProvider, IEmbeddingService
+public sealed class OpenAiAssistantProvider(HttpClient http, IOptions<OpenAiOptions> options) : IAssistantProvider, IEmbeddingService, IRagVisionProvider
 {
     public async Task<ProviderResult> GenerateAsync(string model, string instructions, string input, int maxOutputTokens, CancellationToken ct)
     {
         using var response = await SendAsync("responses", new { model, instructions, input, max_output_tokens = maxOutputTokens, store = false }, ct);
+        return await ReadGenerationAsync(response, ct);
+    }
+    public async Task<ProviderResult> ExtractAsync(string model, string instructions, IReadOnlyList<VisionInput> inputs, int maxOutputTokens, CancellationToken ct)
+    {
+        var content = inputs.Select(x => x.ContentType == "application/pdf"
+            ? (object)new { type = "input_file", file_data = $"data:application/pdf;base64,{Convert.ToBase64String(x.Content)}", filename = "material.pdf" }
+            : new { type = "input_image", image_url = $"data:{x.ContentType};base64,{Convert.ToBase64String(x.Content)}", detail = "high" }).ToArray();
+        using var response = await SendAsync("responses", new { model, instructions, input = new[] { new { role = "user", content } }, max_output_tokens = maxOutputTokens, store = false }, ct);
+        return await ReadGenerationAsync(response, ct);
+    }
+    private static async Task<ProviderResult> ReadGenerationAsync(HttpResponseMessage response, CancellationToken ct)
+    {
         using var json = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
         var root = json.RootElement;
         if (root.TryGetProperty("status", out var status) && status.GetString() != "completed")

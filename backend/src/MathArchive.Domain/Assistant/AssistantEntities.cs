@@ -52,6 +52,12 @@ public sealed class RagIndexState
     public Guid MaterialId { get; set; }
     public string Fingerprint { get; set; } = "";
     public string? ApprovedText { get; set; }
+    public string? ExtractedText { get; set; }
+    public string SourceFingerprint { get; set; } = "";
+    public string ExtractionMethod { get; set; } = "";
+    public string ExtractionStatus { get; set; } = "Pending";
+    public DateTimeOffset? ExtractedAt { get; set; }
+    public string? ExtractionError { get; set; }
     public string Status { get; set; } = "Pending";
     public DateTimeOffset? IndexedAt { get; set; }
     public bool FullReindex { get; set; }

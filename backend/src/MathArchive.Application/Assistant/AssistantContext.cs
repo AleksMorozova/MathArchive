@@ -41,9 +41,23 @@ public sealed class AssistantContext(AssistantQuery query, AssistantOptions sett
 }
 
 public sealed class PaidAiService(IAssistantStore store, IAssistantProvider provider, IEmbeddingService embeddings,
-    IOpenAiUsageCostCalculator costs, IOptions<OpenAiOptions> openAi)
+    IOpenAiUsageCostCalculator costs, IOptions<OpenAiOptions> openAi, IRagVisionProvider? vision = null)
 {
     public string Model(string configured) => string.IsNullOrWhiteSpace(configured) ? openAi.Value.Model : configured;
+    public Task<ProviderResult> ExtractAsync(AssistantContext context, IReadOnlyList<VisionInput> inputs, CancellationToken ct)
+    {
+        var model = Model(context.Settings.VisionModel);
+        // These image-capable model families have bounded high-detail image tokenization.
+        // Fail closed for unreviewed families rather than under-reserving their image cost.
+        if (!System.Text.RegularExpressions.Regex.IsMatch(model,
+            @"^(gpt-4o(-mini)?|gpt-4\.1(-mini|-nano)?)(-\d{4}-\d{2}-\d{2})?$"))
+            throw new AssistantException("VisionModelUnsupported", "Для OCR налаштуй модель gpt-4o або gpt-4.1 з тарифами.");
+        if (vision is null) throw new AssistantException("NotConfigured", "OCR ще налаштовується.");
+        var upperInput = checked(inputs.Sum(x => x.Units) * 65536 + inputs.Sum(x => x.TextUpperTokens) +
+            Encoding.UTF8.GetByteCount(RagExtractionPrompt.Instructions) + 2048);
+        return RunAsync(context, "IndexVision", model, upperInput, 4000, true,
+            () => vision.ExtractAsync(model, RagExtractionPrompt.Instructions, inputs, 4000, ct), ct);
+    }
     public async Task<ProviderResult> GenerateAsync(AssistantContext context, string agent, string configuredModel,
         string instructions, string input, CancellationToken ct)
     {
@@ -73,7 +87,7 @@ public sealed class PaidAiService(IAssistantStore store, IAssistantProvider prov
         if (!latest.Enabled) throw new AssistantException("Disabled", "AI-помічник тимчасово вимкнений.");
         if ((agent == "TutorAgent" && !latest.TutorEnabled) || (agent == "ExerciseAgent" && !latest.ExerciseEnabled) ||
             (agent == "VerifierAgent" && !latest.VerifierEnabled) || (agent == "RouterAgent" && !latest.LlmRouterEnabled) ||
-            (agent == "Embedding" && !latest.RagEnabled))
+            ((agent == "Embedding" || agent == "IndexVision") && !latest.RagEnabled))
             throw new AssistantException("AgentDisabled", "Ця можливість тимчасово вимкнена.");
         var maximum = costs.Calculate(model, upperInput, upperOutput) ??
             throw new AssistantException("PricingUnavailable", "AI-помічник ще налаштовується. Скористайся матеріалами сайту.");

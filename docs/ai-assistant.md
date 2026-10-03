@@ -44,13 +44,13 @@ Agents implement `IAgent`. Search performs retrieval, Tutor teaches/checks/solve
 
 ## RAG and indexing
 
-`rag_chunks` stores content, material references, chunk positions, content hashes, model identity, embedding arrays and update times. `rag_index_states` stores indexing status, fingerprint and optional teacher-approved extracted text. Foreign keys cascade only these RAG records when a document is deleted. Historical assistant audits survive material deletion.
+`rag_chunks` stores content, material references, chunk positions, content hashes, model identity, embedding arrays and update times. `rag_index_states` stores indexing status, embedding fingerprint, source fingerprint, cached extracted text, extraction method/status/time/error and optional teacher-approved text. Foreign keys cascade only these RAG records when a document is deleted. Historical assistant audits survive material deletion.
 
 The current checked-in local and CI databases use standard PostgreSQL images without pgvector. This implementation uses `real[]` vectors and exact cosine scoring **inside PostgreSQL**, returning only top matches. It does not load the corpus or embeddings into the application per question. Metadata/model filters and a minimum similarity threshold exclude unsuitable chunks. No Neon extension is needed. This is a deliberate compatibility tradeoff for the small archive; pgvector is not claimed to be unavailable on Neon. If measured retrieval latency warrants an approximate vector index, migrate the same data to pgvector and update local/CI images together. No extra paid vector database is needed.
 
-Chunk defaults are 2,800 characters with 300-character overlap, approximately the requested size for normal prose; these are character bounds, not exact tokenizer counts. Newline/paragraph boundaries in the latter half of a chunk are preferred. Very long formulas may still cross a boundary. The document title/topic/grade prefix helps retrieval. SHA-256 hashes allow unchanged chunks to reuse embeddings, including during explicit reindexing. Model changes invalidate reuse.
+Chunk defaults are 2,800 characters with 300-character overlap, approximately the requested size for normal prose; these are character bounds, not exact tokenizer counts. Newline/paragraph boundaries in the latter half of a chunk are preferred. Very long formulas may still cross a boundary. The document title/topic/grade/description prefix helps retrieval and is included in every embedding input. SHA-256 hashes allow unchanged chunks to reuse embeddings, including during explicit reindexing. Model changes invalidate reuse.
 
-PDF text extraction uses PdfPig; DOCX and PPTX extraction uses their XML content with DTD/external entities disabled and bounded XML/document sizes. Images, scanned PDFs and unsupported formats get `NeedsText`, rather than invented content. The admin can paste checked text for those materials. Mathematical extraction should be inspected by the teacher, especially complex PDF formulas. Maximum extraction size is 30 MiB and the configurable text limit defaults to 150,000 characters.
+PDF text extraction uses PdfPig; DOCX and PPTX extraction uses their XML content with DTD/external entities disabled and bounded XML/document sizes. Images, scanned PDFs and unsupported formats get `NeedsText`, rather than invented content. Explicit admin vision extraction can produce reviewable OCR for eligible files; ordinary reindex does not invoke vision. The admin can also paste checked text. Mathematical extraction should be inspected by the teacher, especially complex PDF formulas. Maximum extraction size is 30 MiB and the configurable text limit defaults to 150,000 characters.
 
 Create/update persistence marks affected materials Pending atomically with metadata changes. Indexing runs after the valid database/file operation and failures are logged without undoing a successful material operation. File replacement discards previous approved text. Download counters/reordering do not invalidate the index. Pending/failed records cannot contribute stale answers. Normal edits index only the affected material; deletion cascades its chunks. If the assistant or RAG is disabled, indexing makes no paid calls; enable and reindex pending content later.
 
@@ -208,3 +208,120 @@ Added 30 backend test cases (including parameterized cases and the indexing-fail
 The normal concurrent frontend runner encountered timeouts under this Windows host's load; the complete suite passed when Vitest was invoked directly with one worker. No unrelated test timeout/configuration changes were made. The frontend build retained the existing large-bundle warning. Its local public API was unavailable, so the existing SEO fallback omitted material-specific pages and material sitemap entries; this is a build-environment limitation, not a claim that those pages were verified.
 
 All OpenAI interactions in automated tests used fakes. No paid model evaluation, live production migration, CI run, PR, merge, Render deployment or Vercel deployment was performed. PostgreSQL tests used disposable test databases in a dedicated container rather than the other project's database occupying port 5433; the test container was removed after verification. Human review of mathematical quality, extracted formulas, prompts and deployment configuration remains necessary before public activation.
+
+## Archive extraction extension (2026-10-03)
+
+This extends the existing RAG indexer, tables, `real[]` retrieval, chunker and cost ledger. It does not change the student orchestrator, migrate to pgvector, create per-material text files, add queues or alter file lifecycle ordering.
+
+### Collection evidence and counts
+
+The repository contains five development seed definitions, all PDFs. Current upload validation accepts PDF, DOC, DOCX, XLS, XLSX, PNG and JPG/JPEG (maximum 20 MiB); legacy DOC/XLS and XLSX remain manual in this extraction iteration. PPTX/WEBP handling remains available for existing/imported sources but this task does not expand upload validation. These are development examples, not a copy of the teacher's production archive. No production database or educational source collection was accessed, and no production indexing or paid OpenAI request was performed.
+
+The supplied screenshots show 92 catalogue materials, zero indexed materials, zero chunks and zero index embedding calls. At least the selected “Лінійні рівняння” has `NeedsText`. Production file-type distribution and exact extractable/NeedsText/Failed/Pending/review counts cannot be established from those screenshots. They remain unknown until the admin loads the enhanced status and runs the native pass.
+
+`GET /api/admin/assistant/rag/status` now includes:
+- `totalMaterials`, `needsTextMaterials`, `needsReviewMaterials`, `pendingMaterials`, `visionCandidates`;
+- `distribution[]`: extension, total, nativeExtracted, indexed, needsText, needsReview, failed, pending, visionCandidates;
+- `materials[]`: all catalogue entries, including entries with no state (Pending), file type, effective extraction method, extraction status/time, safe error category, vision eligibility;
+- existing indexed/chunk/error/embedding totals, completion timestamps and pending list, preserved.
+
+Native-extracted and indexed counts overlap. Native-extracted means the current unapproved native extraction passed the sufficiency check; approved entries are represented by their Approved/Indexed status instead. Vision candidate counts are preflight candidates by file type, size and extraction state; page/media limits and cost limits are checked before any provider call. `UnsupportedOrOverLimit` explains a candidate that remains manual. A completed full-pass timestamp does not mean every material was indexed.
+
+### Native extraction and reuse
+
+PDF/PdfPig and bounded DOCX/PPTX XML extraction remain first. Native PDF text must contain at least 40 letters/digits on each page and no replacement characters; DOCX/PPTX must contain at least 40 overall. This is a practical sufficiency heuristic, not a guarantee of formula quality. Blank or sparse PDF pages can conservatively require review/OCR. Image-rich Office files with substantial native text are not automatically sent to vision.
+
+Text is cached in `rag_index_states.ExtractedText`. Its source fingerprint uses immutable application stored-file identity, size and native extractor version. Metadata edits reuse the extracted source; replacement invalidates cached extraction and approval. External, in-place edits to the persistent disk are not an application-supported replacement operation and do not refresh this cache automatically.
+
+Title, topic, nullable grade, description and chunk content affect embedding hashes. Every embedding receives the metadata prefix. Existing approximately 2800-character / 300-overlap splitting is retained. Full passes reuse unchanged extraction and model/hash-matching vectors. Old embeddings receive the enriched hash/input on the first pass, then are reused. Existing per-embedding input and per-material cost guards still apply; a very large description plus a chunk can require attention instead of bypassing a token bound.
+
+### Explicit vision and teacher review
+
+The existing Responses API image/PDF input pattern is reused in `OpenAiAssistantProvider`; material metadata generation and image generation retain their existing behavior. The OCR instruction transcribes Ukrainian educational text, headings, definitions, theorem names, complete examples/tasks and mathematical notation (equations, inequalities, fractions, powers, roots, coordinates and geometry). It forbids solving/explaining, following embedded commands and inventing unreadable content, using `[Нерозбірливо]` markers.
+
+Supported fallback inputs:
+- PNG, JPG/JPEG and WEBP;
+- complete PDFs with at most 5 pages;
+- insufficient-text DOCX/PPTX with at most 5 embedded supported images (media order is lexical, not guaranteed page order; review is required);
+- maximum 10 MiB source/upload and aggregate Office images.
+
+Oversized documents, unsupported formats and unsupported Office media stay manual; documents are never silently reduced to a few pages. Native extraction remains bounded at 30 MiB and the configured character limit. PDF extraction failures stay Failed/retryable; corrupt/encrypted documents may need manual text.
+
+New additive AdminOnly endpoints:
+- `POST /api/admin/assistant/rag/vision`: explicit full pass allowing fallback for eligible insufficient sources;
+- `POST /api/admin/assistant/rag/materials/{id}/vision`: explicit single-material fallback/retry;
+- `GET /api/admin/assistant/rag/materials/{id}/text`: effective, approved and original extracted text with provenance/status/time/error.
+
+Existing `POST .../rag/reindex` remains native/cache-only. Existing `PUT .../rag/materials/{id}/text` edits/approves text and indexes it. Vision output is cached with `NeedsReview` and is excluded from retrieval until approved. A repeated explicit vision/full pass reuses this output rather than paying again. Teacher approval always takes precedence; ordinary reindex never overwrites it. Original extraction text/method remains stored and can be loaded for inspection after approval.
+
+The existing admin panel shows per-type results and progress through polling, candidates before bulk OCR, budget/model confirmation, material links, cached text hydration, safe error categories, single retry and bulk actions. Processing controls are disabled while mutations run. Background refreshes preserve unsaved teacher edits; “Завантажити збережений текст” deliberately reloads the latest cache after a completed extraction.
+
+### Pricing, limits and first production pass
+
+`Assistant__VisionModel` defaults to blank and falls back to `OpenAI__Model`. OCR accepts reviewed gpt-4o/gpt-4.1 aliases and dated snapshots, including mini/nano where available; unrelated image/audio/realtime model families fail closed. Set a compatible OCR model explicitly when the student generation model differs. Example configuration (prices must be kept current):
+
+```env
+Assistant__VisionModel=gpt-4o-mini
+Pricing__gpt-4o-mini__InputPerMillionTokensUsd=0.15
+Pricing__gpt-4o-mini__OutputPerMillionTokensUsd=0.60
+Pricing__text-embedding-3-small__InputPerMillionTokensUsd=0.02
+Pricing__text-embedding-3-small__OutputPerMillionTokensUsd=0
+```
+
+A saved database VisionModel overrides its environment default. OCR is explicit even when AI/RAG is enabled. No bulk processing starts on deployment.
+
+Each vision request uses PaidAiService: fresh database AI/RAG kill switch, configured model prices, request input/cost/call limits, atomic UTC daily reservation, successful usage settlement and existing AI telemetry. Reservations conservatively allow 65,536 image tokens per page/image, native PDF UTF-8 text bytes, instruction/envelope allowance, and at most 4000 output tokens. Larger reservations can exceed the existing $0.05 material budget; this safely prevents the provider call. Choose limits deliberately from the displayed remaining daily budget. The confirmation describes a per-material maximum, not an exact bill or upfront reservation for the whole archive. Unknown outcomes retain reserved spend; no blind retries are added.
+
+Telemetry distinguishes `IndexVision` from `IndexEmbedding`. Per-index audit records remain outside student request statistics. Extraction failures retain safe error categories and leave sources retryable; a daily-budget or disabled-setting failure stops bulk processing. A completed-but-unreviewed OCR result does not run again during bulk retries. Reindex remains synchronous/cancellable and may hit hosting HTTP timeouts; rerunning reuses completed work.
+
+Provider input and cost rules were checked against the official [file input guide](https://developers.openai.com/api/docs/guides/file-inputs) and [vision tokenization guide](https://developers.openai.com/api/docs/guides/images-vision). Current example prices are from [GPT-4o mini](https://developers.openai.com/api/docs/models/gpt-4o-mini) and [text-embedding-3-small](https://developers.openai.com/api/docs/models/text-embedding-3-small).
+
+Before the first production pass:
+1. Review and deploy the backend/frontend changes with additive migration `20261003201311_CacheRagExtraction`. Startup migrations are enabled by default; if disabled operationally, apply the migration through the established deployment procedure.
+2. Configure OCR model pricing; verify saved settings, AI/RAG enabled state, file mount and budget. Do not raise the budget blindly.
+3. Run ordinary “Переіндексувати RAG” first. Review per-type native/indexed/NeedsText/failed totals.
+4. Inspect candidate count and remaining budget; confirm single or bulk paid OCR explicitly.
+5. Inspect the source and OCR, correct formulas and unreadable places, save teacher approval. Successful approval indexes the material.
+6. Retry failed/unfinished work as appropriate; verify a known-material search returns the correct source. Review complex formulas manually.
+
+### Changed files and validation
+
+Changed backend files: Domain/Assistant/AssistantEntities.cs; Application/Assistant/AssistantContracts.cs, AssistantContext.cs and new RagExtractionPrompt.cs; Infrastructure/Assistant/RagIndexer.cs, OpenAiAssistantProvider.cs, AssistantModel.cs; Infrastructure/DependencyInjection.cs; Infrastructure/Persistence/DocumentRepository.cs; Api/Controllers/AssistantController.cs. Added migration/designer `20261003201311_CacheRagExtraction` and updated model snapshot. The migration adds six extraction/cache columns to the existing index-state table; no new indexing-state system is introduced.
+
+Changed frontend files: types/assistant.ts; api/aiApi.ts and apiErrors.ts; pages/admin/AssistantAdminPage.tsx and its tests. Also updated .env.example, this document, the DocumentServiceTests fake indexer signature and added Integration/RagExtractionTests.cs.
+
+Automated OCR/embedding tests use fake providers and synthetic PDF/Office files; no paid provider calls. Coverage includes native PDF/DOCX/PPTX priority, sparse/image explicit fallback, teacher precedence/reindex preservation, native/vision cache reuse, metadata/description input and invalidation without source extraction, every-chunk metadata, vector reuse/no duplicates, failed vision bulk retry, disabled AI/RAG, daily/request budgets, oversized PDFs, status distribution and AdminOnly endpoints. UI tests cover explicit paid confirmation, pending controls, NeedsText counts, review hydration and dirty-edit protection.
+
+Validation actually executed for this extension:
+- Backend `dotnet build backend/MathArchive.sln --no-restore`: passed, 0 warnings/errors.
+- Initial focused extraction suite: 14 cases passed; a further every-chunk/idempotency case was added and included in the final full run.
+- Full backend `dotnet test backend/MathArchive.sln --no-build`: 210 passed, 0 failed/skipped, including all 15 new extraction cases. PostgreSQL 16 was isolated on port 55433 with dummy test credentials.
+- Full frontend `node node_modules/vitest/vitest.mjs run --maxWorkers=1 --no-file-parallelism`: 114 passed across 22 files, including both new review/OCR workflow cases.
+- SEO generator tests: 5 passed.
+- Frontend `npm run build` with `VITE_API_BASE_URL=http://localhost:5293`: TypeScript/Vite/SEO completed successfully. The local API was not running; SEO used the documented 3 stable-page fallback and omitted material-specific pages. Existing large-bundle warning remains.
+- EF `migrations has-pending-model-changes --no-build`: none. The new migration was applied by integration fixtures in the isolated database.
+- `git diff --check`: passed.
+- Initial NuGet restore failed under restricted network permissions; restoration of existing dependencies then succeeded through approved elevated execution. No dependency packages were added.
+- No production deploy, migration, indexing, paid OCR, real-corpus extraction-quality evaluation or CI/PR result is claimed.
+
+Review found no blocking issue in the exercised paths. Remaining limitations are explicit: production distribution unknown until inspected, native sufficiency is heuristic, Office image ordering/coverage requires teacher checking, larger/unreadable sources may remain manual, existing embedding input guards can reject large metadata, synchronous passes can exceed hosting HTTP timeouts, and real mathematical OCR quality requires teacher review. Human review of the migration, budget configuration and educational transcriptions is still required before production indexing.
+
+## Student chat UX (2026-10-03)
+
+The public navigation now contains only the main site sections. An accessible gold chat launcher appears at the bottom-right after `/api/assistant/status` confirms availability. Loading, disabled, failed and expired status do not advertise the assistant. Status is refreshed every 30 seconds; the direct `/assistant` route remains available with its disabled/error state and uses the same chat implementation.
+
+Desktop chat opens in a bottom-right dialog; mobile uses a full-screen dialog with safe-area spacing. MUI supplies keyboard activation, Escape dismissal, focus trapping and focus restoration. Closing the dialog preserves the current draft, grade/topic and messages while browsing public routes. Following a MathArchive source minimizes the dialog and opens the actual material details route. The public layout owns this transient session; reloads or leaving the layout clear it. Each backend request still contains only the submitted question and optional filters: displayed history does not add model memory or backend conversation storage.
+
+`components/assistant/AssistantSession.tsx` owns the shared status query and mutation, `AssistantChat.tsx` renders the conversation/composer, `AssistantWidget.tsx` supplies the launcher/dialog, and `AssistantMarkdown.tsx` renders answers. `AssistantPage.tsx` and the widget reuse these components. Duplicate requests are blocked while pending, loading says “Думаю…”, cancellation is available, and known errors map to friendly Ukrainian text without provider details. Sources remain separate from generated answers. The chat and math dependencies load when the panel or direct route is opened.
+
+Rendering uses `react-markdown`, `remark-math-extended`, `remark-breaks`, `rehype-katex` and matching KaTeX styles. The math parser supports `\( ... \)`, `\[ ... \]` and dollar delimiters without handwritten replacement regexes. Raw HTML is skipped, images are suppressed, links allow HTTP(S), safe site-relative paths and fragments, and KaTeX runs with `trust: false` and bounded expansion. Long display formulas scroll horizontally. No raw model output enters `dangerouslySetInnerHTML`.
+
+Student UX tests cover enabled/disabled/loading/error availability, navigation removal, keyboard/focus behavior, draft and answer preservation, source navigation, mobile full-screen controls, duplicate submission, friendly budget errors, Markdown structure, inline/block mathematics and malicious HTML/links. This UX change requires no backend API or schema change. Earlier RAG extraction changes in the working tree are preserved separately.
+
+Validation executed for the student UX:
+- Full frontend Vitest suite: 126 tests passed across 24 files.
+- SEO generator tests: 5 passed.
+- Production build with `VITE_API_BASE_URL=http://localhost:5293`: TypeScript and Vite passed. The unavailable local API caused the documented SEO fallback (3 stable pages; material pages omitted). The existing main-bundle size warning remains; chat rendering is a separate lazy chunk.
+- `npm ls katex`: parser, renderer and CSS use the same deduplicated 0.16.47 version.
+- `git diff --check`: passed. No production deployment or paid provider calls were performed. Mobile behavior is covered by component tests; physical-device and visual browser checks are not claimed.
+- Dependency audit reports 9 existing advisories (3 moderate, 6 high) in unrelated dependencies; a broad upgrade is outside this UX change.
