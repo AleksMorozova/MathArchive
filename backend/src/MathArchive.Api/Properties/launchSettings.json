@@ -7,9 +7,7 @@
       "launchBrowser": false,
       "applicationUrl": "http://localhost:5293",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "Ollama__TimeoutSeconds": "1800",
-        "Ollama__MaximumOutputTokens": "2048"
+        "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
     "https": {
@@ -18,9 +16,7 @@
       "launchBrowser": false,
       "applicationUrl": "https://localhost:7292;http://localhost:5293",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "Ollama__TimeoutSeconds": "1800",
-        "Ollama__MaximumOutputTokens": "2048"
+        "ASPNETCORE_ENVIRONMENT": "Development"
       }
     }
   }
