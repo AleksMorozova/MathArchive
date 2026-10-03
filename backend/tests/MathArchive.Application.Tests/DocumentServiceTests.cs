@@ -24,6 +24,7 @@ public sealed class DocumentServiceTests
         Assert.Equal("stored-1.pdf", repository.Documents[0].StoredFileName);
         Assert.Contains("stored-1.pdf", storage.SavedFiles);
         Assert.Empty(storage.DeletedFiles);
+        Assert.Equal(0, result.DisplayOrder);
     }
 
     [Fact]
@@ -236,6 +237,85 @@ public sealed class DocumentServiceTests
         Assert.Equal(0, repository.SaveCount);
     }
 
+    [Fact]
+    public async Task ReorderForGradeAsync_normalizes_selected_class_without_changing_other_classes()
+    {
+        var first = CreateDocument("first.pdf", grade: 7);
+        var second = CreateDocument("second.pdf", grade: 7);
+        var otherClass = CreateDocument("other.pdf", grade: 8);
+        first.SetDisplayOrder(5);
+        second.SetDisplayOrder(0);
+        otherClass.SetDisplayOrder(1);
+        var repository = new FakeDocumentRepository(first, second, otherClass);
+        var service = CreateService(repository, new FakeFileStorage());
+
+        var result = await service.ReorderForGradeAsync(7, [second.Id, first.Id], CancellationToken.None);
+
+        Assert.Collection(result,
+            item => Assert.Equal(1, item.DisplayOrder),
+            item => Assert.Equal(2, item.DisplayOrder));
+        Assert.Equal(1, otherClass.DisplayOrder);
+        Assert.Equal(1, repository.SaveCount);
+    }
+
+    [Fact]
+    public async Task ReorderForGradeAsync_rejects_duplicate_document_ids()
+    {
+        var document = CreateDocument("first.pdf", grade: 7);
+        var repository = new FakeDocumentRepository(document);
+        var service = CreateService(repository, new FakeFileStorage());
+
+        var exception = await Assert.ThrowsAsync<FluentValidation.ValidationException>(() =>
+            service.ReorderForGradeAsync(7, [document.Id, document.Id], CancellationToken.None));
+
+        Assert.Contains(exception.Errors, error => error.ErrorMessage.Contains("duplicates"));
+        Assert.Equal(0, repository.SaveCount);
+    }
+
+    [Fact]
+    public async Task ReorderForGradeAsync_rejects_missing_document_ids()
+    {
+        var first = CreateDocument("first.pdf", grade: 7);
+        var second = CreateDocument("second.pdf", grade: 7);
+        var repository = new FakeDocumentRepository(first, second);
+        var service = CreateService(repository, new FakeFileStorage());
+
+        var exception = await Assert.ThrowsAsync<FluentValidation.ValidationException>(() =>
+            service.ReorderForGradeAsync(7, [first.Id], CancellationToken.None));
+
+        Assert.Contains(exception.Errors, error => error.ErrorMessage.Contains("every document"));
+        Assert.Equal(0, repository.SaveCount);
+    }
+
+    [Fact]
+    public async Task ReorderForGradeAsync_rejects_document_from_another_class()
+    {
+        var selectedClass = CreateDocument("selected.pdf", grade: 7);
+        var otherClass = CreateDocument("other.pdf", grade: 8);
+        var repository = new FakeDocumentRepository(selectedClass, otherClass);
+        var service = CreateService(repository, new FakeFileStorage());
+
+        var exception = await Assert.ThrowsAsync<FluentValidation.ValidationException>(() =>
+            service.ReorderForGradeAsync(7, [selectedClass.Id, otherClass.Id], CancellationToken.None));
+
+        Assert.Contains(exception.Errors, error => error.ErrorMessage.Contains("selected class"));
+        Assert.Equal(0, repository.SaveCount);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_resets_display_order_when_class_changes()
+    {
+        var document = CreateDocument("ordered.pdf", grade: 7);
+        document.SetDisplayOrder(3);
+        var repository = new FakeDocumentRepository(document);
+        var service = CreateService(repository, new FakeFileStorage());
+
+        await service.UpdateAsync(document.Id, UpdateCommand(replacementFileName: "replacement.pdf"), CancellationToken.None);
+
+        Assert.Equal(8, document.Grade);
+        Assert.Equal(0, document.DisplayOrder);
+    }
+
     private static DocumentService CreateService(FakeDocumentRepository repository, FakeFileStorage storage)
     {
         return new DocumentService(
@@ -266,12 +346,12 @@ public sealed class DocumentServiceTests
         return new UploadedFile(new MemoryStream([1, 2, 3]), fileName, "application/pdf", 3);
     }
 
-    private static Document CreateDocument(string storedFileName, string title = "Формули", string originalFileName = "formulas.pdf")
+    private static Document CreateDocument(string storedFileName, int? grade = 7)
     {
         return new Document(
             title,
             null,
-            7,
+            grade,
             "Алгебра",
             DocumentType.Formula,
             originalFileName,
@@ -347,6 +427,16 @@ public sealed class DocumentServiceTests
         public Task<Document?> GetByIdAsync(Guid id, bool track, CancellationToken cancellationToken)
         {
             return Task.FromResult(Documents.FirstOrDefault(x => x.Id == id));
+        }
+
+        public Task<IReadOnlyList<Document>> GetByGradeAsync(int grade, bool track, CancellationToken cancellationToken)
+        {
+            return Task.FromResult<IReadOnlyList<Document>>(Documents
+                .Where(document => document.Grade == grade)
+                .OrderBy(document => document.DisplayOrder == 0)
+                .ThenBy(document => document.DisplayOrder)
+                .ThenByDescending(document => document.CreatedAt)
+                .ToList());
         }
 
         public Task<IReadOnlyList<string>> GetTopicsAsync(CancellationToken cancellationToken)

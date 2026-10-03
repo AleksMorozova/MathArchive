@@ -55,9 +55,27 @@ public sealed class DocumentRepository(MathArchiveDbContext dbContext) : IDocume
         var totalCount = await query.CountAsync(cancellationToken);
         var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)parameters.PageSize);
 
-        var orderedQuery = parameters.Sort == DocumentSortOrder.CreatedAtDescending
-            ? query.OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id)
-            : query.OrderBy(x => x.Grade == null).ThenBy(x => x.Grade).ThenByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id);
+        IOrderedQueryable<Document> orderedQuery;
+        if (parameters.Sort == DocumentSortOrder.CreatedAtDescending)
+        {
+            orderedQuery = query.OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id);
+        }
+        else if (parameters.Grade.HasValue && !parameters.GeneralOnly)
+        {
+            orderedQuery = query
+                .OrderBy(x => x.DisplayOrder == 0)
+                .ThenBy(x => x.DisplayOrder)
+                .ThenByDescending(x => x.CreatedAt)
+                .ThenByDescending(x => x.Id);
+        }
+        else
+        {
+            orderedQuery = query
+                .OrderBy(x => x.Grade == null)
+                .ThenBy(x => x.Grade)
+                .ThenByDescending(x => x.CreatedAt)
+                .ThenByDescending(x => x.Id);
+        }
 
         var items = await orderedQuery
             .AsNoTracking()
@@ -72,6 +90,18 @@ public sealed class DocumentRepository(MathArchiveDbContext dbContext) : IDocume
     {
         var query = track ? dbContext.Documents : dbContext.Documents.AsNoTracking();
         return query.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Document>> GetByGradeAsync(int grade, bool track, CancellationToken cancellationToken)
+    {
+        var query = track ? dbContext.Documents : dbContext.Documents.AsNoTracking();
+        return await query
+            .Where(x => x.Grade == grade)
+            .OrderBy(x => x.DisplayOrder == 0)
+            .ThenBy(x => x.DisplayOrder)
+            .ThenByDescending(x => x.CreatedAt)
+            .ThenByDescending(x => x.Id)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyList<string>> GetTopicsAsync(CancellationToken cancellationToken)

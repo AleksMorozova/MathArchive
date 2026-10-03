@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.IdentityModel.Tokens;
 
@@ -160,7 +161,11 @@ public sealed class ExceptionHandlingTests
         Environment.SetEnvironmentVariable("Database__ApplyMigrationsOnStartup", "false");
 
         return new WebApplicationFactory<Program>()
-            .WithWebHostBuilder(builder => builder.UseEnvironment("Production"));
+            .WithWebHostBuilder(builder =>
+            {
+                builder.UseEnvironment("Production");
+                builder.ConfigureLogging(logging => logging.ClearProviders());
+            });
     }
 
     private static async Task<JsonElement> ReadProblemDetailsAsync(HttpResponseMessage response)

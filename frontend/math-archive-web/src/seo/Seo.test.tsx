@@ -83,6 +83,7 @@ function createDocument(overrides: Partial<DocumentDto> = {}): DocumentDto {
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     downloadCount: 0,
+    displayOrder: 0,
     ...overrides
   };
 }
