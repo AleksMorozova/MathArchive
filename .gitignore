@@ -37,6 +37,7 @@ backend/src/MathArchive.Api/logs/
 backend/src/MathArchive.Api/appsettings.Local.json
 backend/src/MathArchive.Api/appsettings.*.local.json
 backend/src/MathArchive.Api/appsettings.Development.json
+tools/MathArchive.OllamaProcessor/appsettings.Development.json
 .env
 .env.*
 !.env.example

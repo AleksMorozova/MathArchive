@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MathArchive Ollama Lab</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <p class="eyebrow">Локальний proof of concept</p>
+      <h1>MathArchive Ollama Lab</h1>
+      <p class="lede">Перевірка локального вилучення математичного змісту із зображень. Дані не публікуються в MathArchive.</p>
+    </header>
+
+    <section class="panel status-panel" aria-labelledby="status-title">
+      <div>
+        <h2 id="status-title">Стан Ollama</h2>
+        <p id="status" class="status" aria-live="polite"><span class="dot pending"></span>Перевіряємо...</p>
+      </div>
+      <div>
+        <span class="label">Модель</span>
+        <strong id="model">—</strong>
+      </div>
+      <code id="install-command" class="install-command" hidden></code>
+    </section>
+
+    <section class="panel" aria-labelledby="upload-title">
+      <h2 id="upload-title">Джерело</h2>
+      <label class="file-picker" for="file">
+        <span>Обрати зображення</span>
+        <input id="file" type="file" accept="image/png,image/jpeg,image/webp">
+      </label>
+      <p id="file-name" class="file-name">PNG, JPEG або WEBP, до 10 МБ</p>
+      <img id="preview" class="preview" alt="Попередній перегляд вибраного математичного матеріалу" hidden>
+      <div class="actions">
+        <button id="analyze" type="button" disabled>Аналізувати</button>
+        <button id="cancel" type="button" class="secondary" hidden>Скасувати</button>
+      </div>
+      <p id="progress" class="progress" role="status" aria-live="polite" hidden>Аналізуємо зображення...</p>
+      <div id="error" class="error" role="alert" hidden></div>
+    </section>
+
+    <section id="result" class="result" hidden aria-labelledby="result-title">
+      <div class="panel summary">
+        <div>
+          <span class="label">Назва</span>
+          <h2 id="result-title"></h2>
+        </div>
+        <dl>
+          <div><dt>Мова джерела</dt><dd id="source-language"></dd></div>
+          <div><dt>Рекомендований клас</dt><dd id="grade"></dd></div>
+          <div><dt>Рекомендована тема</dt><dd id="topic"></dd></div>
+          <div><dt>Модель</dt><dd id="result-model"></dd></div>
+          <div><dt>Час обробки</dt><dd id="duration"></dd></div>
+        </dl>
+      </div>
+
+      <section class="panel">
+        <h2>Розділи</h2>
+        <div id="sections"></div>
+      </section>
+
+      <section id="warnings-panel" class="panel warnings" hidden>
+        <h2>Попередження</h2>
+        <ul id="warnings"></ul>
+      </section>
+
+      <section class="panel json-panel">
+        <div class="panel-heading">
+          <h2>Структурований JSON</h2>
+          <button id="copy-json" type="button" class="secondary">Скопіювати JSON</button>
+        </div>
+        <pre id="json"></pre>
+        <details id="raw-details" hidden>
+          <summary>Показати raw response</summary>
+          <pre id="raw"></pre>
+        </details>
+      </section>
+
+      <button id="reanalyze" type="button" class="secondary">Аналізувати ще раз</button>
+    </section>
+  </main>
+  <script src="/app.js" defer></script>
+</body>
+</html>
