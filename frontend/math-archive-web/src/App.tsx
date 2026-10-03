@@ -20,6 +20,9 @@ const AiMaterialFormPage = lazy(() => import('./pages/admin/AiMaterialFormPage')
 const AiUsagePage = lazy(() => import('./pages/admin/AiUsagePage').then((module) => ({ default: module.AiUsagePage })));
 const ImagePosterPage = lazy(() => import('./pages/admin/ImagePosterPage').then((module) => ({ default: module.ImagePosterPage })));
 
+const AssistantPage = lazy(() => import('./pages/AssistantPage').then(m => ({ default: m.AssistantPage })));
+const AssistantAdminPage = lazy(() => import('./pages/admin/AssistantAdminPage').then(m => ({ default: m.AssistantAdminPage })));
+
 const router = createBrowserRouter([
   {
     element: <PublicLayout />,
@@ -28,6 +31,7 @@ const router = createBrowserRouter([
       { path: '/materials', element: <MaterialsPage /> },
       { path: '/materials/:id', element: <DocumentDetailsPage /> },
       { path: '/about', element: <AboutPage /> },
+      { path: '/assistant', element: <AssistantPage /> },
       { path: '*', element: <NotFoundPage /> }
     ]
   },
@@ -49,7 +53,8 @@ const router = createBrowserRouter([
       { path: 'documents/:id/edit', element: <DocumentFormPage mode="edit" /> },
       { path: 'storage', element: <StorageAuditPage /> },
       { path: 'analytics', element: <AnalyticsPage /> },
-      { path: 'ai-usage', element: <AiUsagePage /> }
+      { path: 'ai-usage', element: <AiUsagePage /> },
+      { path: 'assistant', element: <AssistantAdminPage /> }
     ]
   }
 ]);

@@ -13,7 +13,8 @@ public sealed class DocumentService(
     IClock clock,
     IValidator<DocumentMetadata> metadataValidator,
     IValidator<UploadedFile> fileValidator,
-    ILogger<DocumentService> logger)
+    ILogger<DocumentService> logger,
+    MathArchive.Application.Assistant.IRagIndexer? ragIndexer = null)
 {
     public async Task<PagedResult<DocumentDto>> SearchAsync(DocumentQueryParameters parameters, CancellationToken cancellationToken)
     {
@@ -97,9 +98,10 @@ public sealed class DocumentService(
         await fileValidator.ValidateAndThrowAsync(command.File, cancellationToken);
 
         var storedFile = await fileStorage.SaveAsync(command.File.Stream, command.File.FileName, command.File.ContentType, cancellationToken);
+        Document document;
         try
         {
-            var document = new Document(
+            document = new Document(
                 command.Metadata.Title,
                 command.Metadata.Description,
                 command.Metadata.Grade,
@@ -114,13 +116,15 @@ public sealed class DocumentService(
             documentRepository.Add(document);
             await documentRepository.SaveChangesAsync(cancellationToken);
 
-            return DocumentMapper.ToDto(document);
         }
         catch (Exception exception)
         {
             await TryDeleteCompensationAsync(storedFile.StoredFileName, "created material file after database persistence failed", exception);
             throw;
         }
+
+        await TryIndexAsync(document.Id, cancellationToken);
+        return DocumentMapper.ToDto(document);
     }
 
     public async Task<DocumentDto?> UpdateAsync(Guid id, UpdateDocumentCommand command, CancellationToken cancellationToken)
@@ -180,6 +184,7 @@ public sealed class DocumentService(
             }
         }
 
+        await TryIndexAsync(document.Id, cancellationToken);
         return DocumentMapper.ToDto(document);
     }
 
@@ -255,6 +260,12 @@ public sealed class DocumentService(
         }
     }
 
+    private async Task TryIndexAsync(Guid id, CancellationToken cancellationToken)
+    {
+        if (ragIndexer is null) return;
+        try { await ragIndexer.IndexAsync(id, false, cancellationToken); }
+        catch (Exception exception) { logger.LogWarning(exception, "RAG indexing did not complete for {DocumentId}", id); }
+    }
     private async Task TryDeleteCompensationAsync(string storedFileName, string cleanupReason, Exception primaryException)
     {
         try

@@ -19,10 +19,12 @@ describe('AdminLayout navigation', () => {
       'Переробити зображення',
       'Сховище',
       'Статистика',
-      'Використання AI'
+      'Використання AI',
+      'AI-помічник'
     ]);
     expect(within(navigation).getByRole('link', { name: 'Додати з AI' })).toHaveAttribute('href', '/admin/documents/ai');
     expect(within(navigation).getByRole('link', { name: 'Використання AI' })).toHaveAttribute('href', '/admin/ai-usage');
+    expect(within(navigation).getByRole('link', { name: 'AI-помічник' })).toHaveAttribute('href', '/admin/assistant');
     expect(within(navigation).getByRole('link', { name: 'Переробити зображення' })).toHaveAttribute('href', '/admin/image-transform');
   });
 

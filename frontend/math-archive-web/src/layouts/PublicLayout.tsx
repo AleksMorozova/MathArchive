@@ -8,7 +8,8 @@ import { MathBackground } from '../components/MathBackground';
 const links = [
   { to: '/', label: 'Головна' },
   { to: '/materials', label: 'Матеріали' },
-  { to: '/about', label: 'Про сайт' }
+  { to: '/about', label: 'Про сайт' },
+  { to: '/assistant', label: 'AI-помічник' }
 ];
 
 export function PublicLayout() {
@@ -60,4 +61,3 @@ export function PublicLayout() {
     </Box>
   );
 }
-

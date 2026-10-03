@@ -133,9 +133,21 @@ public sealed class DocumentRepository(MathArchiveDbContext dbContext) : IDocume
         dbContext.Documents.Remove(document);
     }
 
-    public Task SaveChangesAsync(CancellationToken cancellationToken)
+    public async Task SaveChangesAsync(CancellationToken cancellationToken)
     {
-        return dbContext.SaveChangesAsync(cancellationToken);
+        dbContext.ChangeTracker.DetectChanges();
+        var changed = dbContext.ChangeTracker.Entries<Document>().Where(x =>
+            x.State == EntityState.Added || (x.State == EntityState.Modified &&
+            new[] { nameof(Document.Title), nameof(Document.Description), nameof(Document.Grade), nameof(Document.Topic), nameof(Document.StoredFileName) }
+                .Any(name => x.Property(name).IsModified))).ToArray();
+        foreach (var entry in changed)
+        {
+            var state = await dbContext.Set<MathArchive.Domain.Assistant.RagIndexState>().FindAsync([entry.Entity.Id], cancellationToken);
+            if (state is null) dbContext.Add(state = new MathArchive.Domain.Assistant.RagIndexState { MaterialId = entry.Entity.Id });
+            state.Status = "Pending";
+            if (entry.Property(nameof(Document.StoredFileName)).IsModified) state.ApprovedText = null;
+        }
+        await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     private static string EscapeLikePattern(string value)

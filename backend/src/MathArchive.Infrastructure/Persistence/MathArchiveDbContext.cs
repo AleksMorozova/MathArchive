@@ -12,6 +12,7 @@ public sealed class MathArchiveDbContext(DbContextOptions<MathArchiveDbContext> 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new DocumentConfiguration());
+        MathArchive.Infrastructure.Assistant.AssistantModel.Configure(modelBuilder);
         modelBuilder.ApplyConfiguration(new AnalyticsEventConfiguration());
         modelBuilder.ApplyConfiguration(new AiUsageRecordConfiguration());
     }
