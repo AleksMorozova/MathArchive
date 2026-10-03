@@ -48,6 +48,7 @@ public static class DependencyInjection
         });
         services.AddScoped<IAssistantProvider>(sp => sp.GetRequiredService<OpenAiAssistantProvider>());
         services.AddScoped<IEmbeddingService>(sp => sp.GetRequiredService<OpenAiAssistantProvider>());
+        services.AddScoped<IRagVisionProvider>(sp => sp.GetRequiredService<OpenAiAssistantProvider>());
         services.AddScoped<IDocumentRepository, DocumentRepository>();
         services.AddScoped<MathArchive.Application.Analytics.IAnalyticsRepository, AnalyticsRepository>();
         services.AddScoped<IAiUsageRepository, AiUsageRepository>();

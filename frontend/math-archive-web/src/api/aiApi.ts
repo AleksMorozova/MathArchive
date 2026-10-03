@@ -71,3 +71,9 @@ export async function reindexRag() {
 export async function saveRagText(id: string, text: string) {
   await httpClient.put(`/api/admin/assistant/rag/materials/${id}/text`, { text }, { timeout: 125000 });
 }
+export async function getRagText(id: string, signal?: AbortSignal) {
+  return (await httpClient.get<import('../types/assistant').RagText>(`/api/admin/assistant/rag/materials/${id}/text`, { signal })).data;
+}
+export async function extractRagVision(id?: string) {
+  await httpClient.post(id ? `/api/admin/assistant/rag/materials/${id}/vision` : '/api/admin/assistant/rag/vision', undefined, { timeout: 600000 });
+}

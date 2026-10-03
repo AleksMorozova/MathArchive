@@ -4,15 +4,20 @@ import { useEffect, useState } from 'react';
 import { trackSiteVisit } from '../api/analyticsApi';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { MathBackground } from '../components/MathBackground';
+import { AssistantSessionProvider, useAssistantSession } from '../components/assistant/AssistantSession';
+import { AssistantWidget } from '../components/assistant/AssistantWidget';
 
 const links = [
   { to: '/', label: 'Головна' },
   { to: '/materials', label: 'Матеріали' },
-  { to: '/about', label: 'Про сайт' },
-  { to: '/assistant', label: 'AI-помічник' }
+  { to: '/about', label: 'Про сайт' }
 ];
 
 export function PublicLayout() {
+  return <AssistantSessionProvider><PublicLayoutContent /></AssistantSessionProvider>;
+}
+function PublicLayoutContent() {
+  const { available } = useAssistantSession();
   useEffect(() => { trackSiteVisit(); }, []);
   const [open, setOpen] = useState(false);
   const location = useLocation();
@@ -53,11 +58,12 @@ export function PublicLayout() {
         <MathBackground variant={mathBackgroundVariant} />
         <Outlet />
       </Box>
-      <Box component="footer" className="footer">
+      <Box component="footer" className="footer" sx={available ? { pb: 'calc(88px + env(safe-area-inset-bottom))' } : undefined}>
         <Container maxWidth="lg">
           <Typography variant="body2">MathArchive · Навчальні матеріали з математики</Typography>
         </Container>
       </Box>
+      <AssistantWidget />
     </Box>
   );
 }

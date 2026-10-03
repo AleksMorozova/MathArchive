@@ -83,20 +83,64 @@ public sealed class AdminAssistantController(IAssistantStore store, IRagIndexer 
     public async Task<object> RagStatus(CancellationToken ct)
     {
         var states = db.Set<RagIndexState>();
-        var pending = await states.AsNoTracking().Where(x => x.Status != "Indexed").OrderBy(x => x.MaterialId).Take(100)
-            .Join(db.Documents, s => s.MaterialId, d => d.Id, (s, d) => new { s.MaterialId, d.Title, s.Status }).ToArrayAsync(ct);
+        var rows = await (from d in db.Documents.AsNoTracking()
+                          join s in states.AsNoTracking() on d.Id equals s.MaterialId into joined
+                          from s in joined.DefaultIfEmpty()
+                          orderby d.Title
+                          select new { materialId = d.Id, d.Title, d.OriginalFileName, d.FileSize,
+                              status = s == null ? "Pending" : s.Status,
+                              extractionMethod = s == null ? "" : s.ExtractionMethod,
+                              extractionStatus = s == null ? "Pending" : s.ExtractionStatus,
+                              extractedAt = s == null ? null : s.ExtractedAt,
+                              extractionError = s == null ? null : s.ExtractionError,
+                              approved = s != null && s.ApprovedText != null }).ToArrayAsync(ct);
+        var materials = rows.Select(x => new { x.materialId, x.Title, x.status, extractionMethod = x.approved ? "Teacher Approved" : x.extractionMethod, x.extractionStatus, x.extractedAt, x.extractionError,
+            fileType = Path.GetExtension(x.OriginalFileName).ToLowerInvariant(),
+            visionEligible = !x.approved && x.extractionStatus is not ("Extracted" or "NeedsReview" or "Approved") &&
+                x.status is "NeedsText" or "Failed" && x.FileSize <= 10 * 1024 * 1024 &&
+                Path.GetExtension(x.OriginalFileName).ToLowerInvariant() is ".pdf" or ".png" or ".jpg" or ".jpeg" or ".webp" or ".docx" or ".pptx" }).ToArray();
+        var distribution = materials.GroupBy(x => x.fileType).Select(g => new { fileType = g.Key, total = g.Count(),
+            nativeExtracted = g.Count(x => x.extractionStatus == "Extracted"), indexed = g.Count(x => x.status == "Indexed"),
+            needsText = g.Count(x => x.status == "NeedsText"), needsReview = g.Count(x => x.status == "NeedsReview"),
+            failed = g.Count(x => x.status == "Failed"), pending = g.Count(x => x.status == "Pending"), visionCandidates = g.Count(x => x.visionEligible) }).ToArray();
+        var pending = materials.Where(x => x.status != "Indexed").ToArray();
         var embedding = await db.AiUsageRecords.Where(x => x.Operation == "IndexEmbedding").GroupBy(x => 1)
             .Select(g => new { calls = g.Count(), tokens = g.Sum(x => (long)(x.InputTokens ?? 0)), costUsd = g.Sum(x => x.EstimatedCostUsd ?? 0) }).SingleOrDefaultAsync(ct);
         return new { indexedMaterials = await states.CountAsync(x => x.Status == "Indexed", ct),
             totalChunks = await db.Set<RagChunk>().CountAsync(ct), failedMaterials = await states.CountAsync(x => x.Status == "Failed", ct),
             lastIndexingTime = await states.MaxAsync(x => x.IndexedAt, ct),
-            lastFullReindex = await db.Set<AssistantSetting>().Select(x => x.LastFullReindex).SingleOrDefaultAsync(ct), embedding, pending };
+            lastFullReindex = await db.Set<AssistantSetting>().Select(x => x.LastFullReindex).SingleOrDefaultAsync(ct), embedding, pending,
+            totalMaterials = materials.Length, needsTextMaterials = materials.Count(x => x.status == "NeedsText"),
+            needsReviewMaterials = materials.Count(x => x.status == "NeedsReview"), pendingMaterials = materials.Count(x => x.status == "Pending"),
+            visionCandidates = materials.Count(x => x.visionEligible), distribution, materials };
     }
     [HttpPost("rag/reindex")]
     public async Task<IActionResult> Reindex(CancellationToken ct)
     {
         await indexer.ReindexAsync(ct);
         return NoContent();
+    }
+    [HttpPost("rag/vision")]
+    public async Task<IActionResult> Vision(CancellationToken ct)
+    {
+        await indexer.ReindexAsync(ct, allowVision: true);
+        return NoContent();
+    }
+    [HttpPost("rag/materials/{id:guid}/vision")]
+    public async Task<IActionResult> Vision(Guid id, CancellationToken ct)
+    {
+        if (!await db.Documents.AnyAsync(x => x.Id == id, ct)) return NotFound();
+        await indexer.ExtractVisionAsync(id, ct);
+        return NoContent();
+    }
+    [HttpGet("rag/materials/{id:guid}/text")]
+    public async Task<IActionResult> Text(Guid id, CancellationToken ct)
+    {
+        if (!await db.Documents.AnyAsync(x => x.Id == id, ct)) return NotFound();
+        var state = await db.Set<RagIndexState>().AsNoTracking().SingleOrDefaultAsync(x => x.MaterialId == id, ct);
+        return Ok(new { text = state?.ApprovedText ?? state?.ExtractedText ?? "", state?.ApprovedText, state?.ExtractedText,
+            extractionMethod = state?.ApprovedText is not null ? "Teacher Approved" : state?.ExtractionMethod,
+            originalExtractionMethod = state?.ExtractionMethod, state?.ExtractionStatus, state?.ExtractedAt, state?.ExtractionError });
     }
     public sealed record ApprovedText(string Text);
     [HttpPut("rag/materials/{id:guid}/text")]
@@ -109,6 +153,8 @@ public sealed class AdminAssistantController(IAssistantStore store, IRagIndexer 
         var state = await db.Set<RagIndexState>().FindAsync([id], ct);
         if (state is null) db.Add(state = new RagIndexState { MaterialId = id });
         state.ApprovedText = input.Text.Trim(); state.Status = "Pending";
+        if (state.ExtractionMethod.Length == 0) state.ExtractionMethod = "Teacher Approved";
+        state.ExtractionStatus = "Approved"; state.ExtractionError = null;
         await db.SaveChangesAsync(ct);
         await indexer.IndexAsync(id, false, ct);
         return NoContent();

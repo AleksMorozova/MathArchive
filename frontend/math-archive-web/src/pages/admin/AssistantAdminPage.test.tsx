@@ -5,8 +5,8 @@ import * as api from '../../api/aiApi';
 import { analyticsBoundaries, presetDates } from '../../utils/analyticsDates';
 import { AssistantAdminPage } from './AssistantAdminPage';
 import type { AssistantSettings } from '../../types/assistant';
-vi.mock('../../api/aiApi', () => ({ getAssistantSettings: vi.fn(), getAssistantDailyBudget: vi.fn(), getAssistantStatistics: vi.fn(), getAssistantRequests: vi.fn(), getRagStatus: vi.fn(), getAssistantRequest: vi.fn(), saveAssistantSettings: vi.fn(), reindexRag: vi.fn(), saveRagText: vi.fn() }));
-const settings: AssistantSettings = { enabled: true, ragEnabled: true, tutorEnabled: true, exerciseEnabled: true, verifierEnabled: true, generalKnowledgeFallback: false, llmRouterEnabled: false, tutorModel: '', exerciseModel: '', verifierModel: '', routerModel: '', embeddingModel: 'embed', topK: 4, minimumRelevance: 0.35, chunkCharacters: 2800, chunkOverlapCharacters: 300, maxDocumentCharacters: 150000, maxPromptLength: 2000, maxInputTokens: 100000, maxOutputTokens: 1200, maxAgentCalls: 8, maxLlmCalls: 6, maxRetries: 1, timeoutSeconds: 60, maxRequestCostUsd: 0.05, dailyBudgetUsd: 1, requestsPerIdentityPerMinute: 40, globalRequestsPerMinute: 120, maxConcurrentRequests: 30, retentionDays: 30 };
+vi.mock('../../api/aiApi', () => ({ getAssistantSettings: vi.fn(), getAssistantDailyBudget: vi.fn(), getAssistantStatistics: vi.fn(), getAssistantRequests: vi.fn(), getRagStatus: vi.fn(), getAssistantRequest: vi.fn(), saveAssistantSettings: vi.fn(), reindexRag: vi.fn(), saveRagText: vi.fn(), getRagText: vi.fn(), extractRagVision: vi.fn() }));
+const settings: AssistantSettings = { enabled: true, ragEnabled: true, tutorEnabled: true, exerciseEnabled: true, verifierEnabled: true, generalKnowledgeFallback: false, llmRouterEnabled: false, tutorModel: '', exerciseModel: '', verifierModel: '', routerModel: '', embeddingModel: 'embed', visionModel: '', topK: 4, minimumRelevance: 0.35, chunkCharacters: 2800, chunkOverlapCharacters: 300, maxDocumentCharacters: 150000, maxPromptLength: 2000, maxInputTokens: 100000, maxOutputTokens: 1200, maxAgentCalls: 8, maxLlmCalls: 6, maxRetries: 1, timeoutSeconds: 60, maxRequestCostUsd: 0.05, dailyBudgetUsd: 1, requestsPerIdentityPerMinute: 40, globalRequestsPerMinute: 120, maxConcurrentRequests: 30, retentionDays: 30 };
 const renderPage = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><AssistantAdminPage /></QueryClientProvider>);
 describe('AssistantAdminPage', () => {
   beforeEach(() => {
@@ -15,7 +15,7 @@ describe('AssistantAdminPage', () => {
     vi.mocked(api.getAssistantDailyBudget).mockResolvedValue({ budgetUsd: 1, estimatedCommittedUsd: 0.2, remainingUsd: 0.8, exhausted: false, percentConsumed: 20, dayBoundary: 'UTC' });
     vi.mocked(api.getAssistantStatistics).mockResolvedValue({ requests: 0, succeeded: 0, failed: 0, rateLimited: 0, budgetRejected: 0, inputTokens: 0, outputTokens: 0, costUsd: 0, averageDurationMs: 0, llmCalls: 0, ragSearches: 0, activeUsers: 0, retries: 0, retrievedChunks: 0, agents: [] });
     vi.mocked(api.getAssistantRequests).mockResolvedValue([]);
-    vi.mocked(api.getRagStatus).mockResolvedValue({ indexedMaterials: 0, totalChunks: 0, failedMaterials: 0, lastIndexingTime: null, lastFullReindex: null, embedding: null, pending: [] });
+    vi.mocked(api.getRagStatus).mockResolvedValue({ indexedMaterials: 0, totalChunks: 0, failedMaterials: 0, lastIndexingTime: null, lastFullReindex: null, embedding: null, pending: [], materials: [], distribution: [], totalMaterials: 0, needsTextMaterials: 0, needsReviewMaterials: 0, pendingMaterials: 0, visionCandidates: 0 });
     vi.mocked(api.reindexRag).mockResolvedValue();
   });
   it('requires confirmation before reindexing', async () => {
@@ -31,5 +31,40 @@ describe('AssistantAdminPage', () => {
     const dates = presetDates(7); const range = analyticsBoundaries(dates.from, dates.to)!;
     await waitFor(() => expect(api.getAssistantStatistics).toHaveBeenCalledWith(range, expect.any(AbortSignal)));
     expect(api.getAssistantRequests).toHaveBeenCalledWith(range, 1, expect.any(AbortSignal));
+  });
+  it('shows NeedsText counts and requires explicit confirmation before paid bulk OCR', async () => {
+    const status = await api.getRagStatus();
+    vi.mocked(api.getRagStatus).mockResolvedValue({ ...status, totalMaterials: 2, needsTextMaterials: 2, visionCandidates: 2 });
+    let complete!: () => void;
+    vi.mocked(api.extractRagVision).mockImplementation(() => new Promise<void>(resolve => { complete = resolve; }));
+    renderPage();
+    expect(await screen.findByText(/Потребують тексту: 2/)).toBeInTheDocument();
+    expect(api.extractRagVision).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Розпізнати матеріали, що потребують тексту' }));
+    expect(api.extractRagVision).not.toHaveBeenCalled();
+    expect(await screen.findByText(/Матеріалів-кандидатів: 2/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Підтвердити платне OCR' }));
+    await waitFor(() => expect(api.extractRagVision).toHaveBeenCalledWith(undefined));
+    expect(await screen.findByRole('button', { name: 'Розпізнаємо…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Переіндексувати RAG' })).toBeDisabled();
+    complete();
+  });
+  it('loads extracted text for review and preserves dirty edits through background refresh', async () => {
+    const status = await api.getRagStatus();
+    const material = { materialId: 'real-id', title: 'Лінійні рівняння', status: 'NeedsReview', fileType: '.png', extractionMethod: 'Vision/OCR', extractionStatus: 'NeedsReview', extractedAt: '2026-10-03T19:00:00Z', extractionError: null, visionEligible: false };
+    vi.mocked(api.getRagStatus).mockResolvedValue({ ...status, totalMaterials: 1, needsReviewMaterials: 1, materials: [material], pending: [material] });
+    vi.mocked(api.getRagText).mockResolvedValue({ text: 'ax + b = 0 [Нерозбірливо]', extractedText: 'ax + b = 0 [Нерозбірливо]', approvedText: null, originalExtractionMethod: 'Vision/OCR', extractionMethod: 'Vision/OCR', extractionStatus: 'NeedsReview', extractedAt: null, extractionError: null });
+    vi.mocked(api.saveRagText).mockResolvedValue();
+    renderPage();
+    fireEvent.mouseDown(await screen.findByLabelText('Матеріал для перевіреного тексту'));
+    fireEvent.click(await screen.findByRole('option', { name: 'Лінійні рівняння · NeedsReview' }));
+    await waitFor(() => expect(screen.getByLabelText('Перевірений текст')).toHaveValue('ax + b = 0 [Нерозбірливо]'));
+    fireEvent.change(screen.getByLabelText('Перевірений текст'), { target: { value: 'Учитель перевірив: ax + b = 0.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Оновити' }));
+    await waitFor(() => expect(api.getRagText).toHaveBeenCalledTimes(2));
+    expect(screen.getByLabelText('Перевірений текст')).toHaveValue('Учитель перевірив: ax + b = 0.');
+    expect(screen.getByRole('link', { name: 'Переглянути матеріал' })).toHaveAttribute('href', '/materials/real-id');
+    fireEvent.click(screen.getByRole('button', { name: 'Зберегти текст та індексувати' }));
+    await waitFor(() => expect(api.saveRagText).toHaveBeenCalledWith('real-id', 'Учитель перевірив: ax + b = 0.'));
   });
 });

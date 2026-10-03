@@ -20,6 +20,10 @@ public static class AssistantModel
         state.ToTable("rag_index_states"); state.HasKey(x => x.MaterialId);
         state.HasOne<Document>().WithMany().HasForeignKey(x => x.MaterialId).OnDelete(DeleteBehavior.Cascade);
         state.Property(x => x.Fingerprint).HasMaxLength(64); state.Property(x => x.Status).HasMaxLength(64);
+        state.Property(x => x.SourceFingerprint).HasMaxLength(64);
+        state.Property(x => x.ExtractionMethod).HasMaxLength(32);
+        state.Property(x => x.ExtractionStatus).HasMaxLength(32);
+        state.Property(x => x.ExtractionError).HasMaxLength(128);
         var request = b.Entity<AssistantRequest>();
         request.ToTable("assistant_requests"); request.HasKey(x => x.Id);
         request.Property(x => x.ActorHash).HasMaxLength(64);

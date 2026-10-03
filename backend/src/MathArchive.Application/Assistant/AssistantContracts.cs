@@ -16,6 +16,7 @@ public sealed class AssistantOptions
     public string VerifierModel { get; set; } = "";
     public string RouterModel { get; set; } = "";
     public string EmbeddingModel { get; set; } = "text-embedding-3-small";
+    public string VisionModel { get; set; } = "";
     public int TopK { get; set; } = 4;
     public double MinimumRelevance { get; set; } = 0.35;
     public int ChunkCharacters { get; set; } = 2800;
@@ -44,7 +45,7 @@ public sealed class AssistantOptions
         TimeoutSeconds is >= 5 and <= 120 && MaxRequestCostUsd is > 0 and <= 1 && DailyBudgetUsd is >= 0 and <= 100 &&
         RequestsPerIdentityPerMinute is >= 1 and <= 120 && GlobalRequestsPerMinute is >= 30 and <= 600 &&
         MaxConcurrentRequests is >= 1 and <= 60 && RetentionDays is >= 1 and <= 365 &&
-        new[] { TutorModel, ExerciseModel, VerifierModel, RouterModel, EmbeddingModel }.All(x => x is not null && x.Length <= 100) &&
+        new[] { TutorModel, ExerciseModel, VerifierModel, RouterModel, EmbeddingModel, VisionModel }.All(x => x is not null && x.Length <= 100) &&
         !string.IsNullOrWhiteSpace(EmbeddingModel);
 }
 
@@ -89,6 +90,11 @@ public interface IEmbeddingService
 {
     Task<EmbeddingResult> EmbedAsync(string model, string text, CancellationToken ct);
 }
+public sealed record VisionInput(byte[] Content, string ContentType, string FileName, int Units, int TextUpperTokens = 0);
+public interface IRagVisionProvider
+{
+    Task<ProviderResult> ExtractAsync(string model, string instructions, IReadOnlyList<VisionInput> inputs, int maxOutputTokens, CancellationToken ct);
+}
 public interface IRagSearchService
 {
     Task<IReadOnlyList<RetrievedChunk>> SearchAsync(float[] vector, string model, AssistantQuery query, int topK, double minimumRelevance, CancellationToken ct);
@@ -96,7 +102,8 @@ public interface IRagSearchService
 public interface IRagIndexer
 {
     Task IndexAsync(Guid materialId, bool force, CancellationToken ct);
-    Task ReindexAsync(CancellationToken ct);
+    Task ReindexAsync(CancellationToken ct, bool allowVision = false);
+    Task ExtractVisionAsync(Guid materialId, CancellationToken ct);
 }
 public interface IAgent
 {
