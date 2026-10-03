@@ -371,3 +371,7 @@ Optional administrator-only AI suggestions and their separate usage telemetry ar
 ## AI-assisted development
 
 Reusable AI rules, prompts, checklists, and an evidence-based Storage Reconciliation example are documented in [`docs/ai-workflow/README.md`](docs/ai-workflow/README.md).
+
+## Student AI assistant
+
+The optional Ukrainian mathematics assistant, RAG index, bounded specialized agents, admin controls and estimated daily budget are documented in [docs/ai-assistant.md](docs/ai-assistant.md). It is disabled by default until pricing, indexing and teacher review are complete.

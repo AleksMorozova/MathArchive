@@ -316,6 +316,24 @@ public sealed class DocumentServiceTests
         Assert.Equal(0, document.DisplayOrder);
     }
 
+    [Fact]
+    public async Task CreateAsync_indexing_failure_preserves_committed_document_and_file()
+    {
+        var repository = new FakeDocumentRepository();
+        var storage = new FakeFileStorage();
+        var service = new DocumentService(repository, storage, new FakeClock(), new DocumentMetadataValidator(),
+            new UploadedFileValidator(), NullLogger<DocumentService>.Instance, new FailingIndexer());
+        var result = await service.CreateAsync(CreateCommand(), CancellationToken.None);
+        Assert.Equal(repository.Documents.Single().Id, result.Id);
+        Assert.Contains("stored-1.pdf", storage.SavedFiles);
+        Assert.Empty(storage.DeletedFiles);
+    }
+
+    private sealed class FailingIndexer : MathArchive.Application.Assistant.IRagIndexer
+    {
+        public Task IndexAsync(Guid materialId, bool force, CancellationToken ct) => throw new InvalidOperationException("Embedding provider unavailable");
+        public Task ReindexAsync(CancellationToken ct) => throw new NotSupportedException();
+    }
     private static DocumentService CreateService(FakeDocumentRepository repository, FakeFileStorage storage)
     {
         return new DocumentService(

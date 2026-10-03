@@ -78,6 +78,9 @@ public sealed class ApiIntegrationFixture : IAsyncLifetime
         await dbContext.Documents.ExecuteDeleteAsync();
         await dbContext.AnalyticsEvents.ExecuteDeleteAsync();
         await dbContext.AiUsageRecords.ExecuteDeleteAsync();
+        await dbContext.Set<MathArchive.Domain.Assistant.AssistantRequest>().ExecuteDeleteAsync();
+        await dbContext.Set<MathArchive.Domain.Assistant.AssistantSetting>().ExecuteDeleteAsync();
+        await dbContext.Set<MathArchive.Domain.Assistant.AiDailySpend>().ExecuteDeleteAsync();
 
         if (Directory.Exists(storageRoot))
         {

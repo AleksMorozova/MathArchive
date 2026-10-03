@@ -41,6 +41,7 @@ public sealed class GlobalExceptionHandler(
     {
         var problemDetails = exception switch
         {
+            MathArchive.Application.Assistant.AssistantException assistantException => new ProblemDetails { Type = "about:blank", Title = assistantException.Category, Status = assistantException.Status, Detail = assistantException.Message },
             ValidationException validationException => CreateValidationProblemDetails(validationException),
             MaterialFileNotFoundException => new ProblemDetails
             {
@@ -136,7 +137,7 @@ public sealed class GlobalExceptionHandler(
 
     private static bool IsExpected(Exception exception)
     {
-        return exception is ValidationException
+        return exception is MathArchive.Application.Assistant.AssistantException or ValidationException
             or MaterialFileNotFoundException
             or MaterialAnalysisException
             or AiLimitExceededException

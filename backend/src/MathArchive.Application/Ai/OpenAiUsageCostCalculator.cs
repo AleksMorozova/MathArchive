@@ -11,7 +11,7 @@ public sealed class OpenAiUsageCostCalculator(IOptions<OpenAiOptions> options) :
 
         var pricing = options.Value.Pricing
             .FirstOrDefault(entry => string.Equals(entry.Key.Trim(), model.Trim(), StringComparison.OrdinalIgnoreCase)).Value;
-        if (pricing is null || pricing.InputPerMillionTokensUsd <= 0 || pricing.OutputPerMillionTokensUsd <= 0)
+        if (pricing is null || pricing.InputPerMillionTokensUsd <= 0 || (pricing.OutputPerMillionTokensUsd < 0 || (outputTokens > 0 && pricing.OutputPerMillionTokensUsd == 0)))
             return null;
 
         return decimal.Round(

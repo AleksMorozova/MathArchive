@@ -6,6 +6,8 @@ using MathArchive.Infrastructure.Seed;
 using MathArchive.Infrastructure.Storage;
 using MathArchive.Infrastructure.Ai;
 using MathArchive.Application.Ai;
+using MathArchive.Application.Assistant;
+using MathArchive.Infrastructure.Assistant;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,6 +28,26 @@ public static class DependencyInjection
         services.AddDbContext<MathArchiveDbContext>(options =>
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
 
+        services.Configure<AssistantOptions>(configuration.GetSection("Assistant"));
+        services.AddSingleton<IAssistantStore, AssistantStore>();
+        services.AddSingleton<AssistantAdmission>();
+        services.AddHostedService<AssistantAuditRetention>();
+        services.AddSingleton<RagIndexLock>();
+        services.AddScoped<PaidAiService>();
+        services.AddScoped<SearchAgent>();
+        services.AddScoped<TutorAgent>();
+        services.AddScoped<ExerciseAgent>();
+        services.AddScoped<VerifierAgent>();
+        services.AddScoped<AssistantOrchestrator>();
+        services.AddScoped<IRagSearchService, RagSearchService>();
+        services.AddScoped<IRagIndexer, RagIndexer>();
+        services.AddHttpClient<OpenAiAssistantProvider>(client =>
+        {
+            client.BaseAddress = new Uri("https://api.openai.com/v1/");
+            client.Timeout = Timeout.InfiniteTimeSpan;
+        });
+        services.AddScoped<IAssistantProvider>(sp => sp.GetRequiredService<OpenAiAssistantProvider>());
+        services.AddScoped<IEmbeddingService>(sp => sp.GetRequiredService<OpenAiAssistantProvider>());
         services.AddScoped<IDocumentRepository, DocumentRepository>();
         services.AddScoped<MathArchive.Application.Analytics.IAnalyticsRepository, AnalyticsRepository>();
         services.AddScoped<IAiUsageRepository, AiUsageRepository>();

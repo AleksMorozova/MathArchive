@@ -85,3 +85,10 @@ describe('apiErrors', () => {
     expect(getApiErrorMessage(error)).toBe('Щось пішло не так. Спробуйте пізніше.');
   });
 });
+// Assistant errors are safe server-authored messages with explicit categories.
+describe('assistant ProblemDetails', () => {
+  it('preserves daily budget feedback without exposing arbitrary upstream details', () => {
+    expect(getApiErrorMessage(new ApiError('ignored', { status: 429, problem: { title: 'DailyBudget', detail: 'Денний ліміт AI вичерпано.' } }))).toBe('Денний ліміт AI вичерпано.');
+    expect(getApiErrorMessage(new ApiError('ignored', { status: 503, problem: { title: 'Upstream error', detail: 'secret-internal-details' } }))).not.toContain('secret-internal-details');
+  });
+});
