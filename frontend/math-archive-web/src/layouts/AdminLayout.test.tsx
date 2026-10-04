@@ -20,11 +20,13 @@ describe('AdminLayout navigation', () => {
       'Сховище',
       'Статистика',
       'Використання AI',
-      'AI-помічник'
+      'AI-помічник',
+      'Статистика AI-помічника'
     ]);
     expect(within(navigation).getByRole('link', { name: 'Додати з AI' })).toHaveAttribute('href', '/admin/documents/ai');
     expect(within(navigation).getByRole('link', { name: 'Використання AI' })).toHaveAttribute('href', '/admin/ai-usage');
     expect(within(navigation).getByRole('link', { name: 'AI-помічник' })).toHaveAttribute('href', '/admin/assistant');
+    expect(within(navigation).getByRole('link', { name: 'Статистика AI-помічника' })).toHaveAttribute('href', '/admin/assistant/statistics');
     expect(within(navigation).getByRole('link', { name: 'Переробити зображення' })).toHaveAttribute('href', '/admin/image-transform');
   });
 
@@ -34,6 +36,13 @@ describe('AdminLayout navigation', () => {
 
     expect(within(navigation).getByRole('link', { name: 'Переробити зображення' })).toHaveClass('active');
     expect(within(navigation).getByRole('link', { name: 'Додати з AI' })).not.toHaveClass('active');
+  });
+
+  it('marks assistant statistics active without marking assistant settings active', () => {
+    renderLayout('/admin/assistant/statistics');
+    const navigation = document.querySelector<HTMLElement>('.admin-sidebar')!;
+    expect(within(navigation).getByRole('link', { name: 'Статистика AI-помічника' })).toHaveClass('active');
+    expect(within(navigation).getByRole('link', { name: 'AI-помічник', exact: true })).not.toHaveClass('active');
   });
 
   it('marks only AI creation active on its route', () => {
@@ -52,6 +61,7 @@ describe('AdminLayout navigation', () => {
     await user.click(screen.getByRole('button', { name: 'Відкрити меню' }));
     const drawer = await screen.findByRole('presentation');
     expect(within(drawer).getByRole('link', { name: 'Додати з AI' })).toHaveAttribute('href', '/admin/documents/ai');
+    expect(within(drawer).getByRole('link', { name: 'Статистика AI-помічника' })).toHaveAttribute('href', '/admin/assistant/statistics');
   });
 });
 
@@ -62,6 +72,7 @@ function renderLayout(initialPath: string) {
         <Route path="/admin" element={<AdminLayout />}>
           <Route path="documents/ai" element={<div>AI form</div>} />
           <Route path="image-transform" element={<div>Image transform</div>} />
+          <Route path="assistant/statistics" element={<div>Assistant statistics</div>} />
         </Route>
       </Routes>
     </MemoryRouter>
