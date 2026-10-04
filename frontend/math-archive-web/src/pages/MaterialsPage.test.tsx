@@ -145,22 +145,20 @@ describe('MaterialsPage', () => {
   });
 
   it('does not publish stale topic values during rapid typing', async () => {
+    vi.useFakeTimers();
     renderMaterialsPage('/materials?class=7');
 
     const topicInput = screen.getByLabelText('Пошук за темою');
     fireEvent.change(topicInput, { target: { value: 'г' } });
-    await waitForDebounce(250);
+    await act(async () => { await vi.advanceTimersByTimeAsync(250); });
     fireEvent.change(topicInput, { target: { value: 'геом' } });
-    await waitForDebounce(350);
+    await act(async () => { await vi.advanceTimersByTimeAsync(350); });
 
     expect(new URLSearchParams(screen.getByTestId('location').textContent ?? '').has('topic')).toBe(false);
 
-    await waitForDebounce(100);
-
-    await waitFor(() => {
-      const params = new URLSearchParams(screen.getByTestId('location').textContent ?? '');
-      expect(params.get('topic')).toBe('геом');
-    });
+    await act(async () => { await vi.advanceTimersByTimeAsync(100); });
+    const params = new URLSearchParams(screen.getByTestId('location').textContent ?? '');
+    expect(params.get('topic')).toBe('геом');
   });
 
   it('loads the next page when the sentinel enters the viewport', async () => {

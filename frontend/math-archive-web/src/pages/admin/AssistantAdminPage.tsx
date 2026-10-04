@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, Box, Button, Card, CardContent, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, LinearProgress, MenuItem, Stack, Switch, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography } from '@mui/material';
-import { getAssistantDailyBudget, getAssistantRequest, getAssistantRequests, getAssistantSettings, getAssistantStatistics, getRagStatus, reindexRag, saveAssistantSettings, saveRagText, getRagText, extractRagVision, scheduleRagIndexing } from '../../api/aiApi';
+import { getAssistantDailyBudget, getAssistantSettings, getRagStatus, reindexRag, saveAssistantSettings, saveRagText, getRagText, extractRagVision, scheduleRagIndexing } from '../../api/aiApi';
 import { getApiErrorMessage } from '../../api/apiErrors';
 import { LoadingState } from '../../components/StateView';
-import { analyticsBoundaries, presetDates } from '../../utils/analyticsDates';
 import type { AssistantSettings } from '../../types/assistant';
 
 const labels: Record<keyof AssistantSettings, string> = {
@@ -19,29 +18,20 @@ const toggleDescriptions: Partial<Record<keyof AssistantSettings, string>> = {
   enabled: 'Дозволяє учням користуватися AI-помічником на сайті. Вимкнення не змінює підготовлений індекс.',
   ragEnabled: 'Дозволяє платну обробку матеріалів, OCR зображень, індексацію та пошук у матеріалах. Працює без публічного помічника.',
 };
-interface Execution { AgentName: string; Model: string; InputTokens: number; OutputTokens: number; CostUsd: number; DurationMs: number; Success: boolean; IsParallel: boolean; ErrorCategory?: string }
-interface Source { MaterialId: string; Title: string }
 export function AssistantAdminPage() {
   const client = useQueryClient();
   const [draft, setDraft] = useState<AssistantSettings | null>(null);
-  const [dates, setDates] = useState(() => presetDates(1));
-  const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState(false);
   const [visionConfirmation, setVisionConfirmation] = useState<string | null>(null);
   const [material, setMaterial] = useState('');
   const [text, setText] = useState('');
-  const range = analyticsBoundaries(dates.from, dates.to);
   const settings = useQuery({ queryKey: ['assistant-admin', 'settings'], queryFn: ({ signal }) => getAssistantSettings(signal) });
   useEffect(() => { if (settings.data && draft === null) setDraft(settings.data); }, [settings.data, draft]);
   const daily = useQuery({ queryKey: ['assistant-admin', 'daily'], queryFn: ({ signal }) => getAssistantDailyBudget(signal), refetchInterval: 30000 });
-  const stats = useQuery({ queryKey: ['assistant-admin', 'stats', range], queryFn: ({ signal }) => getAssistantStatistics(range!, signal), enabled: !!range });
-  const requests = useQuery({ queryKey: ['assistant-admin', 'requests', range, page], queryFn: ({ signal }) => getAssistantRequests(range!, page, signal), enabled: !!range });
   const rag = useQuery({ queryKey: ['assistant-admin', 'rag'], queryFn: ({ signal }) => getRagStatus(signal), refetchInterval: 3000 });
   const extraction = useQuery({ queryKey: ['assistant-admin', 'text', material], queryFn: ({ signal }) => getRagText(material, signal), enabled: !!material });
   const [hydratedMaterial, setHydratedMaterial] = useState('');
   useEffect(() => { if (extraction.data && hydratedMaterial !== material) { setText(extraction.data.text); setHydratedMaterial(material); } }, [extraction.data, hydratedMaterial, material]);
-  const detail = useQuery({ queryKey: ['assistant-admin', 'detail', selected], queryFn: ({ signal }) => getAssistantRequest(selected!, signal), enabled: !!selected });
   const refresh = () => { void client.invalidateQueries({ queryKey: ['assistant-admin'] }); void client.invalidateQueries({ queryKey: ['assistant'] }); };
   const save = useMutation({ mutationFn: saveAssistantSettings, onSuccess: refresh, retry: false });
   const reindex = useMutation({ mutationFn: reindexRag, onSettled: refresh, retry: false });
@@ -51,7 +41,7 @@ export function AssistantAdminPage() {
   const approved = useMutation({ mutationFn: () => saveRagText(material, text), onSuccess: refresh, retry: false });
   return <Stack gap={3}>
     <Typography variant="h3">Керування AI-помічником</Typography>
-    {[settings, daily, stats, requests, rag].filter(q => q.isError).map((q, i) => <Alert key={i} severity="error">{getApiErrorMessage(q.error)}</Alert>)}
+    {[settings, daily, rag].filter(q => q.isError).map((q, i) => <Alert key={i} severity="error">{getApiErrorMessage(q.error)}</Alert>)}
     {settings.isLoading && <LoadingState />}
     {daily.data && <Card><CardContent><Stack gap={1}><Typography variant="h6">Денний бюджет (UTC)</Typography><Typography>Бюджет: {money(daily.data.budgetUsd)} · Орієнтовно використано/зарезервовано: {money(daily.data.estimatedCommittedUsd)} · Залишок: {money(daily.data.remainingUsd)}</Typography><LinearProgress variant="determinate" value={daily.data.percentConsumed} />{daily.data.exhausted && <Alert severity="warning">Нові платні виклики заблоковані: денний бюджет вичерпано.</Alert>}<Typography variant="body2">Це оцінка застосунку, включно з незавершеними викликами, а не фактичний рахунок OpenAI.</Typography></Stack></CardContent></Card>}
     {draft && <Card><CardContent><Stack component="form" gap={2} onSubmit={e => { e.preventDefault(); if (!save.isPending) save.mutate(draft); }}>
@@ -65,23 +55,7 @@ export function AssistantAdminPage() {
       {save.isError && <Alert severity="error">{getApiErrorMessage(save.error)}</Alert>}{save.isSuccess && <Alert severity="success">Налаштування збережено.</Alert>}
       <Button type="submit" variant="contained" disabled={save.isPending}>{save.isPending ? 'Зберігаємо…' : 'Зберегти налаштування'}</Button>
     </Stack></CardContent></Card>}
-    <Typography variant="h5">Статистика за період</Typography>
-    <Stack direction={{ xs: 'column', sm: 'row' }} gap={1}><Button onClick={() => { setDates(presetDates(1)); setPage(1); }}>Сьогодні</Button><Button onClick={() => { setDates(presetDates(7)); setPage(1); }}>Останні 7 днів</Button><TextField type="date" label="Від" value={dates.from} InputLabelProps={{ shrink: true }} onChange={e => { setDates({ ...dates, from: e.target.value }); setPage(1); }} /><TextField type="date" label="До" value={dates.to} InputLabelProps={{ shrink: true }} onChange={e => { setDates({ ...dates, to: e.target.value }); setPage(1); }} /><Button onClick={refresh}>Оновити</Button></Stack>
-    {!range && <Alert severity="warning">Перевір дати періоду.</Alert>}
-    {stats.isLoading && <LoadingState />}
-    {stats.data && <>
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 2 }}>{[
-        ['Запитів', stats.data.requests], ['Успішних', stats.data.succeeded], ['Неуспішних', stats.data.failed], ['Обмежено частоту', stats.data.rateLimited], ['Вичерпано бюджет', stats.data.budgetRejected], ['Викликів LLM', stats.data.llmCalls], ['Пошуків RAG', stats.data.ragSearches], ['Вхідних токенів', stats.data.inputTokens], ['Вихідних токенів', stats.data.outputTokens], ['Усього токенів', stats.data.inputTokens + stats.data.outputTokens], ['Орієнтовна вартість', money(stats.data.costUsd)], ['Вартість/запит', money(stats.data.requests ? stats.data.costUsd / stats.data.requests : 0)], ['Середній час', `${Math.round(stats.data.averageDurationMs)} мс`], ['Активних денних ідентифікаторів', stats.data.activeUsers], ['Пік одночасних запитів', stats.data.peakConcurrency ?? 0], ['Повторів', stats.data.retries], ['Отримано фрагментів', stats.data.retrievedChunks]
-      ].map(([label, value]) => <Card key={label}><CardContent><Typography variant="body2">{label}</Typography><Typography variant="h5">{value}</Typography></CardContent></Card>)}</Box>
-      <Box sx={{ overflowX: 'auto' }}><Table><TableHead><TableRow>{['Агент', 'Викликів', 'Помилок', 'Токенів', 'Вартість', 'Середній час'].map(x => <TableCell key={x}>{x}</TableCell>)}</TableRow></TableHead><TableBody>{stats.data.agents.map(a => <TableRow key={a.agentName}><TableCell>{a.agentName}</TableCell><TableCell>{a.calls}</TableCell><TableCell>{a.failures}</TableCell><TableCell>{a.inputTokens + a.outputTokens}</TableCell><TableCell>{money(a.costUsd)}</TableCell><TableCell>{Math.round(a.averageDurationMs)} мс</TableCell></TableRow>)}</TableBody></Table></Box>
-    </>}
-    {stats.data && <Stack gap={1}><Typography>Поширені наміри: {stats.data.intents?.map(x => `${x.label}: ${x.requests}`).join(' · ') || '—'}</Typography><Typography>Поширені теми: {stats.data.topics?.map(x => `${x.label}: ${x.requests}`).join(' · ') || '—'}</Typography><Typography>Запити за годинами UTC: {stats.data.hoursUtc?.map(x => `${x.label}: ${x.requests}`).join(' · ') || '—'}</Typography></Stack>}
-    <Typography variant="h5">Останні запити</Typography>
-    {requests.isLoading && <LoadingState />}
-    <Box sx={{ overflowX: 'auto' }}><Table><TableHead><TableRow>{['Час', 'Запитання', 'Клас', 'Намір', 'Токенів', 'Вартість', 'Тривалість', 'Статус'].map(x => <TableCell key={x}>{x}</TableCell>)}</TableRow></TableHead><TableBody>{requests.data?.map(r => <TableRow key={r.id}><TableCell>{new Date(r.createdAt).toLocaleString('uk-UA')}</TableCell><TableCell><Button onClick={() => setSelected(r.id)}>{r.queryPreview}</Button></TableCell><TableCell>{r.grade ?? '—'}</TableCell><TableCell>{r.intent}</TableCell><TableCell>{r.inputTokens + r.outputTokens}</TableCell><TableCell>{money(r.costUsd)}</TableCell><TableCell>{r.durationMs} мс</TableCell><TableCell>{r.status}</TableCell></TableRow>)}</TableBody></Table></Box>
-    {requests.data?.length === 0 && <Typography>Запитів за цей період немає.</Typography>}
-    <Stack direction="row"><Button disabled={page === 1 || requests.isFetching} onClick={() => setPage(page - 1)}>Назад</Button><Typography sx={{ p: 1 }}>Сторінка {page}</Typography><Button disabled={requests.data?.length !== 20 || requests.isFetching} onClick={() => setPage(page + 1)}>Далі</Button></Stack>
-    <Typography variant="h5">Індекс RAG</Typography>
+    <Stack direction="row" alignItems="center" gap={2}><Typography variant="h5">Індекс RAG</Typography><Button onClick={refresh}>Оновити</Button></Stack>
     <Typography variant="body2">Нові та змінені матеріали індексуються автоматично, коли RAG увімкнений. Зображення використовують платне OCR. Публічного помічника можна залишити вимкненим. Вимкнення RAG зупиняє індексацію.</Typography>
     <Button disabled={processing || approved.isPending || !draft?.ragEnabled} onClick={() => schedule.mutate(undefined)}>Індексувати відсутні / повторити невдалі</Button>
     {schedule.isSuccess && <Alert severity="info">Матеріали очікують індексації. Обробка послідовна та обмежена денним бюджетом.</Alert>}
@@ -114,6 +88,6 @@ export function AssistantAdminPage() {
     <Dialog open={visionConfirmation !== null} onClose={() => setVisionConfirmation(null)}><DialogTitle>Запустити платне розпізнавання?</DialogTitle><DialogContent>Матеріалів-кандидатів: {visionConfirmation ? 1 : rag.data?.visionCandidates ?? 0}. Модель: {draft?.visionModel || 'OpenAI:Model'}. Максимальний бюджет на матеріал: {money(draft?.maxRequestCostUsd ?? 0)}. Денний залишок: {money(daily.data?.remainingUsd ?? 0)}. Нативний текст має пріоритет. Збережений OCR не повторюється. Придатний текст індексується автоматично; учитель може перевірити й виправити його.</DialogContent><DialogActions><Button onClick={() => setVisionConfirmation(null)}>Скасувати</Button><Button onClick={() => { const id = visionConfirmation!; setVisionConfirmation(null); vision.mutate(id); }}>Підтвердити платне OCR</Button></DialogActions></Dialog>
     {reindex.isError && <Alert severity="error">{getApiErrorMessage(reindex.error)}</Alert>}{approved.isError && <Alert severity="error">{getApiErrorMessage(approved.error)}</Alert>}
     <Dialog open={confirmation} onClose={() => setConfirmation(false)}><DialogTitle>Переіндексувати матеріали?</DialogTitle><DialogContent>Операція може витратити бюджет OCR та embeddings. Незмінені джерела й фрагменти використовують збережений текст та embeddings.</DialogContent><DialogActions><Button onClick={() => setConfirmation(false)}>Скасувати</Button><Button onClick={() => { setConfirmation(false); reindex.mutate(); }}>Підтвердити</Button></DialogActions></Dialog>
-    <Dialog open={!!selected} onClose={() => setSelected(null)} fullWidth maxWidth="md"><DialogTitle>Деталі запиту</DialogTitle><DialogContent>{detail.isLoading && <LoadingState />}{detail.isError && <Alert severity="error">{getApiErrorMessage(detail.error)}</Alert>}{detail.data && <Stack gap={2}><Typography sx={{ whiteSpace: 'pre-wrap' }}>{detail.data.query}</Typography><Typography>Намір: {detail.data.intent} · Статус: {detail.data.status} · Повторів: {detail.data.retries} · Фрагментів: {detail.data.retrievedChunks}</Typography>{(JSON.parse(detail.data.executionsJson) as Execution[]).map((e, i) => <Typography key={i}>{i+1}. {e.AgentName}{e.IsParallel ? ' (паралельно)' : ''} · {e.Model} · {e.InputTokens}/{e.OutputTokens} токенів · {money(e.CostUsd)} · {e.DurationMs} мс · {e.Success ? 'Успішно' : e.ErrorCategory}</Typography>)}<Typography variant="h6">Отримані матеріали</Typography>{(JSON.parse(detail.data.sourcesJson) as Source[]).map(s => <Typography key={s.MaterialId}>{s.Title}</Typography>)}<Typography variant="h6">Відповідь</Typography><Typography sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{detail.data.answer || 'Відповіді немає.'}</Typography></Stack>}</DialogContent><DialogActions><Button onClick={() => setSelected(null)}>Закрити</Button></DialogActions></Dialog>
+
   </Stack>;
 }

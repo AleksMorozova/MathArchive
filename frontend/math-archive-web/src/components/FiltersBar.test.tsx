@@ -38,7 +38,7 @@ describe('FiltersBar', () => {
     );
 
     await user.click(screen.getByLabelText('Клас'));
-    await user.click(screen.getByText('Загальні матеріали'));
+    await user.click(screen.getByRole('option', { name: 'Загальні' }));
 
     expect(onChange).toHaveBeenCalledWith({ grade: 'general' });
   });

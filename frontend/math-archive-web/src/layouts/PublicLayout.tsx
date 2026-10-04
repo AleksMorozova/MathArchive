@@ -3,6 +3,8 @@ import { AppBar, Box, Button, Container, Drawer, IconButton, Stack, Toolbar, Typ
 import { useEffect, useState } from 'react';
 import { trackSiteVisit } from '../api/analyticsApi';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { ScrollProgress } from '../components/ScrollProgress';
+import { ScrollToTop } from '../components/ScrollToTop';
 import { MathBackground } from '../components/MathBackground';
 import { AssistantSessionProvider, useAssistantSession } from '../components/assistant/AssistantSession';
 import { AssistantWidget } from '../components/assistant/AssistantWidget';
@@ -50,6 +52,7 @@ function PublicLayoutContent() {
             </IconButton>
           </Toolbar>
         </Container>
+        <ScrollProgress />
       </AppBar>
       <Drawer anchor="right" open={open} onClose={() => setOpen(false)} className="public-navigation-drawer">
         <Box sx={{ width: 260, p: 2 }}>{navigation}</Box>
@@ -63,6 +66,7 @@ function PublicLayoutContent() {
           <Typography variant="body2">MathArchive · Навчальні матеріали з математики</Typography>
         </Container>
       </Box>
+      <ScrollToTop />
       <AssistantWidget />
     </Box>
   );

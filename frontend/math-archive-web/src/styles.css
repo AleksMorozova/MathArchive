@@ -2113,3 +2113,273 @@ a {
 
 
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.animated-count { display: inline-block; min-width: 3ch; font-variant-numeric: tabular-nums; }
+.document-card:not(.material-card-skeleton) { animation: material-enter 260ms ease-out backwards; }
+@keyframes material-enter {
+  from { opacity: 0; translate: 0 8px; }
+  to { opacity: 1; translate: 0 0; }
+}
+@media (hover: hover) and (pointer: fine) {
+  .public-main-content:not(.home-route) .document-card:hover { transform: translateY(-4px); border-color: #E8AE18; }
+  .preview-frame img:hover { transform: scale(1.02); }
+}
+.preview-frame { overflow: hidden; }
+.preview-frame img { transition: transform 220ms ease; transform-origin: center; }
+.grade-selector .MuiOutlinedInput-root { transition: background-color 180ms ease; }
+.grade-selection-value { display: inline-block; animation: material-enter 160ms ease-out; }
+.grade-selector-selected .MuiOutlinedInput-root { background-color: rgba(232, 174, 24, 0.09); }
+.grade-selector-selected .MuiOutlinedInput-notchedOutline { border-color: #E8AE18; }
+.grade-selector .MuiOutlinedInput-notchedOutline { transition: border-color 180ms ease; }
+.empty-math { display: block; margin-bottom: 12px; color: #082B5C; opacity: .4; font-size: 1.7rem; }
+.empty-math > span:first-child { display: inline-block; animation: empty-search 3s ease-in-out 2; }
+@keyframes empty-search { 50% { transform: translateX(4px); } }
+.download-pending { animation: download-nudge 700ms ease-in-out infinite; }
+@keyframes download-nudge { 50% { transform: translateY(3px); opacity: .6; } }
+.download-confirmed { animation: material-enter 160ms ease-out; }
+.scroll-to-top.MuiIconButton-root {
+  position: fixed;
+  right: 22px;
+  bottom: calc(100px + env(safe-area-inset-bottom));
+  z-index: 1100;
+  width: 40px;
+  height: 40px;
+  color: #082B5C;
+  background: #FFFDF6;
+  border: 1px solid #E8AE18;
+  box-shadow: 0 3px 12px rgba(8, 43, 92, .12);
+  animation: material-enter 180ms ease-out;
+}
+.scroll-to-top.MuiIconButton-root:hover { background: #EAF5FC; }
+.scroll-to-top.MuiIconButton-root:focus-visible { outline: 2px solid #082B5C; outline-offset: 3px; }
+.home-page .hero-copy { animation: none; }
+.home-route .public-math-background { color: #E8AE18; animation: atmosphere-enter 300ms ease-out; }
+.home-route .math-sketch { opacity: .13; animation-duration: 18s; will-change: auto; }
+.home-route .math-sketch:nth-child(even) { color: #082B5C; animation-duration: 22s; }
+.home-route .math-sketch-tools, .home-route .math-sketch-circle { color: #E8AE18; }
+.home-page .school-identity { animation: material-enter 300ms 60ms backwards; }
+.home-page .teacher-introduction h1 { animation: material-enter 360ms 120ms backwards; }
+.home-page .teacher-introduction h1::after { transform-origin: left; animation: hero-line 450ms 180ms backwards; }
+.home-page .teacher-experience, .home-page .hero-materials-summary, .home-page .home-cta { animation: material-enter 360ms 240ms backwards; }
+.home-page .class-navigation-card { animation: material-enter 360ms 300ms backwards; }
+@keyframes atmosphere-enter { from { opacity: 0; } to { opacity: 1; } }
+@keyframes hero-line { from { transform: rotate(-1.2deg) scaleX(0); } to { transform: rotate(-1.2deg) scaleX(1); } }
+@media (max-width: 760px) {
+  .home-route .math-sketch-circle { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-shell *, .page-shell *::before, .page-shell *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  .public-main-content .document-card:hover, .preview-frame img:hover { transform: none; }
+}
+:root {
+  --motion-micro: 160ms;
+  --motion-interaction: 220ms;
+  --motion-layout: 320ms;
+  --motion-scene: 400ms;
+  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  view-transition-name: none;
+}
+
+.hero, .materials-hero { position: relative; isolation: isolate; }
+.living-math-scene {
+  position: absolute;
+  top: 12px;
+  right: -10px;
+  width: min(55%, 650px);
+  pointer-events: none;
+  z-index: -1;
+  color: #082B5C;
+  opacity: .23;
+  transform: translate(var(--scene-x, 0px), var(--scene-y, 0px));
+}
+.living-math-scene svg { width: 100%; overflow: visible; fill: none; stroke: currentColor; stroke-width: 1.3; }
+.living-math-scene text { fill: currentColor; stroke: none; font: 12px Georgia, serif; }
+.scene-grid { opacity: .22; animation: atmosphere-enter 400ms var(--motion-ease) both; }
+.scene-axes { stroke-dasharray: 1; animation: mathematical-draw 450ms 100ms var(--motion-ease) both; }
+.scene-points { fill: currentColor; animation: atmosphere-enter 250ms 300ms both; }
+.scene-state { opacity: 0; transition: opacity var(--motion-scene) var(--motion-ease); }
+.scene-active { opacity: 1; }
+.scene-active .scene-curve { stroke-dasharray: 1; animation: mathematical-draw 650ms 350ms var(--motion-ease) both; }
+.scene-active .scene-construction { stroke: #E8AE18; stroke-dasharray: 1; animation: mathematical-draw 350ms 850ms var(--motion-ease) both; }
+.scene-highlight { stroke: #E8AE18; fill: #E8AE18; }
+.scene-active .scene-highlight { animation: atmosphere-enter 200ms 800ms both; }
+.scene-active .scene-expression { animation: atmosphere-enter 200ms 1100ms both; }
+.scene-constructed .scene-active .scene-curve { animation-duration: 350ms; animation-delay: 0ms; }
+.scene-constructed .scene-active .scene-construction, .scene-constructed .scene-active .scene-highlight, .scene-constructed .scene-active .scene-expression { animation-duration: 200ms; animation-delay: 150ms; }
+@keyframes mathematical-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+
+.home-page .hero > .living-math-scene { width: 260px; top: -8px; right: 20%; }
+
+.materials-hero .living-math-scene { width: 310px; top: -30px; right: 0; opacity: .17; }
+.materials-hero .scene-active .scene-curve { animation-duration: 300ms; animation-delay: 0ms; }
+.materials-hero .scene-active .scene-construction, .materials-hero .scene-active .scene-highlight, .materials-hero .scene-active .scene-expression { animation-delay: 120ms; animation-duration: 200ms; }
+.home-page .teacher-introduction { animation: material-enter 360ms 80ms var(--motion-ease) backwards; }
+.home-page .teacher-introduction h1, .home-page .teacher-experience, .home-page .school-identity { animation: none; }
+.home-page .class-navigation-card { animation: none; }
+.section-reveal-pending:not(:focus-within) { opacity: 0; translate: 0 10px; }
+.home-page .section-revealed { animation: material-enter var(--motion-scene) var(--motion-ease) backwards; }
+.home-page .hero-materials-summary { position: relative; }
+.home-page .hero-materials-summary::before, .home-page .hero-materials-summary::after {
+  content: ''; position: absolute; top: -3px; width: 5px; height: 5px; border-radius: 50%; background: #E8AE18;
+}
+.home-page .hero-materials-summary::before { left: 0; }
+.home-page .hero-materials-summary::after { right: 0; }
+.brand-link { position: relative; }
+.brand-link::after { content: ''; position: absolute; left: 0; bottom: 3px; width: 42px; height: 1px; background: #E8AE18; transform-origin: left; animation: hero-line 600ms var(--motion-ease) both; }
+.header-math-progress { position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background: #E8AE18; transform-origin: left; transform: scaleX(var(--scroll-progress, 0)); pointer-events: none; }
+.grade-control { flex: 1 1 180px; min-width: 180px; align-self: stretch; }
+.grade-control .MuiTextField-root { width: 100%; }
+.math-search-field .MuiOutlinedInput-notchedOutline { transition: border-color var(--motion-micro); }
+.math-search-field .MuiSvgIcon-root { transition: transform var(--motion-micro) var(--motion-ease); }
+.math-search-field:focus-within .MuiSvgIcon-root { transform: translateX(2px); color: #E8AE18; }
+.document-card { position: relative; }
+.document-card::after { content: ''; position: absolute; top: 0; left: 18px; right: 18px; height: 2px; background: #E8AE18; transform: scaleX(0); transform-origin: left; transition: transform var(--motion-interaction) var(--motion-ease); pointer-events: none; }
+.document-card:focus-within::after { transform: scaleX(1); }
+.materials-grid[aria-busy="true"] { opacity: .65; }
+.materials-grid { position: relative; transition: opacity var(--motion-micro); }
+.material-exit-ghost, .material-exit-ghost * { animation: none !important; transition: none !important; }
+.material-opening { animation: material-open var(--motion-layout) var(--motion-ease) backwards; }
+@keyframes material-open { from { opacity: 0; transform: scale(.99) translateY(6px); } to { opacity: 1; transform: none; } }
+.material-card-skeleton .MuiSkeleton-root { animation-duration: 2.6s; }
+.empty-math > span:first-child { animation-iteration-count: 1; }
+.math-not-found svg { width: min(240px, 100%); height: 100px; fill: none; stroke: #082B5C; stroke-width: 1.5; }
+.math-not-found svg path { stroke-dasharray: 1; animation: mathematical-draw 700ms var(--motion-ease) both; }
+.math-not-found svg circle { stroke: #E8AE18; stroke-dasharray: 3 3; }
+.math-not-found svg text { fill: #082B5C; stroke: none; font: 18px Georgia, serif; }
+::view-transition { pointer-events: none; }
+::view-transition-group(*) { animation-duration: var(--motion-layout); animation-timing-function: var(--motion-ease); }
+::view-transition-old(*) { animation: result-out var(--motion-layout) var(--motion-ease) both; }
+::view-transition-new(*) { animation: result-in var(--motion-layout) var(--motion-ease) both; }
+@keyframes result-out { to { opacity: 0; scale: .985; } }
+@keyframes result-in { from { opacity: 0; scale: .985; } to { opacity: 1; scale: 1; } }
+@media (hover: hover) and (pointer: fine) {
+  .document-card:hover::after { transform: scaleX(1); }
+  .home-cta:hover .MuiButton-endIcon { transform: translateX(3px); }
+  .card-actions button:hover .MuiButton-startIcon { transform: translateY(2px); }
+  .material-opening a:hover .MuiButton-startIcon { transform: translate(1px,-1px); }
+  .hero:hover .scene-highlight { stroke-width: 3; }
+  .school-identity:hover .school-logo { filter: saturate(1.1); }
+}
+.home-cta .MuiButton-endIcon, .card-actions .MuiButton-startIcon, .material-opening .MuiButton-startIcon { transition: transform var(--motion-micro) var(--motion-ease); }
+@media (max-width: 900px) {
+  .grade-control { flex: auto; min-width: 0; }
+  .living-math-scene { width: 300px; opacity: .12; }
+  .scene-grid, .scene-points, .scene-construction, .scene-expression { display: none; }
+  .materials-hero .living-math-scene { width: 180px; opacity: .10; }
+  .home-page .hero > .living-math-scene { width: 180px; top: 20px; right: 0; opacity: .10; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .living-math-scene { transform: none !important; }
+  .section-reveal-pending { opacity: 1 !important; translate: none !important; }
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}
+
+
+/* A composed atmosphere: broad geometry, mid-distance studies, gold details. */
+.public-main-content .mathematical-atmosphere {
+  display: block; inset: 0; opacity: 1; color: #082B5C;
+  animation: none; overflow: hidden; contain: paint;
+}
+.math-depth { position: absolute; inset: 0; transition: transform 450ms ease-out; }
+.math-depth-far { transform: translate(calc(var(--math-x, 0) * 3px), calc(var(--math-y, 0) * 3px)); }
+.math-depth-middle { transform: translate(calc(var(--math-x, 0) * 6px), calc(var(--math-y, 0) * 6px)); }
+.math-depth-near { transform: translate(calc(var(--math-x, 0) * 9px), calc(var(--math-y, 0) * 9px)); color: #D49A0A; }
+.ambient-object {
+  position: absolute; width: 210px; height: auto; fill: none; stroke: currentColor;
+  stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+  opacity: .14; animation: suspended-diagonal 24s ease-in-out infinite alternate;
+}
+span.ambient-object { font: italic 30px Georgia, serif; stroke: none; }
+.ambient-object text { fill: currentColor; stroke: none; font: italic 18px Georgia, serif; }
+.math-depth-far .ambient-object { opacity: .075; animation-duration: 35s; }
+.math-depth-near .ambient-object { opacity: .22; animation-duration: 19s; }
+.ambient-object:nth-child(2n) { animation-name: suspended-vertical; animation-delay: -9s; }
+.ambient-object:nth-child(3n) { animation-name: suspended-horizontal; animation-duration: 29s; animation-delay: -17s; }
+.ambient-orbit { width: 620px; right: -270px; top: 90px; animation-name: suspended-turn !important; }
+.ambient-grid { width: 510px; left: 40%; top: -30px; }
+span.ambient-pi { font-size: 190px; left: -40px; top: 58%; }
+.ambient-large-parabola { width: 500px; right: -100px; top: 76%; }
+.ambient-parabola { width: 290px; left: 44%; top: -20px; color: #B58000; opacity: .22; }
+.ambient-triangle { width: 220px; right: -25px; top: 240px; }
+.ambient-circle { width: 220px; left: -75px; top: 390px; color: #B58000; opacity: .20; }
+.ambient-sine { width: 310px; left: 39%; top: 580px; }
+.ambient-linear { right: 0; top: 920px; }
+.ambient-polygon { left: -55px; top: 1080px; }
+.ambient-square { right: -30px; top: 1450px; }
+.ambient-root { right: 22%; top: 28px; }
+.ambient-sum { left: 27%; top: 580px; }
+.ambient-function { right: 10%; top: 700px; }
+.ambient-fraction { left: 5%; top: 1530px; width: 130px; }
+.ambient-angle { width: 145px; right: 6%; top: 35px; }
+.ambient-tangent { width: 245px; left: 28%; top: 690px; }
+.ambient-squared { left: 19%; top: 310px; }
+.ambient-points { width: 180px; right: 22%; top: 1210px; }
+.ambient-equation { right: 10%; top: 1730px; }
+.ambient-pulse { transform-box: fill-box; transform-origin: center; animation: mathematical-point-breathe 14s ease-in-out infinite; }
+.ambient-draw { stroke-dasharray: 1; animation: mathematical-draw 1400ms 400ms ease-out backwards; }
+@keyframes suspended-diagonal { from { transform: translate(-6px, 5px); } to { transform: translate(8px, -10px); } }
+@keyframes suspended-vertical { from { transform: translateY(-8px); } to { transform: translateY(12px); } }
+@keyframes suspended-horizontal { from { transform: translateX(-5px); } to { transform: translateX(7px); } }
+@keyframes suspended-turn { from { transform: rotate(-3deg) translateY(-4px); } to { transform: rotate(4deg) translateY(8px); } }
+@keyframes mathematical-point-breathe { 0%,100% { scale: 1; } 50% { scale: 1.2; } }
+.home-route .ambient-parabola { left: -95px; top: -55px; }
+.home-route .ambient-function { right: 8%; top: 565px; }
+.home-route .ambient-fraction { left: 43%; top: 470px; }
+.home-route .ambient-equation { right: 16%; top: 620px; font-size: 22px; }
+.home-route .ambient-polygon { left: 35%; top: 380px; width: 130px; }
+.home-route .ambient-square { right: -65px; top: 485px; width: 160px; }
+/* Quiet zones protect text while the atmosphere remains stronger around its edges. */
+.home-page .hero { overflow: visible; }
+.home-page .hero-copy { position: relative; isolation: isolate; }
+.home-page .hero-copy::before { content: ''; position: absolute; inset: -20px -28px; z-index: -1; background: radial-gradient(ellipse, #F4F8FC 55%, rgba(244,248,252,.88) 72%, transparent 100%); pointer-events: none; }
+.home-page .hero > .living-math-scene { width: 350px; top: -25px; right: 19%; opacity: .30; }
+.materials-hero .living-math-scene { width: 330px; opacity: .27; }
+.materials-hero h1, .materials-hero > p { position: relative; width: fit-content; background: rgba(244,248,252,.93); box-shadow: 0 0 18px 12px rgba(244,248,252,.93); }
+.grade-selector .MuiOutlinedInput-root { min-height: 56px; background: #FFFEFA; color: #082B5C; }
+.grade-selector .MuiOutlinedInput-notchedOutline { border-color: rgba(8,43,92,.20); transition: border-color 160ms ease; }
+.grade-selector .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline { border-color: #E8AE18; }
+.grade-selector .MuiSelect-icon { transition: transform 160ms ease; }
+.grade-selector-selected .MuiOutlinedInput-notchedOutline { border-color: #DCA71D; }
+@media (max-width: 900px) {
+  .math-depth { transform: none; }
+  .ambient-object { animation-duration: 32s !important; }
+  .ambient-grid, .ambient-pi, .ambient-large-parabola, .ambient-linear, .ambient-polygon,
+  .ambient-square, .ambient-function, .ambient-fraction, .ambient-points, .ambient-equation { display: none; }
+  .ambient-orbit { width: 400px; right: -260px; top: 240px; }
+  .ambient-parabola { width: 200px; left: auto; right: -35px; top: 0; }
+  .ambient-triangle { width: 155px; right: -55px; top: 650px; }
+  .ambient-circle { width: 150px; left: -65px; top: 370px; }
+  .ambient-root { right: 7%; top: 190px; font-size: 25px !important; }
+  .ambient-sum { left: 3%; top: 850px; }
+  .ambient-sine { width: 220px; left: -45px; top: 1080px; }
+  .ambient-angle { width: 100px; right: -15px; top: 490px; }
+  .ambient-squared { left: 6%; top: 580px; }
+  .ambient-tangent { width: 180px; left: auto; right: -20px; top: 1380px; }
+  .home-page .hero-copy::before { inset: -8px 3px; }
+  .home-route .ambient-root { top: 12px; right: 7%; }
+  .home-route .ambient-parabola { left: auto; right: -45px; top: 505px; }
+  .home-page .hero > .living-math-scene { width: 220px; top: 525px; right: -30px; opacity: .24; }
+  .scene-points, .scene-construction, .scene-expression { display: block; }
+  .materials-hero .living-math-scene { width: 200px; opacity: .22; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .math-depth, .ambient-object, .ambient-pulse { transform: none !important; scale: 1 !important; animation: none !important; transition: none !important; }
+}
+.grade-filter-menu .MuiMenuItem-root.Mui-selected { background: rgba(232,174,24,.18); color: #082B5C; }
+.grade-filter-menu .MuiMenuItem-root.Mui-selected:hover { background: rgba(232,174,24,.26); }
+.page-shell .filters-bar .grade-selector .MuiOutlinedInput-root { background: #FFFEFA; }
+.page-shell .grade-selector .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline { border-color: #E8AE18; }
+.page-shell .grade-selector .MuiOutlinedInput-root.Mui-focused { box-shadow: 0 0 0 3px rgba(232,174,24,.12); }

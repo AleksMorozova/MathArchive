@@ -8,6 +8,9 @@ import SquareFootOutlinedIcon from '@mui/icons-material/SquareFootOutlined';
 import StarBorderOutlinedIcon from '@mui/icons-material/StarBorderOutlined';
 import ViewInArOutlinedIcon from '@mui/icons-material/ViewInArOutlined';
 import { Box, Button, Container, Stack, Typography } from '@mui/material';
+import { useState } from 'react';
+import { MathematicalScene } from '../components/MathematicalScene';
+import { useSectionReveal } from '../hooks/useSectionReveal';
 import { Link } from 'react-router-dom';
 import { Seo } from '../seo/Seo';
 import { homeSeo } from '../seo/seoConfig';
@@ -24,10 +27,13 @@ const classLinks = [
 ];
 
 export function HomePage() {
+  const [sceneGrade, setSceneGrade] = useState(9);
+  const classSection = useSectionReveal();
   return (
     <Container maxWidth="lg" className="home-page">
       <Seo {...homeSeo} />
       <Box className="hero">
+        <MathematicalScene grade={sceneGrade} />
         <Stack gap={3} className="hero-copy">
           <Box className="teacher-introduction">
             <Typography variant="h1">Морозова Тетяна<br />Володимирівна</Typography>
@@ -61,10 +67,10 @@ export function HomePage() {
             Переглянути матеріали
           </Button>
         </Stack>
-        <Box className="class-navigation-card" aria-label="Навігація за класом">
+        <Box ref={classSection} className="class-navigation-card" aria-label="Навігація за класом">
           <Box className="class-link-grid">
             {classLinks.map((item) => (
-              <Box key={item.to} component={Link} to={item.to} className="class-link-tile">
+              <Box key={item.to} component={Link} to={item.to} className="class-link-tile" onPointerEnter={() => setSceneGrade(Number(new URLSearchParams(item.to.split("?")[1]).get("class")) || 9)} onFocus={() => setSceneGrade(Number(new URLSearchParams(item.to.split("?")[1]).get("class")) || 9)}>
                 {item.icon}
                 <Typography variant="h6">{item.label}</Typography>
               </Box>

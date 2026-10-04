@@ -2,6 +2,10 @@ import { Box, Container, Grid, Skeleton, Stack, Typography } from '@mui/material
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { getApiErrorMessage } from '../api/apiErrors';
+import { MathematicalScene } from '../components/MathematicalScene';
+import { useMotionResults } from '../hooks/useMotionResults';
+import { useMaterialLayout } from '../hooks/useMaterialLayout';
+import { AnimatedCounter } from '../components/AnimatedCounter';
 import { DocumentCard } from '../components/DocumentCard';
 import { EmptyState, ErrorState } from '../components/StateView';
 import { FiltersBar } from '../components/FiltersBar';
@@ -27,12 +31,14 @@ export function MaterialsPage() {
   }), [classFilter, topicFilter]);
 
   const documents = useInfiniteDocuments(filters);
+  const visibleData = useMotionResults(documents.data);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const loadedDocuments = useMemo(
-    () => documents.data?.pages.flatMap((page) => page.items) ?? [],
-    [documents.data]
+    () => visibleData?.pages.flatMap((page) => page.items) ?? [],
+    [visibleData]
   );
-  const totalCount = documents.data?.pages[0]?.totalCount ?? 0;
+  const totalCount = visibleData?.pages[0]?.totalCount ?? 0;
+  const materialGrid = useMaterialLayout(loadedDocuments);
 
   const updateFilters = (next: Partial<DocumentFilters>) => {
     const merged = { ...filters, ...next };
@@ -78,7 +84,7 @@ export function MaterialsPage() {
 
   useEffect(() => {
     const node = loadMoreRef.current;
-    if (!node || !documents.hasNextPage) {
+    if (!node || !documents.hasNextPage || visibleData !== documents.data) {
       return;
     }
 
@@ -94,13 +100,14 @@ export function MaterialsPage() {
     observer.observe(node);
 
     return () => observer.disconnect();
-  }, [documents.fetchNextPage, documents.hasNextPage, documents.isFetchingNextPage]);
+  }, [visibleData, documents.data, documents.fetchNextPage, documents.hasNextPage, documents.isFetchingNextPage]);
 
   return (
     <Container maxWidth="lg" className="page-section materials-page">
       <Stack gap={2.5}>
         <Seo {...getMaterialsSeo(classFilter, topicFilter)} />
         <Box className="materials-hero">
+          <MathematicalScene grade={Number(classFilter) >= 5 && Number(classFilter) <= 11 ? Number(classFilter) : 9} />
           <Stack gap={1.25}>
             <Typography component="h1" variant="h3">Навчальні матеріали</Typography>
             <Typography color="text.secondary" className="materials-subtitle">
@@ -128,7 +135,7 @@ export function MaterialsPage() {
             compact
           />
         </Box>
-        {documents.isLoading && (
+        {documents.isLoading && !visibleData && (
           <Grid container spacing={2.25} alignItems="flex-start" className="materials-grid">
             {Array.from({ length: 6 }, (_, index) => (
               <Grid key={index} size={{ xs: 12, md: 6, lg: 4 }} sx={{ display: 'flex' }}>
@@ -138,16 +145,15 @@ export function MaterialsPage() {
           </Grid>
         )}
         {documents.isError && <ErrorState message={getApiErrorMessage(documents.error)} />}
-        {documents.data && (
+        <Typography color="text.secondary" className="materials-count" sx={{ display: visibleData ? undefined : 'none' }}>
+          Знайдено матеріалів: <AnimatedCounter value={visibleData ? totalCount : undefined} />
+        </Typography>
+        {visibleData && (
           <>
-            <Typography color="text.secondary" className="materials-count">Знайдено матеріалів: {totalCount}</Typography>
-            {loadedDocuments.length === 0 ? (
-              <EmptyState />
-            ) : (
-              <Grid container spacing={2.25} alignItems="flex-start" className="materials-grid">
+              <Grid ref={materialGrid} container spacing={2.25} alignItems="flex-start" className="materials-grid" aria-busy={!documents.isError && (documents.isLoading || visibleData !== documents.data)}>
                 {loadedDocuments.map((document, index) => (
-                  <Grid key={document.id} size={{ xs: 12, md: 6, lg: 4 }} sx={{ display: 'flex' }}>
-                    <DocumentCard document={document} ordinal={classFilter && classFilter !== 'general' ? index + 1 : undefined} />
+                  <Grid key={document.id} data-material-motion={document.id} style={{ viewTransitionName: index < 24 ? `material-${document.id}` : undefined }} size={{ xs: 12, md: 6, lg: 4 }} sx={{ display: 'flex' }}>
+                    <DocumentCard entranceIndex={index} document={document} ordinal={classFilter && classFilter !== 'general' ? index + 1 : undefined} />
                   </Grid>
                 ))}
                 {documents.isFetchingNextPage && Array.from({ length: 3 }, (_, index) => (
@@ -156,7 +162,7 @@ export function MaterialsPage() {
                   </Grid>
                 ))}
               </Grid>
-            )}
+            {loadedDocuments.length === 0 && <EmptyState />}
             <Box ref={loadMoreRef} sx={{ minHeight: 1 }} aria-hidden="true" />
             {!documents.hasNextPage && loadedDocuments.length > 0 && (
               <Typography color="text.secondary" textAlign="center">Усі матеріали завантажено</Typography>

@@ -48,6 +48,7 @@ export function AdminLayout() {
         Використання AI
       </Button>
       <Button component={NavLink} to="/admin/assistant" end startIcon={<AutoAwesomeIcon />} onClick={() => setOpen(false)}>AI-помічник</Button>
+      <Button component={NavLink} to="/admin/assistant/statistics" end startIcon={<BarChartIcon />} onClick={() => setOpen(false)}>Статистика AI-помічника</Button>
       <Button startIcon={<LogoutIcon />} onClick={signOut}>Вийти</Button>
     </Stack>
   );

@@ -1,4 +1,4 @@
-import DownloadIcon from '@mui/icons-material/Download';
+import { DownloadFeedback, useDownloadFeedback } from './DownloadFeedback';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { Alert, Button, Card, CardContent, Chip, Stack, Typography } from '@mui/material';
 import { useState } from 'react';
@@ -8,18 +8,21 @@ import { downloadDocument } from '../api/documentsApi';
 import { trackEvent } from '../api/analyticsApi';
 import type { DocumentDto } from '../types/documents';
 
-export function DocumentCard({ document, ordinal }: { document: DocumentDto; ordinal?: number }) {
+export function DocumentCard({ document, ordinal, entranceIndex = 0 }: { document: DocumentDto; ordinal?: number; entranceIndex?: number }) {
   const location = useLocation();
   const [downloadError, setDownloadError] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
+  const downloadFeedback = useDownloadFeedback();
 
   const handleDownload = async () => {
     if (isDownloading) return;
     trackEvent('DocumentDownload', document.id);
     setDownloadError('');
+    downloadFeedback.reset();
     setIsDownloading(true);
     try {
       await downloadDocument(document.id);
+      downloadFeedback.confirm();
     } catch (error) {
       setDownloadError(getApiErrorMessage(error, 'Не вдалося завантажити файл.'));
     } finally {
@@ -28,7 +31,7 @@ export function DocumentCard({ document, ordinal }: { document: DocumentDto; ord
   };
 
   return (
-    <Card className="document-card">
+    <Card className="document-card" style={{ animationDelay: `${Math.min(entranceIndex % 12, 5) * 25}ms` }}>
       <CardContent className="document-card-content">
         <Stack className="document-card-body">
           <Stack direction="row" alignItems="flex-start" gap={1.5} className="document-card-heading">
@@ -41,7 +44,7 @@ export function DocumentCard({ document, ordinal }: { document: DocumentDto; ord
           </Stack>
           {downloadError && <Alert severity="error">{downloadError}</Alert>}
           <Stack direction="row" gap={1} className="card-actions">
-            <Button startIcon={<DownloadIcon />} variant="text" onClick={handleDownload} disabled={isDownloading}>
+            <Button startIcon={<DownloadFeedback pending={isDownloading} completed={downloadFeedback.completed} />} variant="text" onClick={handleDownload} disabled={isDownloading}>
               Завантажити
             </Button>
             <Button

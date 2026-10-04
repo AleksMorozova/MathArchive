@@ -23,6 +23,8 @@ const ImagePosterPage = lazy(() => import('./pages/admin/ImagePosterPage').then(
 const AssistantPage = lazy(() => import('./pages/AssistantPage').then(m => ({ default: m.AssistantPage })));
 const AssistantAdminPage = lazy(() => import('./pages/admin/AssistantAdminPage').then(m => ({ default: m.AssistantAdminPage })));
 
+const AssistantStatisticsPage = lazy(() => import('./pages/admin/AssistantStatisticsPage').then(m => ({ default: m.AssistantStatisticsPage })));
+
 const router = createBrowserRouter([
   {
     element: <PublicLayout />,
@@ -54,7 +56,8 @@ const router = createBrowserRouter([
       { path: 'storage', element: <StorageAuditPage /> },
       { path: 'analytics', element: <AnalyticsPage /> },
       { path: 'ai-usage', element: <AiUsagePage /> },
-      { path: 'assistant', element: <AssistantAdminPage /> }
+      { path: 'assistant', element: <AssistantAdminPage /> },
+      { path: 'assistant/statistics', element: <AssistantStatisticsPage /> }
     ]
   }
 ]);
