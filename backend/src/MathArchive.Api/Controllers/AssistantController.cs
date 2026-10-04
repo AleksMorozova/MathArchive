@@ -100,7 +100,7 @@ public sealed class AdminAssistantController(IAssistantStore store, IRagIndexer 
                 x.status is "NeedsText" or "Failed" && x.FileSize <= 10 * 1024 * 1024 &&
                 Path.GetExtension(x.OriginalFileName).ToLowerInvariant() is ".pdf" or ".png" or ".jpg" or ".jpeg" or ".webp" or ".docx" or ".pptx" }).ToArray();
         var distribution = materials.GroupBy(x => x.fileType).Select(g => new { fileType = g.Key, total = g.Count(),
-            nativeExtracted = g.Count(x => x.extractionStatus == "Extracted"), indexed = g.Count(x => x.status == "Indexed"),
+            nativeExtracted = g.Count(x => x.extractionStatus == "Extracted" && x.extractionMethod != "Vision/OCR"), indexed = g.Count(x => x.status == "Indexed"),
             needsText = g.Count(x => x.status == "NeedsText"), needsReview = g.Count(x => x.status == "NeedsReview"),
             failed = g.Count(x => x.status == "Failed"), pending = g.Count(x => x.status == "Pending"), visionCandidates = g.Count(x => x.visionEligible) }).ToArray();
         var pending = materials.Where(x => x.status != "Indexed").ToArray();
@@ -119,6 +119,19 @@ public sealed class AdminAssistantController(IAssistantStore store, IRagIndexer 
     {
         await indexer.ReindexAsync(ct);
         return NoContent();
+    }
+    [HttpPost("rag/pending")]
+    public async Task<IActionResult> ScheduleMissing(CancellationToken ct)
+    {
+        await indexer.ScheduleMissingAsync(null, ct);
+        return Accepted();
+    }
+    [HttpPost("rag/materials/{id:guid}/retry")]
+    public async Task<IActionResult> Retry(Guid id, CancellationToken ct)
+    {
+        if (!await db.Documents.AnyAsync(x => x.Id == id, ct)) return NotFound();
+        await indexer.ScheduleMissingAsync(id, ct);
+        return Accepted();
     }
     [HttpPost("rag/vision")]
     public async Task<IActionResult> Vision(CancellationToken ct)

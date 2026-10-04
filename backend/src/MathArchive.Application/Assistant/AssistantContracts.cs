@@ -4,8 +4,8 @@ namespace MathArchive.Application.Assistant;
 
 public sealed class AssistantOptions
 {
-    public bool Enabled { get; set; }
-    public bool RagEnabled { get; set; } = true;
+    public bool Enabled { get; set; } // Public student availability; does not gate admin indexing.
+    public bool RagEnabled { get; set; } = true; // Indexing and retrieval; off preserves stored corpus.
     public bool TutorEnabled { get; set; } = true;
     public bool ExerciseEnabled { get; set; } = true;
     public bool VerifierEnabled { get; set; } = true;
@@ -102,8 +102,9 @@ public interface IRagSearchService
 public interface IRagIndexer
 {
     Task IndexAsync(Guid materialId, bool force, CancellationToken ct);
-    Task ReindexAsync(CancellationToken ct, bool allowVision = false);
+    Task ReindexAsync(CancellationToken ct, bool allowVision = true);
     Task ExtractVisionAsync(Guid materialId, CancellationToken ct);
+    Task ScheduleMissingAsync(Guid? materialId, CancellationToken ct);
 }
 public interface IAgent
 {

@@ -41,6 +41,7 @@ public static class DependencyInjection
         services.AddScoped<AssistantOrchestrator>();
         services.AddScoped<IRagSearchService, RagSearchService>();
         services.AddScoped<IRagIndexer, RagIndexer>();
+        services.AddHostedService<RagPendingIndexer>();
         services.AddHttpClient<OpenAiAssistantProvider>(client =>
         {
             client.BaseAddress = new Uri("https://api.openai.com/v1/");

@@ -48,10 +48,29 @@ public static class RagChunking
 public sealed class RagIndexer(MathArchiveDbContext db, IFileStorage files, IAssistantStore store,
     PaidAiService paid, RagIndexLock indexLock, ILogger<RagIndexer> logger) : IRagIndexer
 {
-    public async Task ReindexAsync(CancellationToken ct, bool allowVision = false)
+    private static string Fingerprint(Document document, RagIndexState state, AssistantOptions settings) =>
+        RagChunking.Hash(JsonSerializer.Serialize(new { document.Title, document.Description, document.Grade,
+            document.Topic, document.StoredFileName, state.ApprovedText, settings.EmbeddingModel, settings.ChunkCharacters, settings.ChunkOverlapCharacters }));
+
+    public async Task ScheduleMissingAsync(Guid? materialId, CancellationToken ct)
     {
         var settings = await store.GetSettingsAsync(ct);
-        if (!settings.Enabled || !settings.RagEnabled) throw new AssistantException("Disabled", "Увімкни помічника та RAG перед індексацією.");
+        var documents = await db.Documents.AsNoTracking().Where(x => materialId == null || x.Id == materialId).ToArrayAsync(ct);
+        foreach (var document in documents)
+        {
+            var state = await db.Set<RagIndexState>().FindAsync([document.Id], ct);
+            if (state is null) db.Add(state = new RagIndexState { MaterialId = document.Id });
+            if (state.Status == "Indexing") continue;
+            if (materialId is null && state.Status == "Indexed" && state.Fingerprint == Fingerprint(document, state, settings)) continue;
+            state.Status = "Pending";
+            state.ExtractionError = null;
+        }
+        await db.SaveChangesAsync(ct);
+    }
+    public async Task ReindexAsync(CancellationToken ct, bool allowVision = true)
+    {
+        var settings = await store.GetSettingsAsync(ct);
+        if (!settings.RagEnabled) throw new AssistantException("Disabled", "Увімкни RAG перед індексацією.");
         if (!await indexLock.Gate.WaitAsync(0, ct)) throw new AssistantException("ReindexRunning", "Індексація вже виконується.", 409);
         try
         {
@@ -59,7 +78,7 @@ public sealed class RagIndexer(MathArchiveDbContext db, IFileStorage files, IAss
             while (true)
             {
                 var currentSettings = await store.GetSettingsAsync(ct);
-                if (!currentSettings.Enabled || !currentSettings.RagEnabled) throw new AssistantException("Disabled", "Індексацію зупинено: помічник або RAG вимкнений.");
+                if (!currentSettings.RagEnabled) throw new AssistantException("Disabled", "Індексацію зупинено: RAG вимкнений.");
                 var ids = await db.Documents.AsNoTracking().OrderBy(x => x.Id).Skip(page++ * 20).Take(20).Select(x => x.Id).ToArrayAsync(ct);
                 if (ids.Length == 0)
                 {
@@ -78,7 +97,7 @@ public sealed class RagIndexer(MathArchiveDbContext db, IFileStorage files, IAss
     public async Task IndexAsync(Guid materialId, bool force, CancellationToken ct)
     {
         await indexLock.Gate.WaitAsync(ct);
-        try { await IndexCoreAsync(materialId, force, ct); }
+        try { await IndexCoreAsync(materialId, force, ct, allowVision: true); }
         finally { indexLock.Gate.Release(); }
     }
     public async Task ExtractVisionAsync(Guid materialId, CancellationToken ct)
@@ -91,21 +110,21 @@ public sealed class RagIndexer(MathArchiveDbContext db, IFileStorage files, IAss
     {
         db.ChangeTracker.Clear();
         var settings = await store.GetSettingsAsync(ct);
-        if (!settings.Enabled || !settings.RagEnabled) return;
+        if (!settings.RagEnabled) return;
         var document = await db.Documents.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct);
         if (document is null) return;
         var state = await db.Set<RagIndexState>().SingleOrDefaultAsync(x => x.MaterialId == id, ct);
         if (state is null) db.Add(state = new RagIndexState { MaterialId = id });
-        var fingerprint = RagChunking.Hash(JsonSerializer.Serialize(new { document.Title, document.Description, document.Grade,
-            document.Topic, document.StoredFileName, state.ApprovedText, settings.EmbeddingModel, settings.ChunkCharacters, settings.ChunkOverlapCharacters }));
+        var fingerprint = Fingerprint(document, state, settings);
         if (!force && state.Fingerprint == fingerprint && state.Status == "Indexed") return;
         var approvedText = state.ApprovedText;
-        state.Status = "Pending";
+        state.Status = "Indexing";
+        state.ExtractionError = null;
         await db.SaveChangesAsync(ct);
         var audit = new AssistantRequest { Query = "Індексація матеріалу: " + document.Title, Intent = "Index", ActorHash = "admin-index" };
         var indexSettings = JsonSerializer.Deserialize<AssistantOptions>(JsonSerializer.Serialize(settings))!;
         indexSettings.MaxInputTokens = Math.Max(settings.MaxDocumentCharacters * 4 + 10000, 400000);
-        var context = new AssistantContext(new AssistantQuery(audit.Query), indexSettings, audit.Id);
+        var context = new AssistantContext(new AssistantQuery(audit.Query), indexSettings, audit.Id) { IsIndexing = true };
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(TimeSpan.FromSeconds(settings.TimeoutSeconds));
         var token = timeout.Token;
@@ -137,12 +156,18 @@ public sealed class RagIndexer(MathArchiveDbContext db, IFileStorage files, IAss
                         if (!await SourceStillCurrentAsync(document, approvedText, token)) { audit.Status = "Superseded"; return; }
                         state.ExtractedText = result.Text.Trim();
                         state.ExtractionMethod = "Vision/OCR";
-                        state.ExtractionStatus = "NeedsReview";
+                        state.ExtractionStatus = IsUsableVisionText(state.ExtractedText) ? "Extracted" : "NeedsText";
                         state.ExtractedAt = DateTimeOffset.UtcNow;
                         state.ExtractionError = null;
                     }
                     else state.ExtractionError = "UnsupportedOrOverLimit";
                 }
+                // Previously cached OCR can be used without paying for extraction again.
+                if (state.ExtractionStatus == "NeedsReview" && IsUsableVisionText(state.ExtractedText))
+                    state.ExtractionStatus = "Extracted";
+                // Persist transcription before embeddings, including when embedding later fails.
+                if (!await SourceStillCurrentAsync(document, approvedText, token)) { audit.Status = "Superseded"; return; }
+                await db.SaveChangesAsync(token);
                 text = state.ExtractedText;
                 if (state.ExtractionStatus != "Extracted")
                 {
@@ -197,7 +222,8 @@ public sealed class RagIndexer(MathArchiveDbContext db, IFileStorage files, IAss
             db.ChangeTracker.Clear();
             using var failureTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             await db.Set<RagIndexState>().Where(x => x.MaterialId == id && x.ApprovedText == approvedText)
-                .ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, "Failed")
+                .Where(x => db.Documents.Any(d => d.Id == id && d.UpdatedAt == document.UpdatedAt && d.StoredFileName == document.StoredFileName))
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, ct.IsCancellationRequested ? "Pending" : "Failed")
                 .SetProperty(x => x.ExtractionError, audit.Status), failureTimeout.Token);
             if (ct.IsCancellationRequested || ex is AssistantException { Category: "DailyBudget" or "Disabled" }) throw;
         }
@@ -213,6 +239,8 @@ public sealed class RagIndexer(MathArchiveDbContext db, IFileStorage files, IAss
             catch (Exception ex) { logger.LogError(ex, "Index audit persistence failed for {MaterialId}", id); }
         }
     }
+    private static bool IsUsableVisionText(string? text) => !string.IsNullOrWhiteSpace(text) &&
+        text.Count(char.IsLetterOrDigit) >= 20 && !text.Trim().Equals("[Нерозбірливо]", StringComparison.Ordinal);
     private async Task<bool> SourceStillCurrentAsync(Document document, string? approved, CancellationToken ct) =>
         await db.Documents.AnyAsync(x => x.Id == document.Id && x.StoredFileName == document.StoredFileName, ct) &&
         await db.Set<RagIndexState>().AsNoTracking().AnyAsync(x => x.MaterialId == document.Id && x.ApprovedText == approved, ct);

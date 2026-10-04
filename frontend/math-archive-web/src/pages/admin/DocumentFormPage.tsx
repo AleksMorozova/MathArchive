@@ -159,6 +159,7 @@ export function DocumentFormPage({ mode }: DocumentFormPageProps) {
       <Stack gap={2}>
         <Typography variant="h3">{mode === 'create' ? 'Новий матеріал' : 'Редагування матеріалу'}</Typography>
         {message && <Alert severity="success">{message}</Alert>}
+        {message && <Alert severity="info">Індексація виконується окремо, коли RAG увімкнений. <Button component="a" href="/admin/assistant">Перевірити статус індексації</Button></Alert>}
         {mutation.isError && <Alert severity="error">{getApiErrorMessage(mutation.error, 'Не вдалося зберегти матеріал.')}</Alert>}
         {mode === 'edit' && existing && <Typography color="text.secondary">Поточний файл: {existing.originalFileName}</Typography>}
         <TextField label="Назва" {...form.register('title')} error={!!form.formState.errors.title} helperText={form.formState.errors.title?.message} />

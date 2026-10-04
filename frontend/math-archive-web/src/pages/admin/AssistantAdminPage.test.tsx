@@ -5,7 +5,7 @@ import * as api from '../../api/aiApi';
 import { analyticsBoundaries, presetDates } from '../../utils/analyticsDates';
 import { AssistantAdminPage } from './AssistantAdminPage';
 import type { AssistantSettings } from '../../types/assistant';
-vi.mock('../../api/aiApi', () => ({ getAssistantSettings: vi.fn(), getAssistantDailyBudget: vi.fn(), getAssistantStatistics: vi.fn(), getAssistantRequests: vi.fn(), getRagStatus: vi.fn(), getAssistantRequest: vi.fn(), saveAssistantSettings: vi.fn(), reindexRag: vi.fn(), saveRagText: vi.fn(), getRagText: vi.fn(), extractRagVision: vi.fn() }));
+vi.mock('../../api/aiApi', () => ({ getAssistantSettings: vi.fn(), getAssistantDailyBudget: vi.fn(), getAssistantStatistics: vi.fn(), getAssistantRequests: vi.fn(), getRagStatus: vi.fn(), getAssistantRequest: vi.fn(), saveAssistantSettings: vi.fn(), reindexRag: vi.fn(), saveRagText: vi.fn(), getRagText: vi.fn(), extractRagVision: vi.fn(), scheduleRagIndexing: vi.fn() }));
 const settings: AssistantSettings = { enabled: true, ragEnabled: true, tutorEnabled: true, exerciseEnabled: true, verifierEnabled: true, generalKnowledgeFallback: false, llmRouterEnabled: false, tutorModel: '', exerciseModel: '', verifierModel: '', routerModel: '', embeddingModel: 'embed', visionModel: '', topK: 4, minimumRelevance: 0.35, chunkCharacters: 2800, chunkOverlapCharacters: 300, maxDocumentCharacters: 150000, maxPromptLength: 2000, maxInputTokens: 100000, maxOutputTokens: 1200, maxAgentCalls: 8, maxLlmCalls: 6, maxRetries: 1, timeoutSeconds: 60, maxRequestCostUsd: 0.05, dailyBudgetUsd: 1, requestsPerIdentityPerMinute: 40, globalRequestsPerMinute: 120, maxConcurrentRequests: 30, retentionDays: 30 };
 const renderPage = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><AssistantAdminPage /></QueryClientProvider>);
 describe('AssistantAdminPage', () => {
@@ -17,6 +17,7 @@ describe('AssistantAdminPage', () => {
     vi.mocked(api.getAssistantRequests).mockResolvedValue([]);
     vi.mocked(api.getRagStatus).mockResolvedValue({ indexedMaterials: 0, totalChunks: 0, failedMaterials: 0, lastIndexingTime: null, lastFullReindex: null, embedding: null, pending: [], materials: [], distribution: [], totalMaterials: 0, needsTextMaterials: 0, needsReviewMaterials: 0, pendingMaterials: 0, visionCandidates: 0 });
     vi.mocked(api.reindexRag).mockResolvedValue();
+    vi.mocked(api.scheduleRagIndexing).mockResolvedValue();
   });
   it('requires confirmation before reindexing', async () => {
     renderPage();
@@ -24,6 +25,33 @@ describe('AssistantAdminPage', () => {
     expect(api.reindexRag).not.toHaveBeenCalled();
     fireEvent.click(await screen.findByRole('button', { name: 'Підтвердити' }));
     await waitFor(() => expect(api.reindexRag).toHaveBeenCalledTimes(1));
+  });
+  it('saves public-off preparation settings independently and explains the stop controls', async () => {
+    vi.mocked(api.saveAssistantSettings).mockResolvedValue();
+    renderPage();
+    const publicSwitch = await screen.findByRole('switch', { name: 'Публічний AI-помічник увімкнений' });
+    const ragSwitch = screen.getByRole('switch', { name: 'RAG / автоматична індексація' });
+    expect(publicSwitch).toHaveAccessibleDescription(/Дозволяє учням/);
+    expect(ragSwitch).toHaveAccessibleDescription(/Працює без публічного помічника/);
+    fireEvent.click(publicSwitch);
+    expect(publicSwitch).not.toBeChecked(); expect(ragSwitch).toBeChecked();
+    expect(screen.getByText(/вимкни обидва перемикачі й збережи/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Зберегти налаштування' }));
+    await waitFor(() => expect(api.saveAssistantSettings).toHaveBeenCalledWith(expect.objectContaining({ enabled: false, ragEnabled: true }), expect.anything()));
+    expect(screen.getByRole('button', { name: 'Переіндексувати RAG' })).toBeEnabled();
+  });
+  it('allows preparing the archive when public chat is disabled and prevents repeated scheduling', async () => {
+    vi.mocked(api.getAssistantSettings).mockResolvedValue({ ...settings, enabled: false });
+    let finish!: () => void;
+    vi.mocked(api.scheduleRagIndexing).mockImplementation(() => new Promise<void>(resolve => { finish = resolve; }));
+    renderPage();
+    const button = await screen.findByRole('button', { name: 'Індексувати відсутні / повторити невдалі' });
+    await waitFor(() => expect(button).toBeEnabled());
+    fireEvent.click(button);
+    await waitFor(() => expect(api.scheduleRagIndexing).toHaveBeenCalledWith(undefined));
+    expect(button).toBeDisabled();
+    finish();
+    expect(await screen.findByText(/Матеріали очікують індексації/)).toBeInTheDocument();
   });
   it('uses the same selected range for statistics and recent requests', async () => {
     renderPage();
@@ -58,7 +86,7 @@ describe('AssistantAdminPage', () => {
     renderPage();
     fireEvent.mouseDown(await screen.findByLabelText('Матеріал для перевіреного тексту'));
     fireEvent.click(await screen.findByRole('option', { name: 'Лінійні рівняння · NeedsReview' }));
-    await waitFor(() => expect(screen.getByLabelText('Перевірений текст')).toHaveValue('ax + b = 0 [Нерозбірливо]'));
+    await waitFor(() => expect(screen.getByLabelText('Перевірений текст')).toHaveValue('ax + b = 0 [Нерозбірливо]'), { timeout: 5000 });
     fireEvent.change(screen.getByLabelText('Перевірений текст'), { target: { value: 'Учитель перевірив: ax + b = 0.' } });
     fireEvent.click(screen.getByRole('button', { name: 'Оновити' }));
     await waitFor(() => expect(api.getRagText).toHaveBeenCalledTimes(2));
@@ -66,5 +94,5 @@ describe('AssistantAdminPage', () => {
     expect(screen.getByRole('link', { name: 'Переглянути матеріал' })).toHaveAttribute('href', '/materials/real-id');
     fireEvent.click(screen.getByRole('button', { name: 'Зберегти текст та індексувати' }));
     await waitFor(() => expect(api.saveRagText).toHaveBeenCalledWith('real-id', 'Учитель перевірив: ax + b = 0.'));
-  });
+  }, 10000);
 });

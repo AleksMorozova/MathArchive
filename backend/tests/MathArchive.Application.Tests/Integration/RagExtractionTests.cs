@@ -3,6 +3,9 @@ using System.Text;
 using MathArchive.Application.Ai;
 using MathArchive.Application.Assistant;
 using MathArchive.Application.Files;
+using MathArchive.Application.Documents;
+using FluentValidation;
+using Microsoft.Extensions.DependencyInjection;
 using MathArchive.Domain.Assistant;
 using MathArchive.Domain.Documents;
 using MathArchive.Infrastructure.Ai;
@@ -28,27 +31,31 @@ public sealed class RagExtractionTests(ApiIntegrationFixture fixture) : IAsyncLi
     {
         public int Calls;
         public bool Fail;
+        public string Text = "Лінійне рівняння ax + b = 0. Приклад: 2x + 4 = 0. [Нерозбірливо]";
         public Task<ProviderResult> ExtractAsync(string model, string instructions, IReadOnlyList<VisionInput> inputs, int maxOutputTokens, CancellationToken ct)
         {
             Calls++;
             Assert.Contains("do not explain, solve", instructions);
             Assert.InRange(inputs.Sum(x => x.Units), 1, 5);
             if (Fail) throw new IOException("fake failure");
-            return Task.FromResult(new ProviderResult("Лінійне рівняння ax + b = 0. Приклад: 2x + 4 = 0. [Нерозбірливо]", 100, 50));
+            return Task.FromResult(new ProviderResult(Text, 100, 50));
         }
     }
     private sealed class Storage(byte[] bytes) : IFileStorage
     {
         public int Reads;
         public Task<Stream?> TryOpenReadAsync(string name, CancellationToken ct) { Reads++; return Task.FromResult<Stream?>(new MemoryStream(bytes)); }
-        public Task<StoredFileResult> SaveAsync(Stream stream, string name, string type, CancellationToken ct) => throw new NotSupportedException();
+        public Task<StoredFileResult> SaveAsync(Stream stream, string name, string type, CancellationToken ct) =>
+            Task.FromResult(new StoredFileResult(name, Guid.NewGuid() + Path.GetExtension(name), type, bytes.Length));
         public Task DeleteAsync(string name, CancellationToken ct) => throw new NotSupportedException();
     }
     private sealed class Embeddings : IEmbeddingService
     {
         public List<string> Inputs { get; } = [];
+        public bool Fail;
         public Task<EmbeddingResult> EmbedAsync(string model, string text, CancellationToken ct)
-        { Inputs.Add(text); return Task.FromResult(new EmbeddingResult([1, 0], 20)); }
+        { Inputs.Add(text); if (Fail) throw new IOException("fake embedding failure"); AfterEmbedding?.Invoke(); return Task.FromResult(new EmbeddingResult([1, 0], 20)); }
+        public Action? AfterEmbedding;
     }
     private sealed class Harness : IDisposable
     {
@@ -64,7 +71,8 @@ public sealed class RagExtractionTests(ApiIntegrationFixture fixture) : IAsyncLi
             Store.Settings.MaxRequestCostUsd = 1;
             var options = Options.Create(new OpenAiOptions { Model = "gpt-4o-mini", Pricing = new() {
                 ["gpt-4o-mini"] = new() { InputPerMillionTokensUsd = 0.15m, OutputPerMillionTokensUsd = 0.60m },
-                ["text-embedding-3-small"] = new() { InputPerMillionTokensUsd = 0.02m } } });
+                ["text-embedding-3-small"] = new() { InputPerMillionTokensUsd = 0.02m },
+                ["other-embedding"] = new() { InputPerMillionTokensUsd = 0.02m } } });
             var paid = new PaidAiService(Store, new AssistantTests.FakeProvider(), Embeddings, new OpenAiUsageCostCalculator(options), options, Vision);
             Indexer = new(Db, Files, Store, paid, new RagIndexLock(), NullLogger<RagIndexer>.Instance);
         }
@@ -88,6 +96,154 @@ public sealed class RagExtractionTests(ApiIntegrationFixture fixture) : IAsyncLi
             if (readable) page.AddText("Linear equations: ax + b = 0. An equation has two equal expressions. Example: 2x + 4 = 0.", 12, new PdfPoint(20, 700), font);
         }
         return builder.Build();
+    }
+    private sealed class Clock : MathArchive.Application.Common.IClock
+    {
+        public DateTimeOffset UtcNow => DateTimeOffset.UtcNow;
+    }
+    private static DocumentService Documents(Harness h) => new(new DocumentRepository(h.Db), h.Files, new Clock(),
+        new DocumentMetadataValidator(), new InlineValidator<UploadedFile>(), NullLogger<DocumentService>.Instance);
+    private static async Task RunPendingAsync(Harness h)
+    {
+        // Drive the same production tick, with zero network-capable providers.
+        var services = new ServiceCollection().AddSingleton(h.Db).AddSingleton<IAssistantStore>(h.Store)
+            .AddSingleton<IRagIndexer>(h.Indexer).BuildServiceProvider();
+        await RagPendingIndexer.ProcessPendingAsync(services, default);
+    }
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task PNG_upload_commits_pending_before_AI_and_survives_provider_failures(bool visionFails, bool embeddingFails)
+    {
+        using var h = new Harness(Context(), [1, 2, 3]);
+        h.Vision.Fail = visionFails; h.Embeddings.Fail = embeddingFails;
+        h.Store.Settings.Enabled = false;
+        var dto = await Documents(h).CreateAsync(new CreateDocumentCommand(
+            new DocumentMetadata("Натуральні числа", "Опис", 5, "Числа", DocumentType.Theory),
+            new UploadedFile(new MemoryStream([1, 2, 3]), "numbers.png", "image/png", 3)), default);
+        Assert.Equal(0, h.Vision.Calls); Assert.Empty(h.Embeddings.Inputs);
+        Assert.Equal("Pending", (await h.StateAsync(dto.Id)).Status);
+        await RunPendingAsync(h);
+        Assert.True(await h.Db.Documents.AnyAsync(d => d.Id == dto.Id));
+        Assert.Equal(visionFails || embeddingFails ? "Failed" : "Indexed", (await h.StateAsync(dto.Id)).Status);
+        Assert.Equal(1, h.Vision.Calls);
+        if (embeddingFails)
+        {
+            Assert.NotNull((await h.StateAsync(dto.Id)).ExtractedText);
+            h.Embeddings.Fail = false;
+            await h.Indexer.IndexAsync(dto.Id, false, default);
+            Assert.Equal(1, h.Vision.Calls); Assert.Equal("Indexed", (await h.StateAsync(dto.Id)).Status);
+        }
+    }
+    [Fact]
+    public async Task Image_metadata_reuses_vision_but_replacement_clears_old_approval_and_extracts_again()
+    {
+        using var h = new Harness(Context(), [1, 2, 3]);
+        var d = await h.AddAsync(".png");
+        await h.Indexer.IndexAsync(d.Id, false, default);
+        await Documents(h).UpdateAsync(d.Id, new UpdateDocumentCommand(
+            new DocumentMetadata("Інша назва", "Інший опис", 8, "Інша тема", DocumentType.Theory), null), default);
+        await RunPendingAsync(h);
+        Assert.Equal(1, h.Vision.Calls); Assert.Equal(2, h.Embeddings.Inputs.Count);
+        Assert.Contains("Інший опис", h.Embeddings.Inputs.Last());
+        var state = await h.StateAsync(d.Id); state.ApprovedText = "Перевірений учителем текст попереднього зображення.";
+        await h.Db.SaveChangesAsync();
+        await Documents(h).UpdateAsync(d.Id, new UpdateDocumentCommand(
+            new DocumentMetadata("Інша назва", "Інший опис", 8, "Інша тема", DocumentType.Theory),
+            new UploadedFile(new MemoryStream([1, 2, 3]), "replacement.png", "image/png", 3)), default);
+        Assert.Null((await h.StateAsync(d.Id)).ApprovedText);
+        Assert.Null((await h.StateAsync(d.Id)).ExtractedText);
+        await RunPendingAsync(h);
+        Assert.Equal(2, h.Vision.Calls); Assert.Equal("Indexed", (await h.StateAsync(d.Id)).Status);
+        Assert.Single(await h.Db.Set<RagChunk>().ToArrayAsync());
+    }
+    [Fact]
+    public async Task Pending_worker_recovers_interrupted_indexing_and_can_prepare_with_public_AI_disabled()
+    {
+        using var h = new Harness(Context(), [1, 2, 3]);
+        var d = await h.AddAsync(".png");
+        h.Db.Add(new RagIndexState { MaterialId = d.Id, Status = "Indexing" }); await h.Db.SaveChangesAsync();
+        h.Store.Settings.Enabled = false;
+        await RunPendingAsync(h);
+        Assert.Equal("Indexed", (await h.StateAsync(d.Id)).Status); Assert.Equal(1, h.Vision.Calls);
+        await RunPendingAsync(h); Assert.Equal(1, h.Vision.Calls);
+    }
+    [Fact]
+    public async Task Public_off_allows_full_reindex_and_retry_while_RAG_off_preserves_chunks_and_pending_work()
+    {
+        using var h = new Harness(Context(), [1, 2, 3]); var d = await h.AddAsync(".png");
+        h.Store.Settings.Enabled = false;
+        await h.Indexer.ReindexAsync(default);
+        var chunk = await h.Db.Set<RagChunk>().AsNoTracking().SingleAsync();
+        var text = (await h.StateAsync(d.Id)).ExtractedText;
+        h.Store.Settings.RagEnabled = false;
+        await h.Indexer.ScheduleMissingAsync(d.Id, default);
+        await RunPendingAsync(h);
+        Assert.Equal("Pending", (await h.StateAsync(d.Id)).Status);
+        Assert.Equal(chunk.Id, (await h.Db.Set<RagChunk>().AsNoTracking().SingleAsync()).Id);
+        Assert.Equal(text, (await h.StateAsync(d.Id)).ExtractedText);
+        Assert.Equal(1, h.Vision.Calls); Assert.Single(h.Embeddings.Inputs);
+        h.Store.Settings.RagEnabled = true;
+        await RunPendingAsync(h);
+        Assert.Equal("Indexed", (await h.StateAsync(d.Id)).Status);
+        await h.Indexer.ReindexAsync(default);
+        Assert.Equal(1, h.Vision.Calls); Assert.Single(h.Embeddings.Inputs);
+        Assert.Single(await h.Db.Set<RagChunk>().ToArrayAsync());
+    }
+    [Fact]
+    public async Task Missing_archive_can_be_scheduled_without_indexing_in_HTTP_request()
+    {
+        using var h = new Harness(Context(), [1, 2, 3]); var d = await h.AddAsync(".png");
+        using var anonymous = fixture.CreateClient();
+        Assert.Equal(System.Net.HttpStatusCode.Unauthorized, (await anonymous.PostAsync("/api/admin/assistant/rag/pending", null)).StatusCode);
+        using var admin = await fixture.CreateAuthorizedClientAsync();
+        Assert.Equal(System.Net.HttpStatusCode.Accepted, (await admin.PostAsync("/api/admin/assistant/rag/pending", null)).StatusCode);
+        Assert.Equal("Pending", (await h.StateAsync(d.Id)).Status); Assert.Equal(0, h.Vision.Calls);
+        await RunPendingAsync(h);
+        Assert.Equal("Indexed", (await h.StateAsync(d.Id)).Status);
+        Assert.Equal(System.Net.HttpStatusCode.Accepted, (await admin.PostAsync("/api/admin/assistant/rag/pending", null)).StatusCode);
+        await RunPendingAsync(h); Assert.Equal(1, h.Vision.Calls);
+    }
+    [Fact]
+    public async Task Unreadable_OCR_retains_manual_text_path_without_embedding()
+    {
+        using var h = new Harness(Context(), [1, 2, 3]); var d = await h.AddAsync(".png");
+        h.Vision.Text = "[Нерозбірливо]";
+        await h.Indexer.IndexAsync(d.Id, false, default);
+        Assert.Equal("NeedsText", (await h.StateAsync(d.Id)).Status); Assert.Empty(h.Embeddings.Inputs);
+    }
+    [Fact]
+    public async Task Changed_embedding_model_is_scheduled_as_stale_without_another_vision_call()
+    {
+        using var h = new Harness(Context(), [1, 2, 3]); var d = await h.AddAsync(".png");
+        await h.Indexer.IndexAsync(d.Id, false, default);
+        h.Store.Settings.EmbeddingModel = "other-embedding";
+        await h.Indexer.ScheduleMissingAsync(null, default);
+        Assert.Equal("Pending", (await h.StateAsync(d.Id)).Status);
+        await RunPendingAsync(h);
+        Assert.Equal(1, h.Vision.Calls); Assert.Equal(2, h.Embeddings.Inputs.Count);
+        Assert.Equal("other-embedding", (await h.Db.Set<RagChunk>().SingleAsync()).EmbeddingModel);
+        await h.Indexer.ScheduleMissingAsync(null, default);
+        Assert.Equal("Indexed", (await h.StateAsync(d.Id)).Status);
+    }
+    [Fact]
+    public async Task Batch_stops_on_budget_rejection_preserves_completed_materials_and_resumes_without_duplicates()
+    {
+        using var h = new Harness(Context(), [1, 2, 3]);
+        for (var i = 0; i < 3; i++) await h.AddAsync(".png");
+        await h.Indexer.ScheduleMissingAsync(null, default);
+        h.Embeddings.AfterEmbedding = () => h.Store.AllowSpend = false;
+        var error = await Assert.ThrowsAsync<AssistantException>(() => RunPendingAsync(h));
+        Assert.Equal("DailyBudget", error.Category);
+        Assert.Equal(1, await h.Db.Set<RagIndexState>().CountAsync(x => x.Status == "Indexed"));
+        Assert.Equal(1, await h.Db.Set<RagIndexState>().CountAsync(x => x.Status == "Pending"));
+        Assert.Equal(1, h.Vision.Calls);
+        h.Store.AllowSpend = true; h.Embeddings.AfterEmbedding = null;
+        await h.Indexer.ScheduleMissingAsync(null, default); await RunPendingAsync(h);
+        Assert.Equal(3, h.Vision.Calls);
+        Assert.Equal(3, await h.Db.Set<RagChunk>().CountAsync());
+        Assert.Equal(3, await h.Db.Set<RagIndexState>().CountAsync(x => x.Status == "Indexed"));
     }
     private static byte[] Office(string path)
     {
@@ -117,26 +273,26 @@ public sealed class RagExtractionTests(ApiIntegrationFixture fixture) : IAsyncLi
     [Theory]
     [InlineData(".pdf")]
     [InlineData(".png")]
-    public async Task Insufficient_sources_require_explicit_vision_then_teacher_review(string extension)
+    public async Task Vision_transcription_is_cached_and_automatically_embedded(string extension)
     {
         using var h = new Harness(Context(), extension == ".pdf" ? Pdf(false) : [1, 2, 3]);
         var d = await h.AddAsync(extension);
-        await h.Indexer.ReindexAsync(default);
+        await h.Indexer.ReindexAsync(default, false);
         Assert.Equal("NeedsText", (await h.StateAsync(d.Id)).Status); Assert.Equal(0, h.Vision.Calls);
         await h.Indexer.ReindexAsync(default, true);
         var state = await h.StateAsync(d.Id);
-        Assert.Equal("NeedsReview", state.Status); Assert.Equal("Vision/OCR", state.ExtractionMethod);
+        Assert.Equal("Indexed", state.Status); Assert.Equal("Vision/OCR", state.ExtractionMethod);
         Assert.Contains("ax + b", state.ExtractedText); Assert.NotNull(state.ExtractedAt);
         Assert.Contains("IndexVision", h.Store.Last!.ExecutionsJson);
         Assert.True(h.Store.Last.CostUsd > 0);
-        Assert.Empty(h.Embeddings.Inputs); Assert.Equal(1, h.Vision.Calls);
+        Assert.Single(h.Embeddings.Inputs); Assert.Equal(1, h.Vision.Calls);
         await h.Indexer.ReindexAsync(default, true);
-        Assert.Equal(1, h.Vision.Calls); Assert.Empty(h.Embeddings.Inputs);
+        Assert.Equal(1, h.Vision.Calls); Assert.Single(h.Embeddings.Inputs);
         state = await h.StateAsync(d.Id); state.ApprovedText = "Перевірений текст: ax + b = 0.";
         await h.Db.SaveChangesAsync();
         await h.Indexer.IndexAsync(d.Id, false, default);
         Assert.Equal("Indexed", (await h.StateAsync(d.Id)).Status);
-        Assert.Contains("Перевірений текст", Assert.Single(h.Embeddings.Inputs));
+        Assert.Contains("Перевірений текст", h.Embeddings.Inputs.Last());
     }
     [Fact]
     public async Task Teacher_text_has_precedence_and_survives_full_reindex_without_opening_source()
@@ -171,12 +327,12 @@ public sealed class RagExtractionTests(ApiIntegrationFixture fixture) : IAsyncLi
         Assert.Equal("Failed", (await h.StateAsync(d.Id)).Status); Assert.Empty(h.Embeddings.Inputs);
         Assert.Contains("IndexVision", h.Store.Last!.ExecutionsJson);
         h.Vision.Fail = false; await h.Indexer.ReindexAsync(default, true);
-        Assert.Equal("NeedsReview", (await h.StateAsync(d.Id)).Status); Assert.Equal(2, h.Vision.Calls);
+        Assert.Equal("Indexed", (await h.StateAsync(d.Id)).Status); Assert.Equal(2, h.Vision.Calls);
         await h.Indexer.ReindexAsync(default, true); Assert.Equal(2, h.Vision.Calls);
     }
     [Theory]
-    [InlineData(false, true)]
     [InlineData(true, false)]
+    [InlineData(false, false)]
     public async Task Disabled_AI_or_RAG_prevents_any_paid_extraction(bool enabled, bool rag)
     {
         using var h = new Harness(Context(), [1, 2, 3]); var d = await h.AddAsync(".png");
@@ -218,12 +374,12 @@ public sealed class RagExtractionTests(ApiIntegrationFixture fixture) : IAsyncLi
         using var admin = await fixture.CreateAuthorizedClientAsync();
         using var status = System.Text.Json.JsonDocument.Parse(await admin.GetStringAsync("/api/admin/assistant/rag/status"));
         Assert.Equal(2, status.RootElement.GetProperty("totalMaterials").GetInt32());
-        Assert.Equal(1, status.RootElement.GetProperty("needsReviewMaterials").GetInt32());
+        Assert.Equal(0, status.RootElement.GetProperty("needsReviewMaterials").GetInt32());
         Assert.Equal(1, status.RootElement.GetProperty("pendingMaterials").GetInt32());
         Assert.Equal(2, status.RootElement.GetProperty("distribution").GetArrayLength());
         using var text = System.Text.Json.JsonDocument.Parse(await admin.GetStringAsync($"/api/admin/assistant/rag/materials/{image.Id}/text"));
         Assert.Contains("ax + b", text.RootElement.GetProperty("text").GetString());
-        Assert.Equal("NeedsReview", text.RootElement.GetProperty("extractionStatus").GetString());
+        Assert.Equal("Extracted", text.RootElement.GetProperty("extractionStatus").GetString());
     }
     [Fact]
     public async Task Per_material_budget_rejects_vision_before_provider_call()
