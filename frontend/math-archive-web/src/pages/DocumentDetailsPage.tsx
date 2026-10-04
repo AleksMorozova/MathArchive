@@ -1,5 +1,5 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import DownloadIcon from '@mui/icons-material/Download';
+import { DownloadFeedback, useDownloadFeedback } from '../components/DownloadFeedback';
 import { Alert, Box, Breadcrumbs, Button, Chip, Container, Link as MuiLink, Stack, Typography } from '@mui/material';
 import { useEffect, useRef, useState } from 'react';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
@@ -28,6 +28,7 @@ export function DocumentDetailsPage() {
   const [previewUrl, setPreviewUrl] = useState('');
   const [previewError, setPreviewError] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
+  const downloadFeedback = useDownloadFeedback();
   const trackedPreview = useRef('');
 
   useEffect(() => {
@@ -78,9 +79,11 @@ export function DocumentDetailsPage() {
     if (isDownloading) return;
     trackEvent('DocumentDownload', document.id);
     setDownloadError('');
+    downloadFeedback.reset();
     setIsDownloading(true);
     try {
       await downloadDocument(document.id);
+      downloadFeedback.confirm();
     } catch (error) {
       setDownloadError(getApiErrorMessage(error, 'Не вдалося завантажити файл.'));
     } finally {
@@ -100,7 +103,7 @@ export function DocumentDetailsPage() {
         <Button component={Link} to={backTo} startIcon={<ArrowBackIcon />} sx={{ alignSelf: 'flex-start' }}>
           Назад до матеріалів
         </Button>
-        <Box className="content-panel">
+        <Box className="content-panel material-opening">
           <Stack gap={2}>
             <Typography component="h1" variant="h3">{document.title}</Typography>
             {document.description && <Typography color="text.secondary">{document.description}</Typography>}
@@ -117,7 +120,7 @@ export function DocumentDetailsPage() {
             <Button component="a" href={buildApiUrl(`/api/documents/${document.id}/preview`)} target="_blank" rel="noopener noreferrer" startIcon={<OpenInNewIcon />} onClick={() => trackEvent('DocumentDownload', document.id)} onAuxClick={event => { if (event.button === 1) trackEvent('DocumentDownload', document.id); }} sx={{ alignSelf: 'flex-start' }}>
               Відкрити документ
             </Button>
-            <Button startIcon={<DownloadIcon />} variant="contained" onClick={handleDownload} disabled={isDownloading} sx={{ alignSelf: 'flex-start' }}>
+            <Button startIcon={<DownloadFeedback pending={isDownloading} completed={downloadFeedback.completed} />} variant="contained" onClick={handleDownload} disabled={isDownloading} sx={{ alignSelf: 'flex-start' }}>
               Завантажити файл
             </Button>
           </Stack>

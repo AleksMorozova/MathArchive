@@ -54,13 +54,24 @@ export function FiltersBar({
         />
       )}
       {showGrade && (
-        <TextField select label="Клас" value={filters.grade ?? ''} onChange={(event) => onChange({ grade: event.target.value })}>
+        <div className="grade-control">
+        <TextField
+          className={filters.grade ? 'grade-selector grade-selector-selected' : 'grade-selector'}
+          select label="Клас" value={filters.grade ?? ''}
+          onChange={(event) => onChange({ grade: String(event.target.value) })}
+          slotProps={{ inputLabel: { shrink: true }, select: { displayEmpty: true, MenuProps: { transitionDuration: 160, slotProps: { paper: { className: 'grade-filter-menu' } } }, renderValue: value => (
+            <span key={String(value)} className="grade-selection-value">
+              {value === 'general' ? 'Загальні' : value ? `${value} клас` : 'Усі класи'}
+            </span>
+          ) } }}
+        >
           <MenuItem value="">Усі класи</MenuItem>
-          <MenuItem value="general">Загальні матеріали</MenuItem>
           {gradeOptions.map((grade) => (
             <MenuItem key={grade} value={grade}>{grade} клас</MenuItem>
           ))}
+          <MenuItem value="general">Загальні</MenuItem>
         </TextField>
+        </div>
       )}
       {showTopic && topicMode === 'select' && (
         <TextField select label="Тема" value={filters.topic ?? ''} onChange={(event) => onChange({ topic: event.target.value })}>
@@ -70,7 +81,9 @@ export function FiltersBar({
       )}
       {showTopic && topicMode === 'text' && (
         <TextField
+          className="math-search-field"
           label="Пошук за темою"
+          slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> } }}
           placeholder="геом, прогрес, ймов..."
           value={filters.topic ?? ''}
           onChange={(event) => onChange({ topic: event.target.value })}

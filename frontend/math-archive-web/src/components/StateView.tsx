@@ -12,6 +12,7 @@ export function LoadingState({ text = 'Завантажуємо матеріал
 export function EmptyState() {
   return (
     <Box className="state-box">
+      <span className="empty-math" aria-hidden="true"><span>x</span><span> ⋯ </span><span>y</span></span>
       <Typography variant="h5">Матеріалів не знайдено</Typography>
       <Typography color="text.secondary">Спробуйте змінити параметри пошуку або очистити фільтри.</Typography>
     </Box>

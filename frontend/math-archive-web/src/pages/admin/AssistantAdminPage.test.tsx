@@ -2,7 +2,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as api from '../../api/aiApi';
-import { analyticsBoundaries, presetDates } from '../../utils/analyticsDates';
 import { AssistantAdminPage } from './AssistantAdminPage';
 import type { AssistantSettings } from '../../types/assistant';
 vi.mock('../../api/aiApi', () => ({ getAssistantSettings: vi.fn(), getAssistantDailyBudget: vi.fn(), getAssistantStatistics: vi.fn(), getAssistantRequests: vi.fn(), getRagStatus: vi.fn(), getAssistantRequest: vi.fn(), saveAssistantSettings: vi.fn(), reindexRag: vi.fn(), saveRagText: vi.fn(), getRagText: vi.fn(), extractRagVision: vi.fn(), scheduleRagIndexing: vi.fn() }));
@@ -21,6 +20,8 @@ describe('AssistantAdminPage', () => {
   });
   it('requires confirmation before reindexing', async () => {
     renderPage();
+    expect(screen.queryByText('Статистика за період')).not.toBeInTheDocument();
+    expect(api.getAssistantStatistics).not.toHaveBeenCalled();
     fireEvent.click(await screen.findByRole('button', { name: 'Переіндексувати RAG' }));
     expect(api.reindexRag).not.toHaveBeenCalled();
     fireEvent.click(await screen.findByRole('button', { name: 'Підтвердити' }));
@@ -52,13 +53,6 @@ describe('AssistantAdminPage', () => {
     expect(button).toBeDisabled();
     finish();
     expect(await screen.findByText(/Матеріали очікують індексації/)).toBeInTheDocument();
-  });
-  it('uses the same selected range for statistics and recent requests', async () => {
-    renderPage();
-    fireEvent.click(await screen.findByRole('button', { name: 'Останні 7 днів' }));
-    const dates = presetDates(7); const range = analyticsBoundaries(dates.from, dates.to)!;
-    await waitFor(() => expect(api.getAssistantStatistics).toHaveBeenCalledWith(range, expect.any(AbortSignal)));
-    expect(api.getAssistantRequests).toHaveBeenCalledWith(range, 1, expect.any(AbortSignal));
   });
   it('shows NeedsText counts and requires explicit confirmation before paid bulk OCR', async () => {
     const status = await api.getRagStatus();

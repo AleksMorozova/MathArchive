@@ -26,6 +26,29 @@ vi.mock('../api/documentsApi', async () => {
 const useDocumentMock = vi.mocked(useDocument);
 
 describe('DocumentDetailsPage', () => {
+  it.each(['card', 'details'] as const)('shows download confirmation only after the %s download resolves', async (location) => {
+    let complete!: () => void;
+    vi.mocked(downloadDocument).mockReturnValue(new Promise<void>(resolve => { complete = resolve; }));
+    render(<MemoryRouter initialEntries={['/materials/document-id']}>
+      {location === 'card' ? <DocumentCard document={createDocument()} /> : <Routes><Route path="/materials/:id" element={<DocumentDetailsPage />} /></Routes>}
+    </MemoryRouter>);
+    const button = screen.getByRole('button', { name: location === 'card' ? 'Завантажити' : 'Завантажити файл' });
+    fireEvent.click(button);
+    expect(screen.queryByTestId('CheckIcon')).not.toBeInTheDocument();
+    expect(button).toBeDisabled();
+    complete();
+    await waitFor(() => expect(screen.getByTestId('CheckIcon')).toBeInTheDocument());
+    expect(button).toBeEnabled();
+  });
+
+  it('keeps the download icon and displays an error when downloading fails', async () => {
+    vi.mocked(downloadDocument).mockRejectedValue(new Error('Download failed'));
+    render(<MemoryRouter><DocumentCard document={createDocument()} /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: 'Завантажити' }));
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
+    expect(screen.queryByTestId('CheckIcon')).not.toBeInTheDocument();
+    expect(screen.getByTestId('DownloadIcon')).toBeInTheDocument();
+  });
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Analytics unavailable')));
     vi.clearAllMocks();
