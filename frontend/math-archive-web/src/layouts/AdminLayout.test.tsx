@@ -42,7 +42,7 @@ describe('AdminLayout navigation', () => {
     renderLayout('/admin/assistant/statistics');
     const navigation = document.querySelector<HTMLElement>('.admin-sidebar')!;
     expect(within(navigation).getByRole('link', { name: 'Статистика AI-помічника' })).toHaveClass('active');
-    expect(within(navigation).getByRole('link', { name: 'AI-помічник', exact: true })).not.toHaveClass('active');
+    expect(within(navigation).getByRole('link', { name: /^AI-помічник$/ })).not.toHaveClass('active');
   });
 
   it('marks only AI creation active on its route', () => {
