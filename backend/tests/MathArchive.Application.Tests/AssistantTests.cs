@@ -34,12 +34,27 @@ public sealed class AssistantTests
         Assert.Equal($"/materials/{f.Search.MaterialId}", result.Sources[0].Url);
         Assert.NotEmpty(result.Answer);
     }
-    [Fact]
-    public async Task Disabled_assistant_causes_zero_provider_calls()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Disabled_assistant_causes_zero_provider_calls(bool ragEnabled)
     {
-        var f = new Fixture(); f.Store.Settings.Enabled = false;
+        var f = new Fixture(); f.Store.Settings.Enabled = false; f.Store.Settings.RagEnabled = ragEnabled;
         var ex = await Assert.ThrowsAsync<AssistantException>(() => f.Orchestrator.QueryAsync(new("Поясни тему"), "actor", default));
         Assert.Equal("Disabled", ex.Category); Assert.Equal(0, f.Provider.Calls); Assert.Equal(0, f.Provider.EmbeddingCalls);
+    }
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    public void Public_and_RAG_switches_are_independent_valid_settings(bool enabled, bool ragEnabled) =>
+        Assert.True(new AssistantOptions { Enabled = enabled, RagEnabled = ragEnabled }.IsValid());
+    [Fact]
+    public async Task Public_on_RAG_off_skips_retrieval_and_query_embeddings()
+    {
+        var f = new Fixture(); f.Store.Settings.RagEnabled = false;
+        var answer = await f.Orchestrator.QueryAsync(new("Знайди матеріал"), "actor", default);
+        Assert.Empty(answer.Sources); Assert.Equal(0, f.Provider.EmbeddingCalls); Assert.Equal(0, f.Provider.Calls);
     }
     [Fact]
     public async Task Rate_limit_precedes_paid_work_and_is_audited()

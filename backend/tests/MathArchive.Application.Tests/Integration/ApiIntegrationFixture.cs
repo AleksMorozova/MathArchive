@@ -159,7 +159,15 @@ public sealed class ApiIntegrationFixture : IAsyncLifetime
             {
                 builder.UseEnvironment("Production");
                 builder.ConfigureLogging(logging => logging.ClearProviders());
-                builder.ConfigureServices(services => configureServices?.Invoke(services));
+                builder.ConfigureServices(services =>
+                {
+                    // Integration tests explicitly drive the worker with fake providers.
+                    // Never let the test host start paid automatic work.
+                    var worker = services.FirstOrDefault(x => x.ServiceType == typeof(Microsoft.Extensions.Hosting.IHostedService) &&
+                        x.ImplementationType == typeof(MathArchive.Infrastructure.Assistant.RagPendingIndexer));
+                    if (worker is not null) services.Remove(worker);
+                    configureServices?.Invoke(services);
+                });
             });
     }
 

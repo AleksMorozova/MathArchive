@@ -325,3 +325,94 @@ Validation executed for the student UX:
 - `npm ls katex`: parser, renderer and CSS use the same deduplicated 0.16.47 version.
 - `git diff --check`: passed. No production deployment or paid provider calls were performed. Mobile behavior is covered by component tests; physical-device and visual browser checks are not claimed.
 - Dependency audit reports 9 existing advisories (3 moderate, 6 high) in unrelated dependencies; a broad upgrade is outside this UX change.
+
+## Automatic material indexing lifecycle (2026-10-04)
+
+This section supersedes the earlier native-only/explicit-OCR/mandatory-review lifecycle. RAG-enabled indexing now transcribes supported PNG/JPEG images automatically and embeds usable text without a separate approval step. The existing transcription prompt preserves visible Ukrainian mathematics and forbids explaining, solving or inventing content. Mathematical OCR remains fallible; teachers can inspect and correct it.
+
+### Uploads and recovery
+
+`DocumentRepository.SaveChangesAsync` already commits a `Pending` RAG state atomically with new or changed material metadata. `DocumentService` now returns immediately after the successful storage/database operation and any established replacement-file cleanup; it no longer depends on or waits for `IRagIndexer`. No AI failure rolls back a valid material upload.
+
+`RagPendingIndexer` is a single-instance hosted service using the existing `rag_index_states` table, not a separate queue or fire-and-forget task. Every five seconds it opens a DI scope, selects up to 20 persisted Pending/Indexing IDs and processes them sequentially through the existing indexer/semaphore. Concurrency is deliberately one. A restart can recover Indexing as well as Pending items. The service uses host cancellation and the indexer's per-material timeout. Startup/database failures are logged and retried; Failed and NeedsText items require an administrator retry. Budget/disabled failures stop the batch and pause processing for a minute. An already exhausted daily budget skips work until capacity is available.
+
+The tradeoff is a small database polling cost and a single-instance deployment constraint, which matches the existing Render disk architecture. It avoids tying uploads to hosting HTTP timeouts. Pending state makes work recoverable, but process interruption during an unknown paid call can still retain a conservative spend reservation. This is not an exactly-once provider guarantee. Full reindex and explicit OCR endpoints remain synchronous maintenance operations; use persisted scheduling for initial archive processing.
+
+### Extraction, caching and updates
+
+Index state progresses Pending → Indexing → Indexed, or Failed/NeedsText with a safe reason. Native PDF/DOCX/PPTX extraction remains first. Eligible insufficient native sources and supported images use the existing vision provider and size/page limits. Transcription with at least 20 letters/digits is treated as usable; an unreadable-only result remains NeedsText. This threshold is a practical heuristic, not proof of accurate formulas. Partially unreadable transcription may still contain markers that require teacher correction.
+
+Canonical transcription is stored in `rag_index_states.ExtractedText`, with extraction method/status/time and the existing source fingerprint. It is saved before embeddings, so an embedding failure does not discard successful OCR. Previously cached usable NeedsReview text can enter the new automatic pipeline without another paid extraction. Chunks/vectors remain in `rag_chunks`, using the existing metadata prefix, splitting and content/model hash reuse.
+
+The source fingerprint hashes the immutable stored filename and file size with the existing extraction version. Application replacements always create a new stored filename. Metadata-only changes reuse transcription and regenerate only stale embedding inputs; changing the embedding model also reuses transcription. Source replacement clears old transcription, source fingerprint and teacher approval through the existing repository semantics, then extracts the new file. Direct external modification of a stored file in place is outside this source-identity contract.
+
+Teacher-approved text always takes precedence over extracted text and is never overwritten by reindexing. The existing text editor can load the cached original, correct formulas and save approval. Failed passes retain the material and avoid publishing stale chunks; retries reuse cached text and completed vectors without duplicate chunks. A failure from an obsolete material snapshot cannot mark a newer edit Failed.
+
+### Settings, API and UI
+
+`Enabled` controls public assistant availability. `RagEnabled` independently controls retrieval/indexing and acts as the indexing kill switch, checked again before each paid call. Indexing may run with public chat disabled. To stop all student and indexing work, disable both. Daily reservations, exact-model pricing, per-material cost/call/input limits, telemetry and cancellation remain enforced through `PaidAiService`. Missing prices, unsupported vision models, exhausted budgets and provider failures do not bypass these guards.
+
+AdminOnly endpoints added:
+- `POST /api/admin/assistant/rag/pending`: persist missing, failed, manual-needed or stale fingerprints as Pending; leave current Indexed and active Indexing items alone; return 202 without provider work.
+- `POST /api/admin/assistant/rag/materials/{id}/retry`: persist a selected existing material as Pending, preserving cached/approved text; return 202 (404 for absent material).
+
+The admin RAG panel polls status, displays active Indexing counts and each selected material's status/source, and offers missing/stale scheduling and single-material retry. Full-reindex confirmation now mentions OCR as well as embeddings. Public-assistant-disabled status does not disable preparation controls. Upload success includes a link to this status panel and explains that indexing runs separately; its submission remains available without waiting for AI. Student chat, agents, analytics, vector storage and chunking are unchanged.
+
+### Deployment preparation
+
+1. Before deploying, review saved admin settings and leave RAG off until models, accurate pricing and budgets are ready. Saved database settings override environment defaults; `.env.example` now disables both public AI and RAG initially.
+2. Deploy/restart the single Render instance. This change needs no new migration or package: existing string states/cache fields support Indexing and automatic extraction.
+3. Set a vision model accepted by the current guard (for example `gpt-4o-mini`) and configure exact vision input/output and embedding prices. Select deliberate per-material/daily limits and timeout; the conservative vision reservation may reject multi-page files under small limits.
+4. Enable RAG while public AI can remain off. Existing persisted Pending/Indexing work starts automatically. Use the missing/stale button once to schedule existing NeedsText/Failed/untracked images, then monitor costs/status and inspect sample transcriptions. Full reindex remains available for maintenance.
+5. Correct OCR where needed, retry failures after resolving their reason, and evaluate source retrieval before making public chat visible. No production indexing/deployment or paid-provider call was performed by this implementation task.
+
+Changed implementation files: Application/Documents/DocumentService.cs; Application/Assistant/AssistantContext.cs and AssistantContracts.cs; Infrastructure/Assistant/RagIndexer.cs and new RagPendingIndexer.cs; Infrastructure/DependencyInjection.cs; Api/Controllers/AssistantController.cs. Frontend changes: api/aiApi.ts, pages/admin/AssistantAdminPage.tsx, DocumentFormPage.tsx. Tests: DocumentServiceTests.cs, Integration/ApiIntegrationFixture.cs, Integration/RagExtractionTests.cs and AssistantAdminPage.test.tsx. Configuration/documentation: .env.example and this document.
+
+Automated tests drive the production pending tick with fake vision/embedding providers. The integration test host removes the real indexing hosted service so tests cannot launch paid automatic work. Cases cover committed PNG Pending state, automatic vision/embedding, provider failures preserving documents, cached transcription after embedding failure, metadata and model changes, replacement clearing approval, teacher precedence, native priority, unreadable/oversized sources, budget rejection before provider calls, batch interruption/resumption, stale scheduling, restart recovery and duplicate prevention.
+
+Validation actually executed for this lifecycle change:
+- Backend Release build (`dotnet build backend/MathArchive.sln --no-restore -c Release`): passed, zero warnings/errors. The initial Debug build could not copy assemblies locked by the running local API; Release output avoided disrupting that process.
+- Focused backend extraction/document suite: 44 passed before the final stale-model/batch additions. Final complete backend Release suite: 219 passed, zero failed/skipped, against an isolated PostgreSQL 16 container on port 55434 with dummy credentials.
+- Affected frontend admin/upload suite: 16 passed. Final complete frontend suite: 130 passed across 24 files. An initial full run hit the existing review-hydration test's one-second wait under concurrent validation load; its wait was extended to five seconds, and the complete rerun passed.
+- Final frontend production build: TypeScript/Vite/SEO passed; generated three stable pages and eleven material snapshots from the running local public API. The existing main-bundle size warning remains.
+- SEO generator tests: five passed. `git diff --check`: passed.
+- No new schema fields, migrations or dependencies. No real vision/embedding requests, production deployment, production indexing, CI result or browser/device OCR quality check is claimed. The isolated test container was removed after validation.
+
+Review: no blocking issue found in the exercised lifecycle. Residual limitations are the single-instance worker, finite per-file OCR limits, heuristic text sufficiency, fallible mathematical transcription and conservative billing for interrupted provider calls. The main-bundle warning and broader dependency upgrades remain out of scope. Manual review of sample OCR and paid indexing configuration is required before enabling production processing.
+
+## Independent public availability and RAG configuration (2026-10-04)
+
+Inspection confirmed that the previous lifecycle change already removed the original coupling: `DocumentService` no longer waits for indexing, `RagIndexer`/`RagPendingIndexer` depend on `RagEnabled`, and `PaidAiService` distinguishes indexing context from student context. Originally, indexing and the paid-call guard required `Enabled`; that is no longer an administrator prerequisite. This follow-up retains the working backend semantics and adds explicit settings descriptions and contract/regression tests rather than another architecture change.
+
+The existing persisted property names are retained:
+
+| Enabled | RagEnabled | Behavior |
+| --- | --- | --- |
+| false | true | Public chat hidden; student query rejected before paid work; automatic PNG extraction, embeddings and admin maintenance allowed within budgets. |
+| true | true | Public assistant and RAG preparation/retrieval available within existing guards. |
+| true | false | Public assistant available; automatic indexing and corpus retrieval/query embeddings stopped. Search returns no corpus sources. General mathematical generation still depends on the existing fallback/agent settings. Stored vectors/text remain intact. |
+| false | false | Student assistant and paid RAG work stopped; stored material/index data preserved. |
+
+There is no standalone global paid-AI boolean in this subsystem. Disable **both** switches and save to stop all assistant/RAG paid operations. This is explicit in the admin UI; disabling only public access intentionally allows paid corpus preparation. No third setting is needed for the requested workflow. Separate administrator material-analysis/image-generation features use their existing OpenAI/monthly-limit controls; these two switches are not represented as a global kill switch for those unrelated features. The monthly-limit option is a budget guard, not a general global enable flag.
+
+RAG indexing and retrieval continue sharing the existing switch. Splitting them would add configuration without a demonstrated need: RAG-off skips retrieval without deleting or invalidating stored vectors, and re-enabling it can use the same corpus. Saving either toggle only updates the assistant settings row; it does not clear chunks, extracted text or material states. Metadata/model changes retain the lifecycle's normal invalidation semantics.
+
+The public status contract remains exactly `enabled` plus `maxPromptLength`; it exposes no RAG/admin settings. Public UI uses that public flag alone. RAG settings/status/retry/reindex/vision remain behind AdminOnly. Indexing with public access disabled still uses daily reservations, pricing, cancellation/timeouts and telemetry. Pending uploads are processed by the same sequential hosted service; provider failures retain successful uploads and retryable RAG state.
+
+Admin labels distinguish public AI from RAG/automatic indexing. Each switch now has a short Ukrainian description connected to its input through `aria-describedby`. The UI explains how to stop both without deleting data. The example environment configuration documents public-off/RAG-on preparation and corrects the old explicit-only OCR comment. Existing JSON keys/defaults and saved values remain compatible: this follow-up introduces no setting field, schema change or migration, and never enables public access during upgrade.
+
+Additional/updated regressions cover valid independent combinations; zero student LLM/embedding calls with public AI off; disabled public launcher/direct page; public-off PNG upload/extraction/embedding; full reindex/retry; RAG-off preserving chunks/transcription and pending work; settings persistence preserving the corpus; the minimal public status contract; AdminOnly maintenance; budget guards; and independently saving the two described UI switches. Providers are fake and the test host does not run real paid automatic indexing.
+
+Files changed for this follow-up: `.env.example`; `backend/src/MathArchive.Application/Assistant/AssistantContracts.cs` (comments only); `backend/tests/MathArchive.Application.Tests/AssistantTests.cs`; `Integration/AssistantIntegrationTests.cs`; `Integration/RagExtractionTests.cs`; `frontend/math-archive-web/src/pages/admin/AssistantAdminPage.tsx` and its tests; and this document. Earlier lifecycle work in the same worktree is preserved.
+
+For deployment, retain/set `Assistant__Enabled=false` and `Assistant__RagEnabled=true` after configuring model prices and budgets, or save this combination in admin settings. Saved database settings take precedence over environment defaults. Prepare/check/retry the corpus, then enable only the public switch when ready. No database migration or corpus-wide reindex is needed merely to toggle public availability.
+
+Verification executed for this configuration follow-up:
+- Backend Release build: passed with zero warnings/errors.
+- Focused assistant/RAG backend tests: 61 passed. Full backend Release suite: 227 passed, zero failures/skips, using isolated PostgreSQL 16 on port 55435 and fake paid providers.
+- Final relevant frontend run (admin settings, public layout, direct assistant page): 20 passed across three files. Tests cover the accessible descriptions and independent saved values; initial test failures exposed MUI's switch role and the need for `slotProps.input`, which were corrected before the passing run.
+- Frontend production build: TypeScript/Vite/SEO passed, with three stable pages and eleven material snapshots. Existing bundle-size warning remains.
+- `git diff --check`: passed. No schema changes; an EF pending-model check was not needed. The isolated test container was removed after validation.
+- No production deployment, real paid AI calls or live browser/device validation is claimed. Previous lifecycle changes remain in the working tree.
+
+Review found no blocking issue in the exercised scope. Existing single-instance processing, OCR quality/size limits and conservative unknown-outcome reservations remain unchanged. Disabling both assistant/RAG switches preserves its safety stop; unrelated administrative AI features remain explicitly outside that stop's scope.

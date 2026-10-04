@@ -21,6 +21,7 @@ public sealed class AssistantContext(AssistantQuery query, AssistantOptions sett
     public ConcurrentDictionary<DateTimeOffset, bool> VerificationResults { get; } = new();
     public string Draft { get; set; } = "";
     public bool Parallel { get; set; }
+    public bool IsIndexing { get; init; }
     public int Retries { get; set; }
     public void AgentCall()
     {
@@ -84,7 +85,8 @@ public sealed class PaidAiService(IAssistantStore store, IAssistantProvider prov
         int upperOutput, bool llm, Func<Task<ProviderResult>> call, CancellationToken ct)
     {
         var latest = await store.GetSettingsAsync(ct);
-        if (!latest.Enabled) throw new AssistantException("Disabled", "AI-помічник тимчасово вимкнений.");
+        if (context.IsIndexing ? !latest.RagEnabled : !latest.Enabled)
+            throw new AssistantException("Disabled", "AI або індексацію тимчасово вимкнено.");
         if ((agent == "TutorAgent" && !latest.TutorEnabled) || (agent == "ExerciseAgent" && !latest.ExerciseEnabled) ||
             (agent == "VerifierAgent" && !latest.VerifierEnabled) || (agent == "RouterAgent" && !latest.LlmRouterEnabled) ||
             ((agent == "Embedding" || agent == "IndexVision") && !latest.RagEnabled))

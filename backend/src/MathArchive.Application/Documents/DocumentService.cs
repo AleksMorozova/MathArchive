@@ -13,8 +13,7 @@ public sealed class DocumentService(
     IClock clock,
     IValidator<DocumentMetadata> metadataValidator,
     IValidator<UploadedFile> fileValidator,
-    ILogger<DocumentService> logger,
-    MathArchive.Application.Assistant.IRagIndexer? ragIndexer = null)
+    ILogger<DocumentService> logger)
 {
     public async Task<PagedResult<DocumentDto>> SearchAsync(DocumentQueryParameters parameters, CancellationToken cancellationToken)
     {
@@ -123,7 +122,8 @@ public sealed class DocumentService(
             throw;
         }
 
-        await TryIndexAsync(document.Id, cancellationToken);
+        // The repository commits Pending together with the material. The hosted indexer
+        // processes it independently, so paid AI work never delays or undoes an upload.
         return DocumentMapper.ToDto(document);
     }
 
@@ -184,7 +184,6 @@ public sealed class DocumentService(
             }
         }
 
-        await TryIndexAsync(document.Id, cancellationToken);
         return DocumentMapper.ToDto(document);
     }
 
@@ -260,12 +259,6 @@ public sealed class DocumentService(
         }
     }
 
-    private async Task TryIndexAsync(Guid id, CancellationToken cancellationToken)
-    {
-        if (ragIndexer is null) return;
-        try { await ragIndexer.IndexAsync(id, false, cancellationToken); }
-        catch (Exception exception) { logger.LogWarning(exception, "RAG indexing did not complete for {DocumentId}", id); }
-    }
     private async Task TryDeleteCompensationAsync(string storedFileName, string cleanupReason, Exception primaryException)
     {
         try

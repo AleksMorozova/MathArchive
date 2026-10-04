@@ -42,6 +42,52 @@ public sealed class AssistantIntegrationTests(ApiIntegrationFixture fixture) : I
         "test.pdf", "test.pdf", "application/pdf", 100, DateTimeOffset.UtcNow);
 
     [Fact]
+    public async Task Public_status_is_minimal_and_setting_toggles_preserve_the_stored_corpus()
+    {
+        Guid id, chunkId;
+        await using (var db = Context())
+        {
+            var document = Material(10); id = document.Id;
+            var chunk = new RagChunk { MaterialId = id, Content = "Похідна x² — 2x", EmbeddingModel = "text-embedding-3-small", Embedding = [1, 0], ContentHash = "existing-hash" };
+            chunkId = chunk.Id;
+            db.Add(document); db.Add(chunk);
+            db.Add(new RagIndexState { MaterialId = id, Status = "Indexed", ExtractedText = "Похідна x² — 2x", ExtractionStatus = "Extracted" });
+            await db.SaveChangesAsync();
+        }
+        using var admin = await fixture.CreateAuthorizedClientAsync(); using var anonymous = fixture.CreateClient();
+        foreach (var settings in new[] { new AssistantOptions { Enabled = false, RagEnabled = true },
+            new AssistantOptions { Enabled = true, RagEnabled = false }, new AssistantOptions { Enabled = false, RagEnabled = false } })
+        {
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/api/admin/assistant/settings", settings)).StatusCode);
+            using var status = JsonDocument.Parse(await anonymous.GetStringAsync("/api/assistant/status"));
+            Assert.Equal(settings.Enabled, status.RootElement.GetProperty("enabled").GetBoolean());
+            Assert.Equal(new[] { "enabled", "maxPromptLength" }, status.RootElement.EnumerateObject().Select(x => x.Name).OrderBy(x => x).ToArray());
+            await using var db = Context();
+            var state = await db.Set<RagIndexState>().SingleAsync();
+            Assert.Equal("Indexed", state.Status); Assert.Equal("Похідна x² — 2x", state.ExtractedText);
+            Assert.Equal(chunkId, (await db.Set<RagChunk>().SingleAsync()).Id);
+            if (!settings.Enabled)
+                Assert.Equal(HttpStatusCode.ServiceUnavailable, (await anonymous.PostAsJsonAsync("/api/assistant/query", new AssistantQuery("Поясни похідну"))).StatusCode);
+            Assert.Equal(0, await db.AiUsageRecords.CountAsync());
+        }
+    }
+    [Fact]
+    public async Task RAG_controls_remain_AdminOnly_with_public_assistant_disabled()
+    {
+        using var admin = await fixture.CreateAuthorizedClientAsync();
+        await admin.PutAsJsonAsync("/api/admin/assistant/settings", new AssistantOptions { Enabled = false, RagEnabled = true });
+        using var anonymous = fixture.CreateClient(); using var forbidden = fixture.CreateForbiddenClient();
+        foreach (var path in new[] { "rag/pending", "rag/reindex", "rag/vision", $"rag/materials/{Guid.NewGuid()}/retry", $"rag/materials/{Guid.NewGuid()}/vision" })
+        {
+            Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.PostAsync("/api/admin/assistant/" + path, null)).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await forbidden.PostAsync("/api/admin/assistant/" + path, null)).StatusCode);
+        }
+        Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync("/api/admin/assistant/rag/status")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/api/admin/assistant/rag/status")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await forbidden.GetAsync("/api/admin/assistant/rag/status")).StatusCode);
+    }
+
+    [Fact]
     public async Task Admin_endpoints_enforce_existing_policy_and_disabled_query_never_calls_provider()
     {
         using var anon = fixture.CreateClient();

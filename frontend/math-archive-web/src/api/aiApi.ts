@@ -68,6 +68,9 @@ export async function getRagStatus(signal?: AbortSignal) {
 export async function reindexRag() {
   await httpClient.post('/api/admin/assistant/rag/reindex', undefined, { timeout: 600000 });
 }
+export async function scheduleRagIndexing(id?: string) {
+  await httpClient.post(id ? `/api/admin/assistant/rag/materials/${id}/retry` : '/api/admin/assistant/rag/pending');
+}
 export async function saveRagText(id: string, text: string) {
   await httpClient.put(`/api/admin/assistant/rag/materials/${id}/text`, { text }, { timeout: 125000 });
 }
