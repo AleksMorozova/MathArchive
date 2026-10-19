@@ -375,3 +375,8 @@ Reusable AI rules, prompts, checklists, and an evidence-based Storage Reconcilia
 ## Student AI assistant
 
 The optional Ukrainian mathematics assistant, RAG index, bounded specialized agents, admin controls and estimated daily budget are documented in [docs/ai-assistant.md](docs/ai-assistant.md). It is disabled by default until pricing, indexing and teacher review are complete.
+
+## Student testing
+
+The Ukrainian test catalog, teacher editor, PIN-protected student accounts, private history, account-based retakes, grading, historical snapshots and results reporting are documented in [the testing guide](docs/testing.md).
+

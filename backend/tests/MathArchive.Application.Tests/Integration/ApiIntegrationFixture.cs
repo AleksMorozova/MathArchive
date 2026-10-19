@@ -75,6 +75,11 @@ public sealed class ApiIntegrationFixture : IAsyncLifetime
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<MathArchiveDbContext>();
+        await dbContext.Set<MathArchive.Domain.Testing.TestAttempt>().ExecuteDeleteAsync();
+        await dbContext.Set<MathArchive.Domain.Testing.StudentAuthenticationIdentity>().ExecuteDeleteAsync();
+        await dbContext.Set<MathArchive.Domain.Testing.Student>().ExecuteDeleteAsync();
+        await dbContext.Set<MathArchive.Domain.Testing.StudentTest>().ExecuteDeleteAsync();
+        await dbContext.Set<MathArchive.Domain.Testing.TestImage>().ExecuteDeleteAsync();
         await dbContext.Documents.ExecuteDeleteAsync();
         await dbContext.AnalyticsEvents.ExecuteDeleteAsync();
         await dbContext.AiUsageRecords.ExecuteDeleteAsync();
@@ -95,6 +100,23 @@ public sealed class ApiIntegrationFixture : IAsyncLifetime
         return Factory.CreateClient();
     }
 
+    private static int studentBrowserNumber;
+    public HttpClient CreateStudentBrowser()
+    {
+        var client = Factory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false });
+        client.DefaultRequestHeaders.Add("X-Forwarded-For", "2001:db8::" + Interlocked.Increment(ref studentBrowserNumber).ToString("x"));
+        client.DefaultRequestHeaders.Add("Origin", "https://example.com");
+        client.DefaultRequestHeaders.Add("X-Student-Request", "1");
+        return client;
+    }
+    public async Task<HttpClient> CreateStudentClientAsync(string? firstName = null, string lastName = "Тестова", int grade = 5)
+    {
+        var client = CreateStudentBrowser();
+        var response = await client.PostAsJsonAsync("/api/students/register", new {
+            firstName = firstName ?? Guid.NewGuid().ToString("N"), lastName, grade, pin = "Matematyka29", confirmPin = "Matematyka29"
+        });
+        response.EnsureSuccessStatusCode(); return client;
+    }
     public async Task<HttpClient> CreateAuthorizedClientAsync()
     {
         var client = CreateClient();
@@ -130,6 +152,15 @@ public sealed class ApiIntegrationFixture : IAsyncLifetime
         return await dbContext.Documents.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
     }
 
+    public WebApplicationFactory<Program> CreateGoogleFactory(MathArchive.Application.Testing.IGoogleStudentVerifier verifier)
+    {
+        var googleFactory = CreateFactory(ConnectionString, storageRoot, services => {
+            services.RemoveAll<MathArchive.Application.Testing.IGoogleStudentVerifier>();
+            services.AddSingleton(verifier);
+        });
+        googleFactory.Services.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>()["StudentGoogle:ClientId"] = "test-client.apps.googleusercontent.com";
+        return googleFactory;
+    }
     public WebApplicationFactory<Program> CreateFactoryWithStorageFailure(IFileStorage storage)
     {
         return CreateFactory(ConnectionString, storageRoot, services =>
@@ -255,3 +286,5 @@ public sealed class ApiIntegrationFixture : IAsyncLifetime
 
     private sealed record LoginResponseForTests(string Token);
 }
+
+

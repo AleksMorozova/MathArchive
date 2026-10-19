@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { askAssistant, getAssistantStatus } from '../api/aiApi';
 import { PublicLayout } from './PublicLayout';
 
+vi.mock('../api/studentApi', () => ({ studentApi: { me: vi.fn().mockResolvedValue(null) } }));
 vi.mock('../api/aiApi', () => ({ askAssistant: vi.fn(), getAssistantStatus: vi.fn() }));
 vi.mock('../api/analyticsApi', () => ({ trackSiteVisit: vi.fn() }));
 function renderLayout() {
@@ -108,3 +109,4 @@ describe('public assistant chat', () => {
     } finally { window.matchMedia = original; }
   });
 });
+

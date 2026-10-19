@@ -21,7 +21,9 @@ describe('AdminLayout navigation', () => {
       'Статистика',
       'Використання AI',
       'AI-помічник',
-      'Статистика AI-помічника'
+      'Статистика AI-помічника',
+      'Тести',
+      'Учні'
     ]);
     expect(within(navigation).getByRole('link', { name: 'Додати з AI' })).toHaveAttribute('href', '/admin/documents/ai');
     expect(within(navigation).getByRole('link', { name: 'Використання AI' })).toHaveAttribute('href', '/admin/ai-usage');
@@ -78,3 +80,4 @@ function renderLayout(initialPath: string) {
     </MemoryRouter>
   );
 }
+

@@ -21,7 +21,7 @@ httpClient.interceptors.response.use(
   async (error) => {
     const apiError = await normalizeApiErrorAsync(error);
 
-    if (apiError.status === 401) {
+    if (apiError.status === 401 && error.config?.headers?.["X-Student-Request"] !== "1") {
       authStorage.clearToken();
       if (window.location.pathname.startsWith('/admin') && window.location.pathname !== '/admin/login') {
         window.location.assign('/admin/login');

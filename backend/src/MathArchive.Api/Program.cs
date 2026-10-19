@@ -1,3 +1,4 @@
+using MathArchive.Api.Auth;
 using System.Text;
 using System.Text.Json.Serialization;
 using FluentValidation;
@@ -80,7 +81,7 @@ builder.Services.AddCors(options =>
         }
 
         policy.WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-            .WithHeaders(HeaderNames.Authorization, HeaderNames.ContentType)
+            .WithHeaders(HeaderNames.Authorization, HeaderNames.ContentType, "X-Attempt-Token", "X-Student-Request").AllowCredentials()
             .WithExposedHeaders("Content-Disposition");
     });
 });
@@ -140,13 +141,34 @@ builder.Services
         };
     });
 
+builder.Services.AddSingleton<GoogleStudentFlowStore>();
+builder.Services.AddStudentAuthentication(builder.Configuration, builder.Environment.IsDevelopment());
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+    options.AddPolicy("StudentOnly", policy => policy.AddAuthenticationSchemes(StudentAuthentication.Scheme).RequireAuthenticatedUser().RequireRole("Student"));
 });
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, _) => await Results.Problem(statusCode: 429, title: "Тестування", detail: "Забагато запитів. Спробуйте пізніше.").ExecuteAsync(context.HttpContext);
+    options.AddPolicy("StudentLogin", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 60, Window = TimeSpan.FromMinutes(15), QueueLimit = 0, AutoReplenishment = true }));
+    options.AddPolicy("TestStart", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 60, Window = TimeSpan.FromMinutes(1), QueueLimit = 0, AutoReplenishment = true }));
+    options.AddPolicy("TestAttempt", context =>
+    {
+        // Students in one classroom may share an IP. Partition autosave by capability,
+        // so one class does not exhaust a single student's request allowance.
+        var token = context.Request.Headers["X-Attempt-Token"].FirstOrDefault();
+        var key = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? (token is { Length: 64 }
+            ? MathArchive.Application.Testing.TestingService.Hash(token)
+            : context.Connection.RemoteIpAddress?.ToString() ?? "unknown");
+        return RateLimitPartition.GetFixedWindowLimiter(key,
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = 180, Window = TimeSpan.FromMinutes(1), QueueLimit = 0, AutoReplenishment = true });
+    });
     options.AddPolicy("AiAnalysis", context => RateLimitPartition.GetFixedWindowLimiter(
         context.User.Identity?.Name ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions
@@ -225,6 +247,23 @@ if (!app.Environment.IsDevelopment())
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
+// A non-simple header and exact trusted Origin are required for cookie-authenticated writes,
+// including login/registration. Ordinary forms and untrusted cross-origin fetches cannot satisfy this.
+app.Use(async (context, next) => {
+    var path = context.Request.Path.Value ?? "";
+    var studentWrite = path.StartsWith("/api/students", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/api/test-attempts", StringComparison.OrdinalIgnoreCase) ||
+        (path.StartsWith("/api/tests/", StringComparison.OrdinalIgnoreCase) && path.EndsWith("/attempts", StringComparison.OrdinalIgnoreCase));
+    if (studentWrite && context.Request.Method is not ("GET" or "HEAD" or "OPTIONS")) {
+        var origin = context.Request.Headers.Origin.ToString().TrimEnd('/');
+        var trusted = allowedOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase) ||
+            (app.Environment.IsDevelopment() && IsLoopbackOrigin(origin));
+        if (context.Request.Headers["X-Student-Request"] != "1" || !trusted) {
+            await Results.Problem(statusCode: 403, detail: "Неприпустиме джерело запиту. Оновіть сторінку.").ExecuteAsync(context); return;
+        }
+    }
+    await next(context);
+});
 app.MapHealthChecks("/health", new HealthCheckOptions
 {
     ResponseWriter = WriteHealthResponseAsync
@@ -378,4 +417,6 @@ static bool IsLoopbackOrigin(string origin)
 public partial class Program
 {
 }
+
+
 

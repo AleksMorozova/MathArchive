@@ -1,3 +1,4 @@
+import { StudentAccountControl } from "../components/testing/StudentAccountControl";
 import MenuIcon from '@mui/icons-material/Menu';
 import { AppBar, Box, Button, Container, Drawer, IconButton, Stack, Toolbar, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
@@ -12,6 +13,7 @@ import { AssistantWidget } from '../components/assistant/AssistantWidget';
 const links = [
   { to: '/', label: 'Головна' },
   { to: '/materials', label: 'Матеріали' },
+  { to: '/tests', label: 'Тести' },
   { to: '/about', label: 'Про сайт' }
 ];
 
@@ -43,10 +45,11 @@ function PublicLayoutContent() {
             <Stack component={Link} to="/" direction="row" alignItems="center" className="brand-link">
               <Box>
                 <Typography variant="h6" color="text.primary">MathArchive</Typography>
-                <Typography variant="caption" color="text.secondary">Навчальні матеріали з математики</Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: { xs: "none", sm: "block" } }}>Навчальні матеріали з математики</Typography>
               </Box>
             </Stack>
             <Box className="desktop-nav">{navigation}</Box>
+            <StudentAccountControl />
             <IconButton className="mobile-nav-button" aria-label="Відкрити меню" onClick={() => setOpen(true)}>
               <MenuIcon />
             </IconButton>
@@ -67,7 +70,9 @@ function PublicLayoutContent() {
         </Container>
       </Box>
       <ScrollToTop />
-      <AssistantWidget />
+      {!location.pathname.startsWith('/tests/') && <AssistantWidget />}
     </Box>
   );
 }
+
+

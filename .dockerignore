@@ -18,3 +18,5 @@ backend/src/MathArchive.Api/logs
 .env
 .env.*
 README.md
+
+.tools

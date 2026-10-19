@@ -42,6 +42,7 @@ public sealed class GlobalExceptionHandler(
         var problemDetails = exception switch
         {
             MathArchive.Application.Assistant.AssistantException assistantException => new ProblemDetails { Type = "about:blank", Title = assistantException.Category, Status = assistantException.Status, Detail = assistantException.Message },
+            MathArchive.Application.Testing.TestingException testing => new ProblemDetails { Type = "about:blank", Title = "Тестування", Status = testing.Status, Detail = testing.Message },
             ValidationException validationException => CreateValidationProblemDetails(validationException),
             MaterialFileNotFoundException => new ProblemDetails
             {
@@ -138,7 +139,7 @@ public sealed class GlobalExceptionHandler(
     private static bool IsExpected(Exception exception)
     {
         return exception is MathArchive.Application.Assistant.AssistantException or ValidationException
-            or MaterialFileNotFoundException
+            or MathArchive.Application.Testing.TestingException or MaterialFileNotFoundException
             or MaterialAnalysisException
             or AiLimitExceededException
             or BadHttpRequestException

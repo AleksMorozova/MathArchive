@@ -13,6 +13,9 @@ public static class DependencyInjection
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         services.AddScoped<DocumentService>();
+        services.AddScoped<Testing.TestingService>();
+        services.AddScoped<IValidator<MathArchive.Domain.Testing.TestDefinition>, Testing.TestDefinitionValidator>();
+        services.AddScoped<IValidator<Testing.StartAttempt>, Testing.StartAttemptValidator>();
         services.AddScoped<Analytics.AnalyticsService>();
         services.AddScoped<IValidator<Analytics.RecordAnalyticsEvent>, Analytics.RecordAnalyticsEventValidator>();
         services.AddScoped<StorageAuditService>();
