@@ -9,6 +9,20 @@ import { MaterialsPage } from './pages/MaterialsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { LoadingState } from './components/StateView';
 
+const StudentGoogleProfilePage = lazy(() => import("./pages/testing/StudentProfile").then(m => ({ default: m.StudentGoogleProfilePage })));
+const StudentProfilePage = lazy(() => import("./pages/testing/StudentProfile").then(m => ({ default: m.StudentProfilePage })));
+const StudentLoginPage = lazy(() => import("./pages/testing/StudentAccount").then(m => ({ default: m.StudentLoginPage })));
+const StudentDashboardPage = lazy(() => import("./pages/testing/StudentAccount").then(m => ({ default: m.StudentDashboardPage })));
+const StudentHistoricalAttemptPage = lazy(() => import("./pages/testing/StudentAccount").then(m => ({ default: m.StudentHistoricalAttemptPage })));
+const AdminStudentsPage = lazy(() => import("./pages/testing/AdminStudents").then(m => ({ default: m.AdminStudentsPage })));
+const AdminStudentPage = lazy(() => import("./pages/testing/AdminStudents").then(m => ({ default: m.AdminStudentPage })));
+
+const TestCatalogPage = lazy(() => import('./pages/testing/StudentTests').then(m => ({ default: m.TestCatalogPage })));
+const StudentTestPage = lazy(() => import('./pages/testing/StudentTests').then(m => ({ default: m.StudentTestPage })));
+const AdminTestsPage = lazy(() => import('./pages/testing/AdminTests').then(m => ({ default: m.AdminTestsPage })));
+const TestEditorPage = lazy(() => import('./pages/testing/AdminTests').then(m => ({ default: m.TestEditorPage })));
+const TestStatisticsPage = lazy(() => import('./pages/testing/TestStatistics').then(m => ({ default: m.TestStatisticsPage })));
+const AdminAttemptPage = lazy(() => import('./pages/testing/TestStatistics').then(m => ({ default: m.AdminAttemptPage })));
 const AdminLayout = lazy(() => import('./layouts/AdminLayout').then((module) => ({ default: module.AdminLayout })));
 const AdminDocumentsPage = lazy(() => import('./pages/admin/AdminDocumentsPage').then((module) => ({ default: module.AdminDocumentsPage })));
 const AdminDocumentOrderPage = lazy(() => import('./pages/admin/AdminDocumentOrderPage').then((module) => ({ default: module.AdminDocumentOrderPage })));
@@ -32,11 +46,20 @@ const router = createBrowserRouter([
       { path: '/', element: <HomePage /> },
       { path: '/materials', element: <MaterialsPage /> },
       { path: '/materials/:id', element: <DocumentDetailsPage /> },
+      { path: '/tests', element: <TestCatalogPage /> },
+
       { path: '/about', element: <AboutPage /> },
       { path: '/assistant', element: <AssistantPage /> },
       { path: '*', element: <NotFoundPage /> }
     ]
   },
+  { path: '/student/google/profile', element: <StudentGoogleProfilePage /> },
+  { path: '/student/profile', element: <StudentProfilePage /> },
+  { path: '/student/login', element: <StudentLoginPage /> },
+  { path: '/student', element: <StudentDashboardPage /> },
+  { path: '/student/history', element: <Navigate to="/student?tab=history" replace /> },
+  { path: '/student/attempts/:attemptId', element: <StudentHistoricalAttemptPage /> },
+  { path: '/tests/:id', element: <StudentTestPage /> },
   { path: '/admin/login', element: <LoginPage /> },
   {
     path: '/admin',
@@ -53,6 +76,13 @@ const router = createBrowserRouter([
       { path: 'documents/ai', element: <AiMaterialFormPage /> },
       { path: 'image-transform', element: <ImagePosterPage /> },
       { path: 'documents/:id/edit', element: <DocumentFormPage mode="edit" /> },
+      { path: 'students', element: <AdminStudentsPage /> },
+      { path: 'students/:studentId', element: <AdminStudentPage /> },
+      { path: 'tests', element: <AdminTestsPage /> },
+      { path: 'tests/new', element: <TestEditorPage /> },
+      { path: 'tests/:id/edit', element: <TestEditorPage /> },
+      { path: 'tests/statistics', element: <TestStatisticsPage /> },
+      { path: 'tests/attempts/:id', element: <AdminAttemptPage /> },
       { path: 'storage', element: <StorageAuditPage /> },
       { path: 'analytics', element: <AnalyticsPage /> },
       { path: 'ai-usage', element: <AiUsagePage /> },
@@ -69,3 +99,5 @@ export function App() {
     </Suspense>
   );
 }
+
+

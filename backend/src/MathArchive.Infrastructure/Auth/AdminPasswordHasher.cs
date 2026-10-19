@@ -8,11 +8,11 @@ public sealed class AdminPasswordHasher
     private const int KeySize = 32;
     private const int Iterations = 100_000;
 
-    public string Hash(string password)
+    public string Hash(string password, int iterations = Iterations)
     {
         var salt = RandomNumberGenerator.GetBytes(SaltSize);
-        var key = Rfc2898DeriveBytes.Pbkdf2(password, salt, Iterations, HashAlgorithmName.SHA256, KeySize);
-        return $"PBKDF2-SHA256${Iterations}${Convert.ToBase64String(salt)}${Convert.ToBase64String(key)}";
+        var key = Rfc2898DeriveBytes.Pbkdf2(password, salt, iterations, HashAlgorithmName.SHA256, KeySize);
+        return $"PBKDF2-SHA256${iterations}${Convert.ToBase64String(salt)}${Convert.ToBase64String(key)}";
     }
 
     public bool Verify(string password, string passwordHash)
@@ -35,3 +35,4 @@ public sealed class AdminPasswordHasher
         return CryptographicOperations.FixedTimeEquals(actualKey, expectedKey);
     }
 }
+

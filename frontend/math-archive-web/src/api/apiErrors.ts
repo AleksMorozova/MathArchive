@@ -151,6 +151,9 @@ function isValidationErrors(value: unknown): value is Record<string, string[]> {
   return Object.values(value).every((messages) => Array.isArray(messages) && messages.every((message) => typeof message === 'string'));
 }
 function getMessageForStatus(status: number | undefined, problem: ApiProblemDetails | undefined, fallback = 'Щось пішло не так. Спробуйте пізніше.') {
+  if (problem?.title === 'Тестування' && problem.detail && [400, 401, 404, 409, 429].includes(status ?? 0)) {
+    return problem.detail.slice(0, 512);
+  }
   const assistantCategories = ['Disabled', 'AgentDisabled', 'DailyBudget', 'RequestBudget', 'RateLimited', 'PricingUnavailable', 'NotConfigured', 'ProviderLimit', 'ProviderFailure', 'IncompleteResponse', 'InvalidResponse', 'EmptyResponse', 'MalformedVerification', 'VerificationFailed', 'Unavailable', 'TimedOut', 'ReindexRunning', 'VisionModelUnsupported', 'Validation'];
   if (problem?.title && assistantCategories.includes(problem.title) && problem.detail && [400, 409, 429, 503].includes(status ?? 0)) {
     return problem.detail.slice(0, 512);
@@ -185,3 +188,4 @@ function getMessageForStatus(status: number | undefined, problem: ApiProblemDeta
 
   return fallback;
 }
+

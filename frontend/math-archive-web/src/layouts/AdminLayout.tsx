@@ -49,6 +49,8 @@ export function AdminLayout() {
       </Button>
       <Button component={NavLink} to="/admin/assistant" end startIcon={<AutoAwesomeIcon />} onClick={() => setOpen(false)}>AI-помічник</Button>
       <Button component={NavLink} to="/admin/assistant/statistics" end startIcon={<BarChartIcon />} onClick={() => setOpen(false)}>Статистика AI-помічника</Button>
+      <Button component={NavLink} to="/admin/tests" onClick={() => setOpen(false)}>Тести</Button>
+      <Button component={NavLink} to="/admin/students" onClick={() => setOpen(false)}>Учні</Button>
       <Button startIcon={<LogoutIcon />} onClick={signOut}>Вийти</Button>
     </Stack>
   );
@@ -77,3 +79,4 @@ export function AdminLayout() {
     </ThemeProvider>
   );
 }
+

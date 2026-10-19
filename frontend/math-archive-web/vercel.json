@@ -3,6 +3,34 @@
   "cleanUrls": true,
   "rewrites": [
     {
+      "source": "/tests",
+      "destination": "/"
+    },
+    {
+      "source": "/tests/:id",
+      "destination": "/"
+    },
+    {
+      "source": "/api/students/:path*",
+      "destination": "https://matharchive.onrender.com/api/students/:path*"
+    },
+    {
+      "source": "/api/test-attempts/:path*",
+      "destination": "https://matharchive.onrender.com/api/test-attempts/:path*"
+    },
+    {
+      "source": "/api/tests/:id/attempts",
+      "destination": "https://matharchive.onrender.com/api/tests/:id/attempts"
+    },
+    {
+      "source": "/student/:path*",
+      "destination": "/"
+    },
+    {
+      "source": "/student",
+      "destination": "/"
+    },
+    {
       "source": "/admin",
       "destination": "/"
     },
@@ -15,12 +43,30 @@
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://matharchive.onrender.com; frame-src blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Strict-Transport-Security", "value": "max-age=31536000" },
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Permissions-Policy", "value": "camera=(), geolocation=(), microphone=()" }
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://matharchive.onrender.com https://accounts.google.com/gsi/; frame-src blob: https://accounts.google.com/gsi/; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=31536000"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), geolocation=(), microphone=()"
+        }
       ]
     }
   ]

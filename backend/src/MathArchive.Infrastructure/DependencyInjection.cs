@@ -51,6 +51,7 @@ public static class DependencyInjection
         services.AddScoped<IEmbeddingService>(sp => sp.GetRequiredService<OpenAiAssistantProvider>());
         services.AddScoped<IRagVisionProvider>(sp => sp.GetRequiredService<OpenAiAssistantProvider>());
         services.AddScoped<IDocumentRepository, DocumentRepository>();
+        services.AddScoped<MathArchive.Application.Testing.ITestingRepository, MathArchive.Infrastructure.Testing.TestingRepository>();
         services.AddScoped<MathArchive.Application.Analytics.IAnalyticsRepository, AnalyticsRepository>();
         services.AddScoped<IAiUsageRepository, AiUsageRepository>();
         services.AddHostedService<AiUsageCostBackfillService>();
@@ -65,6 +66,16 @@ public static class DependencyInjection
             client.Timeout = Timeout.InfiniteTimeSpan;
         });
         services.AddScoped<IFileStorage, LocalFileStorage>();
+        services.AddKeyedScoped<IFileStorage>("TestImages", (sp, _) => new LocalFileStorage(
+            Microsoft.Extensions.Options.Options.Create(new LocalStorageOptions {
+                RootPath = Path.Combine(sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<LocalStorageOptions>>().Value.RootPath, "test-images")
+            }), sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<LocalFileStorage>>()));
+        services.AddScoped<MathArchive.Application.Testing.ITestImageRepository, MathArchive.Infrastructure.Testing.TestImageRepository>();
+        services.AddScoped<MathArchive.Application.Testing.ITestImageProcessor, MathArchive.Infrastructure.Testing.TestImageProcessor>();
+        services.AddScoped<MathArchive.Application.Testing.TestImageService>();
+        services.AddScoped<MathArchive.Application.Testing.IGoogleStudentVerifier, GoogleStudentVerifier>();
+        services.AddScoped<MathArchive.Application.Testing.IStudentAccounts, StudentAccounts>();
+        services.AddScoped<MathArchive.Application.Testing.StudentTestingService>();
         services.AddSingleton<AdminPasswordHasher>();
         services.AddScoped<JwtTokenService>();
         services.AddScoped<AdminAuthenticationService>();
@@ -73,3 +84,6 @@ public static class DependencyInjection
         return services;
     }
 }
+
+
+
