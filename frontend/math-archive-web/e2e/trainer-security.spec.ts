@@ -9,13 +9,24 @@ const listen = (server: Server, port: number) => new Promise<void>(resolve => se
 const close = (server: Server) => new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
 
 test.beforeAll(async () => {
+  const vercel = JSON.parse(readFileSync('vercel.json', 'utf8'));
+  const parentPolicy: string = vercel.headers.flatMap((rule: { headers: { key: string; value: string }[] }) => rule.headers)
+    .find((header: { key: string }) => header.key === 'Content-Security-Policy').value;
+  expect(parentPolicy.match(/(?:^|;)\s*frame-src\s+([^;]+)/)?.[1].split(/\s+/)).toContain('https://trainers.morozovamath.com');
   // Replay the exact bytes and security headers exported by the real upload/controller integration test.
   const response = JSON.parse(readFileSync(process.env.TRAINER_BROWSER_FIXTURE_PATH!, 'utf8'));
-  const headers = Object.fromEntries(Object.entries(response.headers).filter(([key]) => !['content-length', 'transfer-encoding', 'connection', 'date'].includes(key.toLowerCase())));
-  parent = createServer((_, res) => {
+  const headers = Object.fromEntries(Object.entries(response.headers).filter(([key]) => !['content-length', 'content-encoding', 'transfer-encoding', 'connection', 'date'].includes(key.toLowerCase())));
+  parent = createServer((req, res) => {
+    if (req.url === '/test-parent.js') {
+      res.setHeader('Content-Type', 'application/javascript');
+      res.end('localStorage.setItem("token","fake-secret")');
+      return;
+    }
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    // Exercise the deployed parent policy too; only map the content origin to the local test server.
+    res.setHeader('Content-Security-Policy', parentPolicy.replaceAll('https://trainers.morozovamath.com', 'http://127.0.0.1:4188'));
     res.setHeader('Set-Cookie', 'matharchive-fake-session=fake; Path=/; HttpOnly; SameSite=Lax');
-    res.end('<!doctype html><html><body data-secret="private"><a href="/materials">Повернутися до матеріалів</a><script>localStorage.setItem("token","fake-secret")</script><iframe title="Математичний тренажер" src="http://127.0.0.1:4188/trainer" sandbox="allow-scripts" referrerpolicy="no-referrer" style="width:100%;height:600px"></iframe></body></html>');
+    res.end('<!doctype html><html><body data-secret="private"><a href="/materials">Повернутися до матеріалів</a><script src="/test-parent.js"></script><iframe title="Математичний тренажер" src="http://127.0.0.1:4188/trainer" sandbox="allow-scripts" referrerpolicy="no-referrer" style="width:100%;height:600px"></iframe></body></html>');
   });
   trainer = createServer((req, res) => {
     cookies.push(req.headers.cookie ?? '');
@@ -54,9 +65,12 @@ test('frame-ancestors rejects embedding by an unapproved origin', async ({ page 
   expect(await page.frameLocator('iframe').locator('#check').count()).toBe(0);
 });
 
-test('documents the browser self-navigation gap rather than claiming zero egress', async ({ page }) => {
+test('parent frame-src blocks external iframe navigation while keeping the parent page intact', async ({ page }) => {
   await page.goto('http://localhost:4187/materials');
+  const violations: string[] = [];
+  page.on('console', message => { if (message.text().includes('frame-src')) violations.push(message.text()); });
   await page.frameLocator('iframe[title="Математичний тренажер"]').getByRole('button', { name: 'Self navigation probe' }).click();
-  await expect.poll(() => received.includes('/navigation')).toBe(true);
+  await expect.poll(() => violations.length).toBeGreaterThan(0);
+  expect(received).not.toContain('/navigation');
   expect(page.url()).toBe('http://localhost:4187/materials');
 });
