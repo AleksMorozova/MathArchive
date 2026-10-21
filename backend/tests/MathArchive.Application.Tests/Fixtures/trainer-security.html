@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="uk"><head><meta charset="utf-8"><style>body{font:20px sans-serif;padding:16px}input,button{font-size:20px;max-width:100%}</style></head>
+<body><h1>Ділення</h1><p>12 ÷ 3 = ?</p><input id="answer" inputmode="numeric" aria-label="Відповідь"><button id="check" onclick="checkAnswer()">Перевірити</button><output id="feedback"></output>
+<button id="escape" onclick="escapeAttempts()">Перевірка ізоляції</button><button id="navigate" onclick="location.href=destination('navigation')">Self navigation probe</button>
+<script>
+function destination(kind){return 'http://127.0.0.1:4189/'+kind}
+function checkAnswer(){document.getElementById('feedback').textContent=document.getElementById('answer').value==='4'?'Правильно: 1 бал':'Спробуйте ще раз'}
+function escapeAttempts(){
+ document.body.dataset.popup=window.open(destination('popup'))===null?'blocked':'opened';
+ try{top.location.href=destination('top')}catch(e){document.body.dataset.top='blocked'}
+}
+try{parent.document.body.dataset.secret;document.body.dataset.parent='exposed'}catch(e){document.body.dataset.parent='blocked'}
+try{localStorage.getItem('token');document.body.dataset.storage='exposed'}catch(e){document.body.dataset.storage='blocked'}
+try{document.cookie;document.body.dataset.cookie='exposed'}catch(e){document.body.dataset.cookie='blocked'}
+fetch(destination('fetch')).catch(()=>document.body.dataset.fetch='blocked');
+const xhr=new XMLHttpRequest();xhr.open('GET',destination('xhr'));xhr.onerror=()=>document.body.dataset.xhr='blocked';xhr.send();
+try{const ws=new WebSocket('ws://127.0.0.1:4189/socket');ws.onerror=()=>document.body.dataset.socket='blocked'}catch(e){}
+try{const events=new EventSource(destination('events'));events.onerror=()=>{document.body.dataset.events='blocked';events.close()}}catch(e){}
+try{document.body.dataset.beacon=navigator.sendBeacon(destination('beacon'),'probe')?'queued':'blocked'}catch(e){document.body.dataset.beacon='blocked'}
+const image=new Image();image.onerror=()=>document.body.dataset.image='blocked';image.src=destination('image');
+const script=document.createElement('script');script.src=destination('script');script.onerror=()=>document.body.dataset.script='blocked';document.body.append(script);
+const css=document.createElement('link');css.rel='stylesheet';css.href=destination('style');document.head.append(css);
+try{new FontFace('Probe','url('+destination('font')+')').load().catch(()=>document.body.dataset.font='blocked')}catch(e){}
+try{const worker=new Worker(URL.createObjectURL(new Blob(['postMessage(1)'],{type:'text/javascript'})));worker.onerror=()=>document.body.dataset.worker='blocked'}catch(e){document.body.dataset.worker='blocked'}
+const frame=document.createElement('iframe');frame.src=destination('frame');document.body.append(frame);
+const form=document.createElement('form');form.action=destination('form');form.method='POST';document.body.append(form);form.submit();
+document.body.dataset.ready='yes';
+</script></body></html>

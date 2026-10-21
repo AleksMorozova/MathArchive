@@ -8,7 +8,8 @@ export const documentTypeLabels: Record<DocumentType, string> = {
   Theory: 'Теоретичний матеріал',
   MethodicalMaterial: 'Методичний матеріал',
   Other: 'Інше',
-  Memo: 'Пам’ятка'
+  Memo: 'Пам’ятка',
+  InteractiveTrainer: 'Інтерактивний тренажер'
 };
 
 export const documentTypeOptions = Object.entries(documentTypeLabels).map(([value, label]) => ({

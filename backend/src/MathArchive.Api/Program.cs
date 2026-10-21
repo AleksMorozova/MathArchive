@@ -46,6 +46,24 @@ if (!builder.Environment.IsDevelopment() && allowedOrigins.Count == 0)
     throw new InvalidOperationException("AllowedOrigins must contain at least one production frontend origin.");
 }
 
+var trainerOrigin = builder.Configuration["Trainers:ContentOrigin"];
+if (!string.IsNullOrWhiteSpace(trainerOrigin))
+{
+    if (!Uri.TryCreate(trainerOrigin, UriKind.Absolute, out var supplied) || supplied.UserInfo.Length > 0 || supplied.Fragment.Length > 0)
+        throw new InvalidOperationException("Trainers:ContentOrigin must be a plain HTTP(S) origin.");
+    var normalized = NormalizeOrigin(trainerOrigin)!;
+    var uri = new Uri(normalized);
+    if (uri.UserInfo.Length > 0 || uri.Fragment.Length > 0 ||
+        (uri.Scheme != "https" && !builder.Environment.IsDevelopment()) ||
+        allowedOrigins.Any(x => new Uri(x).Host.Equals(uri.Host, StringComparison.OrdinalIgnoreCase)))
+        throw new InvalidOperationException("Trainers:ContentOrigin must be a separate cookieless HTTPS host, different from the frontend.");
+    builder.Configuration["Trainers:ContentOrigin"] = normalized;
+}
+
+builder.Services.Configure<MathArchive.Application.Documents.TrainerOptions>(builder.Configuration.GetSection("Trainers"));
+builder.Services.AddOptions<MathArchive.Application.Documents.TrainerOptions>()
+    .Validate(x => x.MaximumFileSize is > 0 and <= 20 * 1024 * 1024, "Trainer maximum file size must be between 1 byte and 20 MiB.").ValidateOnStart();
+builder.Services.AddSingleton(services => new MathArchive.Api.TrainerResponsePolicy(GetAllowedOrigins(services.GetRequiredService<IConfiguration>(), builder.Environment.IsDevelopment())));
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
@@ -229,14 +247,27 @@ if (builder.Configuration.GetValue("Database:ApplyMigrationsOnStartup", true))
         app.Lifetime.ApplicationStopping);
 }
 
+app.UseForwardedHeaders();
+app.UseExceptionHandler();
+// The content hostname exposes only trainers, never login, cookies, or application APIs.
+app.Use(async (context, next) => {
+    if (Uri.TryCreate(builder.Configuration["Trainers:ContentOrigin"], UriKind.Absolute, out var origin) &&
+        origin.Authority.Equals(context.Request.Host.Value, StringComparison.OrdinalIgnoreCase))
+    {
+        if (context.Request.Method != "GET" || !context.Request.Path.StartsWithSegments("/api/trainer-content"))
+        { context.Response.StatusCode = 404; return; }
+        context.Request.Headers.Remove("Cookie");
+        context.Request.Headers.Remove("Authorization");
+        context.Response.OnStarting(() => { context.Response.Headers.Remove("Set-Cookie"); return Task.CompletedTask; });
+    }
+    await next(context);
+});
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-app.UseForwardedHeaders();
-app.UseExceptionHandler();
 app.UseCors("Frontend");
 
 if (!app.Environment.IsDevelopment())

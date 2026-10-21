@@ -6,6 +6,17 @@ namespace MathArchive.Application.Tests;
 
 public sealed class LocalFileStorageTests
 {
+    [Theory]
+    [InlineData("../referenced.html")]
+    [InlineData("..\\referenced.html")]
+    [InlineData("C:referenced.html")]
+    [InlineData("..")]
+    public async Task ReadAndDelete_RejectPathComponents(string storedName)
+    {
+        var storage = CreateStorage(CreateRootPath());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => storage.TryOpenReadAsync(storedName, default));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => storage.DeleteAsync(storedName, default));
+    }
     [Fact]
     public async Task SaveAsync_when_copy_succeeds_writes_complete_file_and_returns_generated_name()
     {

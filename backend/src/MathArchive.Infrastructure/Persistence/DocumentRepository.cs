@@ -10,6 +10,7 @@ public sealed class DocumentRepository(MathArchiveDbContext dbContext) : IDocume
     public async Task<PagedResult<Document>> SearchAsync(DocumentQueryParameters parameters, CancellationToken cancellationToken)
     {
         var query = dbContext.Documents.AsQueryable();
+        if (!parameters.IncludeUnpublished) query = query.Where(x => x.DocumentType != DocumentType.InteractiveTrainer || x.TrainerPublished);
 
         if (!string.IsNullOrWhiteSpace(parameters.Search))
         {
@@ -27,7 +28,7 @@ public sealed class DocumentRepository(MathArchiveDbContext dbContext) : IDocume
         }
         else if (parameters.Grade.HasValue)
         {
-            query = query.Where(x => x.Grade == parameters.Grade.Value);
+            query = query.Where(x => (x.Grade == parameters.Grade.Value || x.TrainerGrades.Contains(parameters.Grade.Value)));
         }
 
         if (!string.IsNullOrWhiteSpace(parameters.Topic))
@@ -108,6 +109,7 @@ public sealed class DocumentRepository(MathArchiveDbContext dbContext) : IDocume
     {
         return await dbContext.Documents
             .AsNoTracking()
+            .Where(x => x.DocumentType != DocumentType.InteractiveTrainer || x.TrainerPublished)
             .Select(x => x.Topic)
             .Distinct()
             .OrderBy(x => x)

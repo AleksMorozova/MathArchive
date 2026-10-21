@@ -151,6 +151,9 @@ function isValidationErrors(value: unknown): value is Record<string, string[]> {
   return Object.values(value).every((messages) => Array.isArray(messages) && messages.every((message) => typeof message === 'string'));
 }
 function getMessageForStatus(status: number | undefined, problem: ApiProblemDetails | undefined, fallback = 'Щось пішло не так. Спробуйте пізніше.') {
+  if (status === 503 && problem?.title === 'TrainerHostingNotConfigured' && problem.detail) {
+    return problem.detail.slice(0, 512);
+  }
   if (problem?.title === 'Тестування' && problem.detail && [400, 401, 404, 409, 429].includes(status ?? 0)) {
     return problem.detail.slice(0, 512);
   }

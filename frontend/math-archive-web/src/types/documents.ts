@@ -6,13 +6,16 @@ export type DocumentType =
   | 'Theory'
   | 'MethodicalMaterial'
   | 'Other'
-  | 'Memo';
+  | 'Memo'
+  | 'InteractiveTrainer';
 
 export interface DocumentDto {
   id: string;
   title: string;
   description?: string | null;
   grade: number | null;
+  trainerGrades?: number[];
+  trainerPublished?: boolean;
   topic: string;
   documentType: DocumentType;
   originalFileName: string;

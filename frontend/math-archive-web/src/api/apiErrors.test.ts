@@ -12,6 +12,12 @@ function axiosError(status: number, data: unknown) {
 }
 
 describe('apiErrors', () => {
+  it('preserves the safe trainer hosting explanation for a 503 response', () => {
+    const detail = 'Адміністратор має завершити налаштування тренажерів.';
+    const error = normalizeApiError(axiosError(503, { title: 'TrainerHostingNotConfigured', status: 503, detail }));
+    expect(getApiErrorMessage(error)).toBe(detail);
+    expect(getApiErrorMessage(normalizeApiError(axiosError(503, { title: 'Unexpected failure', detail: 'private diagnostic' })))).not.toContain('private diagnostic');
+  });
   it('parses RFC 7807 ProblemDetails responses', () => {
     const problem = parseProblemDetails({
       type: 'https://tools.ietf.org/html/rfc9110#section-15.5.5',

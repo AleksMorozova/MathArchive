@@ -1,14 +1,14 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import AttachFileRoundedIcon from '@mui/icons-material/AttachFileRounded';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
-import { Alert, Box, Button, MenuItem, Stack, TextField, Typography } from '@mui/material';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Alert, Box, Button, Checkbox, FormControlLabel, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { z } from 'zod';
 import { fieldNameFromProblemDetails, getApiErrorMessage, hasValidationErrors, isApiError } from '../../api/apiErrors';
-import { createDocument, updateDocument } from '../../api/documentsApi';
+import { createDocument, getTrainerLimits, updateDocument } from '../../api/documentsApi';
 import { queryKeys } from '../../api/queryKeys';
 import { ErrorState, LoadingState } from '../../components/StateView';
 import { documentTypeOptions } from '../../constants/documentTypes';
@@ -23,6 +23,8 @@ const schema = z.object({
   title: z.string().min(1, 'Введіть назву матеріалу').max(200, 'Назва не може містити більше ніж 200 символів'),
   description: z.string().max(2000, 'Опис не може містити більше ніж 2000 символів').optional(),
   materialScope: z.enum(materialScopes),
+  trainerPublished: z.boolean(),
+  trainerGrades: z.array(z.number().int().min(5).max(11)),
   grade: z.number().min(5, 'Оберіть клас від 5 до 11').max(11, 'Оберіть клас від 5 до 11').nullable(),
   topic: z.string().min(1, 'Вкажіть тему').max(150, 'Тема не може містити більше ніж 150 символів'),
   documentType: z.string().min(1, 'Оберіть тип матеріалу'),
@@ -47,20 +49,25 @@ export function DocumentFormPage({ mode }: DocumentFormPageProps) {
   const documentQuery = useDocument(id ?? '');
   const existing = mode === 'edit' ? documentQuery.data : undefined;
 
+  const limits = useQuery({ queryKey: ['trainer-limits'], queryFn: getTrainerLimits });
+  const maximumTrainerSize = limits.data?.maximumFileSize ?? 1024 * 1024;
   const formSchema = schema.superRefine((value, context) => {
-      if (value.materialScope === 'grade' && value.grade === null) {
+      if (value.documentType !== 'InteractiveTrainer' && value.materialScope === 'grade' && value.grade === null) {
         context.addIssue({ code: 'custom', path: ['grade'], message: 'Оберіть клас' });
+      }
+      if (value.documentType === 'InteractiveTrainer' && value.trainerGrades.length === 0) {
+        context.addIssue({ code: 'custom', path: ['trainerGrades'], message: 'Оберіть хоча б один клас' });
       }
       if (mode === 'create' && !value.file) {
         context.addIssue({ code: 'custom', path: ['file'], message: 'Оберіть файл' });
       }
       if (value.file) {
         const extension = value.file.name.split('.').pop()?.toLowerCase();
-        if (!extension || !allowedExtensions.includes(extension)) {
+        if (!extension || !(value.documentType === 'InteractiveTrainer' ? ['html'] : allowedExtensions).includes(extension)) {
           context.addIssue({ code: 'custom', path: ['file'], message: 'Цей формат файлу не підтримується' });
         }
-        if (value.file.size > maxFileSize) {
-          context.addIssue({ code: 'custom', path: ['file'], message: 'Розмір файлу не повинен перевищувати 20 МБ' });
+        if (value.file.size > (value.documentType === 'InteractiveTrainer' ? maximumTrainerSize : maxFileSize)) {
+          context.addIssue({ code: 'custom', path: ['file'], message: value.documentType === 'InteractiveTrainer' ? `Розмір HTML-файлу не повинен перевищувати ${Math.round(maximumTrainerSize / 1024)} КБ` : 'Розмір файлу не повинен перевищувати 20 МБ' });
         }
       }
     });
@@ -71,6 +78,8 @@ export function DocumentFormPage({ mode }: DocumentFormPageProps) {
       title: '',
       description: '',
       materialScope: 'grade',
+      trainerGrades: [],
+      trainerPublished: true,
       grade: null,
       topic: '',
       documentType: '',
@@ -85,6 +94,8 @@ export function DocumentFormPage({ mode }: DocumentFormPageProps) {
         description: existing.description ?? '',
         materialScope: existing.grade === null ? 'general' : 'grade',
         grade: existing.grade,
+        trainerGrades: existing.trainerGrades ?? [],
+        trainerPublished: existing.trainerPublished ?? true,
         topic: existing.topic,
         documentType: existing.documentType,
         file: undefined
@@ -95,6 +106,7 @@ export function DocumentFormPage({ mode }: DocumentFormPageProps) {
 
   const materialScope = form.watch('materialScope');
   const selectedFile = form.watch('file');
+  const isTrainer = form.watch('documentType') === 'InteractiveTrainer';
 
   useEffect(() => {
     if (materialScope === 'general') {
@@ -112,6 +124,8 @@ export function DocumentFormPage({ mode }: DocumentFormPageProps) {
       }
       data.append('topic', values.topic);
       data.append('documentType', values.documentType);
+      if (values.documentType === 'InteractiveTrainer') data.append('trainerPublished', String(values.trainerPublished));
+      if (values.documentType === 'InteractiveTrainer') values.trainerGrades.forEach(grade => data.append('trainerGrades', String(grade)));
       if (values.file) data.append('file', values.file);
       return mode === 'create'
         ? createDocument(data, setProgress)
@@ -161,10 +175,12 @@ export function DocumentFormPage({ mode }: DocumentFormPageProps) {
         {message && <Alert severity="success">{message}</Alert>}
         {message && <Alert severity="info">Індексація виконується окремо, коли RAG увімкнений. <Button component="a" href="/admin/assistant">Перевірити статус індексації</Button></Alert>}
         {mutation.isError && <Alert severity="error">{getApiErrorMessage(mutation.error, 'Не вдалося зберегти матеріал.')}</Alert>}
+        {isTrainer && <Alert severity="info">Самодостатній HTML-файл у UTF-8, до {Math.round(maximumTrainerSize / 1024)} КБ. Зовнішні залежності не підтримуються. Зовнішні ресурси, мережа та сховище браузера недоступні.</Alert>}
+        {mode === 'edit' && existing && <Button component="a" href={'/materials/' + existing.id} target="_blank" rel="noopener noreferrer">Переглянути збережений матеріал</Button>}
         {mode === 'edit' && existing && <Typography color="text.secondary">Поточний файл: {existing.originalFileName}</Typography>}
         <TextField label="Назва" {...form.register('title')} error={!!form.formState.errors.title} helperText={form.formState.errors.title?.message} />
         <TextField label="Опис" multiline minRows={4} {...form.register('description')} error={!!form.formState.errors.description} helperText={form.formState.errors.description?.message} />
-        <Controller
+        {!isTrainer && <Controller
           control={form.control}
           name="materialScope"
           render={({ field }) => (
@@ -183,8 +199,14 @@ export function DocumentFormPage({ mode }: DocumentFormPageProps) {
               <MenuItem value="general">Загальний матеріал</MenuItem>
             </TextField>
           )}
-        />
-        {materialScope === 'grade' && (
+        />}
+        {isTrainer && <Controller control={form.control} name="trainerPublished" render={({ field }) => <FormControlLabel label="Опубліковано" control={<Checkbox checked={field.value} onChange={(_, checked) => field.onChange(checked)} />} />} />}
+        {isTrainer && <Controller control={form.control} name="trainerGrades" render={({ field }) => (
+          <TextField select label="Класи тренажера" value={field.value} onChange={event => field.onChange(event.target.value)} slotProps={{ select: { multiple: true } }} error={!!form.formState.errors.trainerGrades} helperText={form.formState.errors.trainerGrades?.message}>
+            {schoolGrades.map(grade => <MenuItem key={grade} value={grade}>{grade} клас</MenuItem>)}
+          </TextField>
+        )} />}
+        {!isTrainer && materialScope === 'grade' && (
           <Controller
             control={form.control}
             name="grade"
@@ -215,7 +237,7 @@ export function DocumentFormPage({ mode }: DocumentFormPageProps) {
                   disabled={mutation.isPending}
                 >
                   Оберіть файл
-                  <input hidden type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" onChange={(event) => onChange(event.target.files?.[0])} />
+                  <input hidden type="file" accept={isTrainer ? '.html' : '.pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg'} onChange={(event) => onChange(event.target.files?.[0])} />
                 </Button>
               ) : (
                 <Box
@@ -246,7 +268,7 @@ export function DocumentFormPage({ mode }: DocumentFormPageProps) {
                         aria-label={`Замінити файл ${value.name}`}
                       >
                         <span className="animated-upload-file-name" title={value.name}>{value.name}</span>
-                        <input hidden type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" onChange={(event) => onChange(event.target.files?.[0])} />
+                        <input hidden type="file" accept={isTrainer ? '.html' : '.pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg'} onChange={(event) => onChange(event.target.files?.[0])} />
                       </Button>
                       <Button type="submit" variant="contained">
                         {mutation.isError ? 'Повторити' : 'Завантажити'}

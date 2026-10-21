@@ -89,10 +89,12 @@ public sealed class LocalFileStorage(
 
     private string GetSafePath(string storedFileName)
     {
+        if (string.IsNullOrWhiteSpace(storedFileName) || storedFileName.IndexOfAny(['/', '\\', ':']) >= 0 || storedFileName is "." or "..")
+            throw new InvalidOperationException("Stored file name must be a single safe file name.");
         var fileName = Path.GetFileName(storedFileName);
         var fullPath = Path.GetFullPath(Path.Combine(rootPath, fileName));
 
-        if (!fullPath.StartsWith(rootPath, StringComparison.OrdinalIgnoreCase))
+        if (!fullPath.StartsWith(Path.TrimEndingDirectorySeparator(rootPath) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException("Stored file name resolves outside the storage root.");
         }

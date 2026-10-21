@@ -12,4 +12,4 @@ public sealed record DocumentQueryParameters(
     DateOnly? CreatedTo,
     DocumentSortOrder Sort,
     int Page = 1,
-    int PageSize = 12);
+    int PageSize = 12, bool IncludeUnpublished = false);

@@ -1,3 +1,4 @@
+import { TrainerFrame } from '../components/TrainerFrame';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { DownloadFeedback, useDownloadFeedback } from '../components/DownloadFeedback';
 import { Alert, Box, Breadcrumbs, Button, Chip, Container, Link as MuiLink, Stack, Typography } from '@mui/material';
@@ -101,14 +102,14 @@ export function DocumentDetailsPage() {
           <Typography color="text.primary" aria-current="page">{document.title}</Typography>
         </Breadcrumbs>
         <Button component={Link} to={backTo} startIcon={<ArrowBackIcon />} sx={{ alignSelf: 'flex-start' }}>
-          Назад до матеріалів
+          {document.documentType === 'InteractiveTrainer' ? 'Повернутися до матеріалів' : 'Назад до матеріалів'}
         </Button>
         <Box className="content-panel material-opening">
           <Stack gap={2}>
             <Typography component="h1" variant="h3">{document.title}</Typography>
             {document.description && <Typography color="text.secondary">{document.description}</Typography>}
             <Stack direction="row" gap={1} flexWrap="wrap">
-              <Chip label={document.grade === null ? 'Загальний матеріал' : `Клас: ${document.grade}`} />
+              <Chip label={document.documentType === 'InteractiveTrainer' ? `Класи: ${document.trainerGrades?.join(', ')}` : document.grade === null ? 'Загальний матеріал' : `Клас: ${document.grade}`} />
               <Chip label={`Тема: ${document.topic}`} />
               <Chip label={`Тип матеріалу: ${documentTypeLabels[document.documentType]}`} />
               {isAdmin && <Chip label={`Формат: ${fileExtension(document.originalFileName)}`} />}
@@ -117,14 +118,16 @@ export function DocumentDetailsPage() {
               {isAdmin && <Chip label={`Кількість завантажень: ${document.downloadCount}`} />}
             </Stack>
             {downloadError && <Alert severity="error">{downloadError}</Alert>}
-            <Button component="a" href={buildApiUrl(`/api/documents/${document.id}/preview`)} target="_blank" rel="noopener noreferrer" startIcon={<OpenInNewIcon />} onClick={() => trackEvent('DocumentDownload', document.id)} onAuxClick={event => { if (event.button === 1) trackEvent('DocumentDownload', document.id); }} sx={{ alignSelf: 'flex-start' }}>
+            {document.documentType !== 'InteractiveTrainer' && <><Button component="a" href={buildApiUrl(`/api/documents/${document.id}/preview`)} target="_blank" rel="noopener noreferrer" startIcon={<OpenInNewIcon />} onClick={() => trackEvent('DocumentDownload', document.id)} onAuxClick={event => { if (event.button === 1) trackEvent('DocumentDownload', document.id); }} sx={{ alignSelf: 'flex-start' }}>
               Відкрити документ
             </Button>
             <Button startIcon={<DownloadFeedback pending={isDownloading} completed={downloadFeedback.completed} />} variant="contained" onClick={handleDownload} disabled={isDownloading} sx={{ alignSelf: 'flex-start' }}>
               Завантажити файл
-            </Button>
+            </Button></>}
           </Stack>
         </Box>
+        {document.documentType === 'InteractiveTrainer' && document.trainerPublished === false && <Alert severity="info">Чернетка. Тренажер стане доступним після публікації.</Alert>}
+        {document.documentType === 'InteractiveTrainer' && document.trainerPublished !== false && <TrainerFrame id={document.id} title={document.title} />}
         {previewError && <Alert severity="error">{previewError}</Alert>}
         {canPreview && previewUrl && (
           <Box className="preview-frame">

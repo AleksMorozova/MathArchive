@@ -139,6 +139,7 @@ public sealed class RagSearchService(MathArchiveDbContext db) : IRagSearchServic
               FROM unnest(c."Embedding", {vector}::real[]) AS v(a,b)
             ) scores
             WHERE c."EmbeddingModel" = {model} AND cardinality(c."Embedding") = {vector.Length}
+              AND (d.document_type <> 'InteractiveTrainer' OR d.trainer_published)
               AND ({grade}::integer IS NULL OR d.grade = {grade} OR d.grade IS NULL)
               AND ({topic}::text IS NULL OR d.topic = {topic})
               AND ({material}::uuid IS NULL OR d.id = {material})

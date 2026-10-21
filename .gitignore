@@ -48,3 +48,5 @@ Thumbs.db
 
 # Local EF Core tooling
 .tools/
+frontend/math-archive-web/test-results/
+frontend/math-archive-web/playwright-report/
