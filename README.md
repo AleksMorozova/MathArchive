@@ -203,7 +203,7 @@ VITE_API_BASE_URL=http://localhost:5293
 
 Development defaults to this API URL. Development CORS permits loopback origins on different ports; production uses configured allowed origins.
 
-For a production build, `VITE_API_BASE_URL` must point to the public API. The SEO generator fetches public material metadata. After retries, network failures or HTTP 502/503/504 responses use the three stable SEO pages and base sitemap as a fallback; invalid configuration, malformed data, and other HTTP failures fail the build.
+For a production build, `VITE_API_BASE_URL` must point to the public API. The SEO generator fetches public material metadata. After bounded retries, network failures or HTTP 500/502/503/504 responses use the three stable SEO pages and base sitemap as a fallback, with an explicit warning; invalid configuration, malformed data, and other HTTP failures fail the build. This fallback allows frontend deployment during an API outage; it does not restore material browsing or generate material snapshots. Restore backend/database health, then rebuild to regenerate the material SEO pages.
 
 Google Search Console HTML-tag verification is optional and can be enabled in the Vercel project environment variables:
 

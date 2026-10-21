@@ -1,4 +1,6 @@
-const transientStatusCodes = new Set([502, 503, 504]);
+// Metadata snapshots are best-effort: an API outage must not prevent deploying the SPA.
+// Keep configuration/contract errors (4xx, malformed JSON/payloads) fatal.
+const transientStatusCodes = new Set([500, 502, 503, 504]);
 const defaultRetryDelays = [1000, 3000];
 
 export class TransientSeoApiError extends Error {
