@@ -50,7 +50,7 @@ public sealed class AdminDocumentsController(DocumentService documentService) : 
 
     private static DocumentMetadata ToMetadata(DocumentFormRequest request)
     {
-        return new DocumentMetadata(request.Title, request.Description, request.Grade, request.Topic, request.DocumentType);
+        return new DocumentMetadata(request.Title, request.Description, request.Grade, request.Topic, request.DocumentType, request.TrainerGrades, request.TrainerPublished);
     }
 
     private static UploadedFile ToUploadedFile(IFormFile file)

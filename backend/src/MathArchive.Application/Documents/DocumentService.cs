@@ -13,7 +13,8 @@ public sealed class DocumentService(
     IClock clock,
     IValidator<DocumentMetadata> metadataValidator,
     IValidator<UploadedFile> fileValidator,
-    ILogger<DocumentService> logger)
+    ILogger<DocumentService> logger,
+    Microsoft.Extensions.Options.IOptions<TrainerOptions>? trainerOptions = null)
 {
     public async Task<PagedResult<DocumentDto>> SearchAsync(DocumentQueryParameters parameters, CancellationToken cancellationToken)
     {
@@ -35,10 +36,10 @@ public sealed class DocumentService(
             result.TotalPages);
     }
 
-    public async Task<DocumentDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<DocumentDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken, bool includeUnpublished = false)
     {
         var document = await documentRepository.GetByIdAsync(id, track: false, cancellationToken);
-        return document is null ? null : DocumentMapper.ToDto(document);
+        return document is null || (!includeUnpublished && document.DocumentType == DocumentType.InteractiveTrainer && !document.TrainerPublished) ? null : DocumentMapper.ToDto(document);
     }
 
     public Task<IReadOnlyList<string>> GetTopicsAsync(CancellationToken cancellationToken)
@@ -96,14 +97,16 @@ public sealed class DocumentService(
         await metadataValidator.ValidateAndThrowAsync(command.Metadata, cancellationToken);
         await fileValidator.ValidateAndThrowAsync(command.File, cancellationToken);
 
-        var storedFile = await fileStorage.SaveAsync(command.File.Stream, command.File.FileName, command.File.ContentType, cancellationToken);
+        using var trainerFile = await TrainerHtml.ValidateAsync(command.Metadata.DocumentType, command.File, cancellationToken, trainerOptions?.Value.MaximumFileSize ?? TrainerHtml.MaximumSize);
+        var file = trainerFile is null ? command.File : command.File with { Stream = trainerFile, ContentType = "text/html; charset=utf-8" };
+        var storedFile = await fileStorage.SaveAsync(file.Stream, file.FileName, file.ContentType, cancellationToken);
         Document document;
         try
         {
             document = new Document(
                 command.Metadata.Title,
                 command.Metadata.Description,
-                command.Metadata.Grade,
+                command.Metadata.DocumentType == DocumentType.InteractiveTrainer ? command.Metadata.TrainerGrades!.Min() : command.Metadata.Grade,
                 command.Metadata.Topic,
                 command.Metadata.DocumentType,
                 storedFile.OriginalFileName,
@@ -112,6 +115,8 @@ public sealed class DocumentService(
                 storedFile.FileSize,
                 clock.UtcNow);
 
+            document.SetTrainerGrades(command.Metadata.TrainerGrades);
+            document.SetTrainerPublished(command.Metadata.TrainerPublished);
             documentRepository.Add(document);
             await documentRepository.SaveChangesAsync(cancellationToken);
 
@@ -141,16 +146,21 @@ public sealed class DocumentService(
             return null;
         }
 
+        if (command.ReplacementFile is null && (document.DocumentType == DocumentType.InteractiveTrainer) != (command.Metadata.DocumentType == DocumentType.InteractiveTrainer))
+            throw new ValidationException([new ValidationFailure("File", "Для зміни типу тренажера завантажте відповідний файл.")]);
+        using var trainerFile = command.ReplacementFile is null ? null : await TrainerHtml.ValidateAsync(command.Metadata.DocumentType, command.ReplacementFile, cancellationToken, trainerOptions?.Value.MaximumFileSize ?? TrainerHtml.MaximumSize);
         var oldStoredFileName = document.StoredFileName;
         StoredFileResult? replacementFile = null;
         if (command.ReplacementFile is not null)
         {
-            replacementFile = await fileStorage.SaveAsync(command.ReplacementFile.Stream, command.ReplacementFile.FileName, command.ReplacementFile.ContentType, cancellationToken);
+            replacementFile = await fileStorage.SaveAsync(trainerFile ?? command.ReplacementFile.Stream, command.ReplacementFile.FileName, trainerFile is null ? command.ReplacementFile.ContentType : "text/html; charset=utf-8", cancellationToken);
         }
 
         try
         {
-            document.UpdateMetadata(command.Metadata.Title, command.Metadata.Description, command.Metadata.Grade, command.Metadata.Topic, command.Metadata.DocumentType, clock.UtcNow);
+            document.UpdateMetadata(command.Metadata.Title, command.Metadata.Description, command.Metadata.DocumentType == DocumentType.InteractiveTrainer ? command.Metadata.TrainerGrades!.Min() : command.Metadata.Grade, command.Metadata.Topic, command.Metadata.DocumentType, clock.UtcNow);
+            document.SetTrainerGrades(command.Metadata.TrainerGrades);
+            document.SetTrainerPublished(command.Metadata.TrainerPublished);
 
             if (replacementFile is not null)
             {
@@ -214,20 +224,20 @@ public sealed class DocumentService(
         return true;
     }
 
-    public async Task<DocumentDownload?> PrepareDownloadAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<DocumentDownload?> PrepareDownloadAsync(Guid id, CancellationToken cancellationToken, bool includeUnpublished = false)
     {
-        return await PrepareFileAsync(id, incrementDownloadCount: true, cancellationToken);
+        return await PrepareFileAsync(id, incrementDownloadCount: true, cancellationToken, includeUnpublished);
     }
 
-    public async Task<DocumentDownload?> PreparePreviewAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<DocumentDownload?> PreparePreviewAsync(Guid id, CancellationToken cancellationToken, bool includeUnpublished = false)
     {
-        return await PrepareFileAsync(id, incrementDownloadCount: false, cancellationToken);
+        return await PrepareFileAsync(id, incrementDownloadCount: false, cancellationToken, includeUnpublished);
     }
 
-    private async Task<DocumentDownload?> PrepareFileAsync(Guid id, bool incrementDownloadCount, CancellationToken cancellationToken)
+    private async Task<DocumentDownload?> PrepareFileAsync(Guid id, bool incrementDownloadCount, CancellationToken cancellationToken, bool includeUnpublished)
     {
         var document = await documentRepository.GetByIdAsync(id, track: incrementDownloadCount, cancellationToken);
-        if (document is null)
+        if (document is null || (!includeUnpublished && document.DocumentType == DocumentType.InteractiveTrainer && !document.TrainerPublished))
         {
             return null;
         }

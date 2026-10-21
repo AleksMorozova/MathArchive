@@ -413,6 +413,19 @@ namespace MathArchive.Infrastructure.Migrations
                         .HasColumnType("character varying(150)")
                         .HasColumnName("topic");
 
+                    b.PrimitiveCollection<int[]>("TrainerGrades")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer[]")
+                        .HasColumnName("trainer_grades")
+                        .HasDefaultValueSql("ARRAY[]::integer[]");
+
+                    b.Property<bool>("TrainerPublished")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("trainer_published");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");

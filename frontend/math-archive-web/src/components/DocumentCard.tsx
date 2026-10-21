@@ -39,14 +39,15 @@ export function DocumentCard({ document, ordinal, entranceIndex = 0 }: { documen
             <Typography variant="h6" className="card-title">{document.title}</Typography>
           </Stack>
           <Stack direction="row" gap={0.75} flexWrap="wrap" className="document-tags">
-            <Chip label={document.grade === null ? 'Загальний матеріал' : `${document.grade} клас`} size="small" />
+            <Chip label={document.documentType === 'InteractiveTrainer' ? `${document.trainerGrades?.join(', ')} класи` : document.grade === null ? 'Загальний матеріал' : `${document.grade} клас`} size="small" />
             <Chip label={document.topic} size="small" />
           </Stack>
+          {document.documentType === 'InteractiveTrainer' && document.description && <Typography color="text.secondary">{document.description}</Typography>}
           {downloadError && <Alert severity="error">{downloadError}</Alert>}
           <Stack direction="row" gap={1} className="card-actions">
-            <Button startIcon={<DownloadFeedback pending={isDownloading} completed={downloadFeedback.completed} />} variant="text" onClick={handleDownload} disabled={isDownloading}>
+            {document.documentType !== 'InteractiveTrainer' && <Button startIcon={<DownloadFeedback pending={isDownloading} completed={downloadFeedback.completed} />} variant="text" onClick={handleDownload} disabled={isDownloading}>
               Завантажити
-            </Button>
+            </Button>}
             <Button
               startIcon={<VisibilityIcon />}
               variant="text"
@@ -54,7 +55,7 @@ export function DocumentCard({ document, ordinal, entranceIndex = 0 }: { documen
               to={`/materials/${document.id}`}
               state={{ from: location.pathname + location.search }}
             >
-              Переглянути
+              {document.documentType === 'InteractiveTrainer' ? 'Відкрити тренажер' : 'Переглянути'}
             </Button>
           </Stack>
         </Stack>

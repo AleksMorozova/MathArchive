@@ -10,12 +10,36 @@ import { DocumentFormPage } from './DocumentFormPage';
 vi.mock('../../api/documentsApi', () => ({
   createDocument: vi.fn(async () => ({ id: 'document-id' })),
   updateDocument: vi.fn(),
+  getTrainerLimits: vi.fn(async () => ({ maximumFileSize: 1048576 })),
   getDocument: vi.fn()
 }));
 
 describe('DocumentFormPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('uploads a trainer once with multiple grades and no single-grade requirement', async () => {
+    const user = userEvent.setup();
+    renderForm(createQueryClient());
+    await user.type(screen.getByLabelText('Назва'), 'Ділення');
+    await user.type(screen.getByLabelText('Тема'), 'Натуральні числа');
+    await user.click(screen.getByLabelText('Тип матеріалу'));
+    await user.click(screen.getByRole('option', { name: 'Інтерактивний тренажер' }));
+    await user.click(screen.getByLabelText('Класи тренажера'));
+    await user.click(screen.getByRole('option', { name: '5 клас' }));
+    await user.click(screen.getByRole('option', { name: '7 клас' }));
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByRole('checkbox', { name: 'Опубліковано' }));
+    await user.upload(document.querySelector('input[type="file"]') as HTMLInputElement,
+      new File(['<html><body>Trainer</body></html>'], 'test.html', { type: 'text/html' }));
+    await user.click(screen.getByRole('button', { name: 'Завантажити' }));
+    await waitFor(() => expect(createDocument).toHaveBeenCalledTimes(1));
+    const data = vi.mocked(createDocument).mock.calls[0][0];
+    expect(data.getAll('trainerGrades')).toEqual(['5', '7']);
+    expect(data.get('documentType')).toBe('InteractiveTrainer');
+    expect(data.get('trainerPublished')).toBe('false');
+    expect(data.get('file')).toBeInstanceOf(File);
   });
 
   it('transitions from the file picker to the ready state and preserves form validation', async () => {

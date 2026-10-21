@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <EmbeddedResource Include="Fixtures/trainer-security.html" />
   </ItemGroup>
 
   <ItemGroup>

@@ -45,6 +45,13 @@ public sealed class Document
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
     public int DownloadCount { get; private set; }
+    public bool TrainerPublished { get; private set; } = true;
+    public void SetTrainerPublished(bool published) => TrainerPublished = DocumentType != DocumentType.InteractiveTrainer || published;
+    public int[] TrainerGrades { get; private set; } = [];
+
+    public void SetTrainerGrades(IEnumerable<int>? grades) => TrainerGrades = DocumentType == DocumentType.InteractiveTrainer
+        ? (grades ?? []).Distinct().Order().ToArray() : [];
+
     public int DisplayOrder { get; private set; }
 
     public void UpdateMetadata(string title, string? description, int? grade, string topic, DocumentType documentType, DateTimeOffset updatedAt)

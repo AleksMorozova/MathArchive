@@ -19,7 +19,8 @@ import type { DocumentDto, DocumentFilters } from '../../types/documents';
 import { formatDate } from '../../utils/format';
 import { presetDates } from '../../utils/analyticsDates';
 
-function formatGradeLabel(grade: number | null) {
+function formatGradeLabel(grade: number | null, trainerGrades?: number[]) {
+  if (trainerGrades?.length) return `Класи: ${trainerGrades.join(', ')}`;
   return grade === null ? 'Загальний матеріал' : `${grade} клас`;
 }
 
@@ -127,7 +128,7 @@ export function AdminDocumentsPage() {
                 {documents.data.items.map((document) => (
                   <TableRow key={document.id}>
                     <TableCell>{document.title}</TableCell>
-                    <TableCell>{formatGradeLabel(document.grade)}</TableCell>
+                    <TableCell>{formatGradeLabel(document.grade, document.trainerGrades)}</TableCell>
                     <TableCell>{document.topic}</TableCell>
                     <TableCell>{documentTypeLabels[document.documentType]}</TableCell>
                     <TableCell>{formatDate(document.createdAt)}</TableCell>
@@ -184,7 +185,7 @@ function AdminCard({ document, onDelete }: { document: DocumentDto; onDelete: (d
       <CardContent>
         <Stack gap={1}>
           <Typography variant="h6">{document.title}</Typography>
-          <Typography color="text.secondary">{formatGradeLabel(document.grade)} · {document.topic} · {documentTypeLabels[document.documentType]}</Typography>
+          <Typography color="text.secondary">{formatGradeLabel(document.grade, document.trainerGrades)} · {document.topic} · {documentTypeLabels[document.documentType]}</Typography>
           <Actions document={document} onDelete={onDelete} />
         </Stack>
       </CardContent>

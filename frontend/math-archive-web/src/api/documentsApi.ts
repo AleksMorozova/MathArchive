@@ -109,3 +109,7 @@ function getDownloadFileName(contentDisposition: string | undefined) {
 
   return contentDisposition.match(/filename="?([^";]+)"?/i)?.[1];
 }
+
+export async function getTrainerLimits() {
+  return (await httpClient.get<{ maximumFileSize: number }>('/api/documents/trainer-limits')).data;
+}

@@ -15,4 +15,4 @@ public sealed record DocumentDto(
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     int DownloadCount,
-    int DisplayOrder);
+    int DisplayOrder, int[]? TrainerGrades = null, bool TrainerPublished = true);

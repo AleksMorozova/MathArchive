@@ -6,6 +6,8 @@ public sealed class DocumentFormRequest
 {
     public string Title { get; init; } = string.Empty;
     public string? Description { get; init; }
+    public bool TrainerPublished { get; init; } = true;
+    public int[] TrainerGrades { get; init; } = [];
     public int? Grade { get; init; }
     public string Topic { get; init; } = string.Empty;
     public DocumentType DocumentType { get; init; }

@@ -7,6 +7,7 @@ public static class FileValidationRules
     public static readonly IReadOnlyDictionary<string, string[]> AllowedContentTypesByExtension =
         new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
         {
+            [".html"] = ["text/html"],
             [".pdf"] = ["application/pdf"],
             [".doc"] = ["application/msword"],
             [".docx"] = ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"],

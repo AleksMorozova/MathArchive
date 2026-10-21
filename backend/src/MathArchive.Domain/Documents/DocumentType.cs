@@ -9,5 +9,6 @@ public enum DocumentType
     Theory = 5,
     MethodicalMaterial = 6,
     Other = 7,
-    Memo = 8
+    Memo = 8,
+    InteractiveTrainer = 9
 }

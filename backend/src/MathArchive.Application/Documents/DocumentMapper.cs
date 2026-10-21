@@ -19,6 +19,6 @@ public static class DocumentMapper
             document.CreatedAt,
             document.UpdatedAt,
             document.DownloadCount,
-            document.DisplayOrder);
+            document.DisplayOrder, document.TrainerGrades, document.TrainerPublished);
     }
 }

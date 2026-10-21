@@ -1,4 +1,4 @@
-import { Box, Container, Grid, Skeleton, Stack, Typography } from '@mui/material';
+import { Box, Button, Container, Grid, Skeleton, Stack, Typography } from '@mui/material';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { getApiErrorMessage } from '../api/apiErrors';
@@ -20,15 +20,16 @@ export function MaterialsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const classFilter = searchParams.get('class') ?? searchParams.get('grade') ?? '';
   const topicFilter = searchParams.get('topic') ?? '';
+  const trainerFilter = searchParams.get('type') === 'trainers';
   const [topicInput, setTopicInput] = useState(topicFilter);
   const filters = useMemo<DocumentFilters>(() => ({
     search: topicFilter,
     grade: classFilter,
     topic: '',
-    documentType: '',
+    documentType: trainerFilter ? 'InteractiveTrainer' : '',
     page: 1,
     pageSize: 12
-  }), [classFilter, topicFilter]);
+  }), [classFilter, topicFilter, trainerFilter]);
 
   const documents = useInfiniteDocuments(filters);
   const visibleData = useMotionResults(documents.data);
@@ -43,6 +44,7 @@ export function MaterialsPage() {
   const updateFilters = (next: Partial<DocumentFilters>) => {
     const merged = { ...filters, ...next };
     const params = new URLSearchParams();
+    if (merged.documentType === 'InteractiveTrainer') params.set('type', 'trainers');
     if (merged.grade) {
       params.set('class', String(merged.grade));
     }
@@ -70,6 +72,7 @@ export function MaterialsPage() {
 
     const timeoutId = window.setTimeout(() => {
       const params = new URLSearchParams();
+      if (trainerFilter) params.set('type', 'trainers');
       if (filters.grade) {
         params.set('class', String(filters.grade));
       }
@@ -80,7 +83,7 @@ export function MaterialsPage() {
     }, 400);
 
     return () => window.clearTimeout(timeoutId);
-  }, [filters.grade, setSearchParams, topicInput, topicFilter]);
+  }, [filters.grade, setSearchParams, topicInput, topicFilter, trainerFilter]);
 
   useEffect(() => {
     const node = loadMoreRef.current;
@@ -113,6 +116,10 @@ export function MaterialsPage() {
             <Typography color="text.secondary" className="materials-subtitle">
               Знайдіть контрольні, самостійні роботи та теоретичні матеріали.
             </Typography>
+          </Stack>
+          <Stack direction="row" gap={1} sx={{ mb: 2 }}>
+            <Button variant={!trainerFilter ? 'contained' : 'outlined'} onClick={() => updateFilters({ documentType: '' })}>Усі матеріали</Button>
+            <Button variant={trainerFilter ? 'contained' : 'outlined'} onClick={() => updateFilters({ documentType: 'InteractiveTrainer' })}>Тренажери</Button>
           </Stack>
           <FiltersBar
             filters={{ ...filters, topic: topicInput }}

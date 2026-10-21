@@ -45,6 +45,15 @@ describe('MaterialsPage', () => {
     }));
   });
 
+  it('preserves the trainer filter and selected grade in the URL', async () => {
+    renderMaterialsPage('/materials?class=5&type=trainers');
+    expect(useInfiniteDocumentsMock).toHaveBeenLastCalledWith(expect.objectContaining({ grade: '5', documentType: 'InteractiveTrainer' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Усі матеріали' }));
+    await waitFor(() => expect(useInfiniteDocumentsMock).toHaveBeenLastCalledWith(expect.objectContaining({ grade: '5', documentType: '' })));
+    fireEvent.click(screen.getByRole('button', { name: 'Тренажери' }));
+    await waitFor(() => expect(useInfiniteDocumentsMock).toHaveBeenLastCalledWith(expect.objectContaining({ grade: '5', documentType: 'InteractiveTrainer' })));
+  });
+
   it('initializes class and topic filters from URL query parameters', () => {
     renderMaterialsPage('/materials?class=7&topic=Алгебра');
 

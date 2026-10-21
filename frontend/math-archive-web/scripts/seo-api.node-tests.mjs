@@ -51,6 +51,25 @@ test('classifies exhausted transient responses for best-effort generation', asyn
   assert.deepEqual(delays, [1000, 3000]);
 });
 
+test('uses best-effort generation after a persistent API 500 without hiding it in warnings', async () => {
+  const fetchImpl = mockFetch([response(500), response(500), response(500)]);
+  const warnings = [];
+  await assert.rejects(fetchDocuments({
+    apiBaseUrl, fetchImpl, sleep: async () => {},
+    logger: { warn: message => warnings.push(message) }
+  }), error => error instanceof TransientSeoApiError && /HTTP 500 after 3 attempts/.test(error.message));
+  assert.equal(fetchImpl.calls, 3);
+  assert.equal(warnings.length, 2);
+  assert.ok(warnings.every(message => message.includes('HTTP 500')));
+});
+
+test('recovers when an API 500 is followed by a successful response', async () => {
+  const fetchImpl = mockFetch([response(500), response(200, documentPayload)]);
+  const documents = await fetchDocuments({ apiBaseUrl, fetchImpl, sleep: async () => {}, logger: { warn: () => {} } });
+  assert.deepEqual(documents, documentPayload.items);
+  assert.equal(fetchImpl.calls, 2);
+});
+
 test('fails immediately for a permanent 404 response', async () => {
   const fetchImpl = mockFetch([response(404)]);
   let warningCount = 0;
