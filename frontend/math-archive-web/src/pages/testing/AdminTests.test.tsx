@@ -65,17 +65,19 @@ beforeEach(() => {
   vi.mocked(testingApi.admin).mockResolvedValue(structuredClone(record));
   vi.mocked(testingApi.save).mockResolvedValue(record);
 });
+// Text values below are fixture setup; these tests exercise editor state and navigation,
+// not individual keystrokes. One change avoids dozens of full-editor renders and
+// asynchronous typing continuing into the next test after a timeout.
 it("hydrates edit data once and keeps dirty values after refetch", async () => {
   const client = mount("/admin/tests/id/edit");
   const title = await screen.findByDisplayValue("Чернетка");
-  await userEvent.clear(title);
-  await userEvent.type(title, "Моя зміна");
+  fireEvent.change(title, { target: { value: "Моя зміна" } });
   await client.invalidateQueries({ queryKey: ["admin-test", "id"] });
   expect(screen.getByLabelText("Назва")).toHaveValue("Моя зміна");
 });
 it("saves a new draft and navigates to its persistent editor", async () => {
   mount("/admin/tests/new");
-  await userEvent.type(screen.getByLabelText("Назва"), "Нова чернетка");
+  fireEvent.change(screen.getByLabelText("Назва"), { target: { value: "Нова чернетка" } });
   await userEvent.click(screen.getByRole("button", { name: /^Зберегти$/ }));
   await waitFor(() =>
     expect(testingApi.save).toHaveBeenCalledWith(
@@ -88,12 +90,12 @@ it("saves a new draft and navigates to its persistent editor", async () => {
 });
 it("adds and duplicates a question with independent identifiers", async () => {
   mount("/admin/tests/new");
-  await userEvent.type(screen.getByLabelText("Назва"), "Тест");
+  fireEvent.change(screen.getByLabelText("Назва"), { target: { value: "Тест" } });
   await userEvent.click(screen.getByRole("tab", { name: /^Питання/ }));
   await userEvent.click(screen.getByRole("button", { name: "Додати питання" }));
-  await userEvent.type(screen.getByLabelText("Текст питання"), "2 + 2?");
-  await userEvent.type(screen.getByLabelText("Варіант 1"), "4");
-  await userEvent.type(screen.getByLabelText("Варіант 2"), "5");
+  fireEvent.change(screen.getByLabelText("Текст питання"), { target: { value: "2 + 2?" } });
+  fireEvent.change(screen.getByLabelText("Варіант 1"), { target: { value: "4" } });
+  fireEvent.change(screen.getByLabelText("Варіант 2"), { target: { value: "5" } });
   await userEvent.click(
     screen.getByRole("button", { name: "Дублювати питання" }),
   );
@@ -111,7 +113,7 @@ it("adds and duplicates a question with independent identifiers", async () => {
 
 it("defaults interaction tracking off and saves the teacher's explicit choice", async () => {
   mount("/admin/tests/new"); const toggle = screen.getByRole("checkbox", { name: "Відстежувати зміни відповідей" }); expect(toggle).not.toBeChecked();
-  await userEvent.type(screen.getByLabelText("Назва"), "Відстеження"); await userEvent.click(toggle); await userEvent.click(screen.getByRole("button", { name: /^Зберегти$/ }));
+  fireEvent.change(screen.getByLabelText("Назва"), { target: { value: "Відстеження" } }); await userEvent.click(toggle); await userEvent.click(screen.getByRole("button", { name: /^Зберегти$/ }));
   await waitFor(() => expect(testingApi.save).toHaveBeenCalledWith(undefined, expect.objectContaining({ settings: expect.objectContaining({ trackAnswerChanges: true }) }), false));
 });
 
@@ -119,16 +121,16 @@ const validQuestion: TestDefinition["questions"][number] = { id: "11111111-1111-
 function withQuestions(questions = [structuredClone(validQuestion)], status: AdminTest["status"] = "Draft") { const value = structuredClone(record); value.definition.questions = questions; value.status = status; vi.mocked(testingApi.admin).mockResolvedValue(value); return value; }
 it("keeps both tabs' unsaved values, question IDs and count alive without warning on tab changes", async () => {
   withQuestions(); mount("/admin/tests/id/edit"); await screen.findByDisplayValue("Чернетка");
-  await userEvent.clear(screen.getByLabelText("Назва")); await userEvent.type(screen.getByLabelText("Назва"), "Незбережена назва");
+  fireEvent.change(screen.getByLabelText("Назва"), { target: { value: "Незбережена назва" } });
   await userEvent.click(screen.getByRole("tab", { name: /^Питання \(1\)/ }));
-  expect(screen.getByLabelText("Назва")).not.toBeVisible(); await userEvent.clear(screen.getByLabelText("Текст питання")); await userEvent.type(screen.getByLabelText("Текст питання"), "Змінене питання");
+  expect(screen.getByLabelText("Назва")).not.toBeVisible(); fireEvent.change(screen.getByLabelText("Текст питання"), { target: { value: "Змінене питання" } });
   await userEvent.click(screen.getByRole("tab", { name: "Налаштування" })); expect(screen.getByLabelText("Назва")).toHaveValue("Незбережена назва"); expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   await userEvent.click(screen.getByRole("tab", { name: /^Питання/ })); expect(screen.getByLabelText("Текст питання")).toHaveValue("Змінене питання");
   await userEvent.click(screen.getByRole("button", { name: /^Зберегти$/ })); await waitFor(() => expect(testingApi.save).toHaveBeenCalled());
   const [id, definition] = vi.mocked(testingApi.save).mock.calls[0]; expect(id).toBe("id"); expect(definition.title).toBe("Незбережена назва"); expect(definition.questions[0]).toMatchObject({ id: validQuestion.id, text: "Змінене питання" }); expect(testingApi.save).toHaveBeenCalledOnce();
 });
 it("confirms external navigation and browser reload when dirty, but does not block saved navigation", async () => {
-  mount("/admin/tests/new"); await userEvent.type(screen.getByLabelText("Назва"), "Чернетка для збереження");
+  mount("/admin/tests/new"); fireEvent.change(screen.getByLabelText("Назва"), { target: { value: "Чернетка для збереження" } });
   const unload = new Event("beforeunload", { cancelable: true }); window.dispatchEvent(unload); expect(unload.defaultPrevented).toBe(true);
   await userEvent.click(screen.getByRole("link", { name: "До списку" })); expect(await screen.findByRole("dialog", { name: "Вийти без збереження?" })).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "Залишитися" })); await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument()); expect(screen.getByLabelText("Назва")).toHaveValue("Чернетка для збереження");
@@ -147,7 +149,7 @@ it("opens the question tab and identifies a missing correct answer", async () =>
   await waitFor(() => expect(screen.getByRole("tab", { name: /^Питання/ })).toHaveAttribute("aria-selected", "true")); expect(screen.getAllByText(/Питання 1: Оберіть правильну відповідь/).length).toBeGreaterThan(0); expect(screen.getByRole("tab", { name: /^Питання/ })).toHaveTextContent("●"); expect(testingApi.save).not.toHaveBeenCalled();
 });
 it("allows an empty draft but directs empty publication to the questions tab", async () => {
-  mount("/admin/tests/new"); await userEvent.type(screen.getByLabelText("Назва"), "Порожня чернетка");
+  mount("/admin/tests/new"); fireEvent.change(screen.getByLabelText("Назва"), { target: { value: "Порожня чернетка" } });
   await userEvent.click(screen.getByRole("button", { name: "Зберегти й опублікувати" })); expect(await screen.findByText("Додайте щонайменше одне питання для публікації.")).toBeInTheDocument(); await waitFor(() => expect(screen.getByRole("tab", { name: /^Питання/ })).toHaveAttribute("aria-selected", "true")); expect(testingApi.save).not.toHaveBeenCalled();
   await userEvent.click(screen.getByRole("button", { name: /^Зберегти$/ })); await waitFor(() => expect(testingApi.save).toHaveBeenCalledWith(undefined, expect.objectContaining({ questions: [] }), false));
 });
@@ -166,7 +168,7 @@ it("maps backend field errors to the appropriate tab", async () => {
 
 it("keeps formula content and LaTeX editor mode when switching tabs", async () => {
   const q = { ...structuredClone(validQuestion), text: "x^2", content: [{ kind: "BlockMath" as const, text: "x^2" }] }; withQuestions([q]); mount("/admin/tests/id/edit?tab=questions"); await screen.findByText("Питання · 1/100");
-  await userEvent.click(screen.getByLabelText("Режим LaTeX")); const formula = screen.getByLabelText("Текст питання · формула окремим блоком 1"); await userEvent.clear(formula); await userEvent.type(formula, "x^3");
+  await userEvent.click(screen.getByLabelText("Режим LaTeX")); const formula = screen.getByLabelText("Текст питання · формула окремим блоком 1"); fireEvent.change(formula, { target: { value: "x^3" } });
   await userEvent.click(screen.getByRole("tab", { name: "Налаштування" })); await userEvent.click(screen.getByRole("tab", { name: /^Питання/ })); expect(screen.getByLabelText("Режим LaTeX")).toBeChecked(); expect(screen.getByLabelText("Текст питання · формула окремим блоком 1")).toHaveValue("x^3");
   await userEvent.click(screen.getByRole("button", { name: /^Зберегти$/ })); await waitFor(() => expect(testingApi.save).toHaveBeenCalled()); expect(vi.mocked(testingApi.save).mock.calls[0][1].questions[0].content).toEqual([{ kind: "BlockMath", text: "x^3" }]);
 });
