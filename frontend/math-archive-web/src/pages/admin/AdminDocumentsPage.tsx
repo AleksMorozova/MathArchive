@@ -4,6 +4,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import SwapVertIcon from '@mui/icons-material/SwapVert';
+import QrCodeIcon from '@mui/icons-material/QrCode';
 import { Box, Button, Card, CardContent, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Pagination, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography, useMediaQuery } from '@mui/material';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -18,6 +19,13 @@ import { useDocuments } from '../../hooks/useDocuments';
 import type { DocumentDto, DocumentFilters } from '../../types/documents';
 import { formatDate } from '../../utils/format';
 import { presetDates } from '../../utils/analyticsDates';
+import { MaterialQrDialog } from './MaterialQrDialog';
+
+type MaterialActionProps = {
+  document: DocumentDto;
+  onDelete: (document: DocumentDto) => void;
+  onQr: (document: DocumentDto) => void;
+};
 
 function formatGradeLabel(grade: number | null, trainerGrades?: number[]) {
   if (trainerGrades?.length) return `Класи: ${trainerGrades.join(', ')}`;
@@ -38,6 +46,7 @@ export function AdminDocumentsPage() {
   const location = useLocation();
   const [filters, setFilters] = useState<DocumentFilters>(initialFilters);
   const [deleteTarget, setDeleteTarget] = useState<DocumentDto | null>(null);
+  const [qrTarget, setQrTarget] = useState<DocumentDto | null>(null);
   const [message, setMessage] = useState((location.state as { message?: string } | null)?.message ?? '');
   const isMobile = useMediaQuery('(max-width:760px)');
   const queryClient = useQueryClient();
@@ -109,7 +118,7 @@ export function AdminDocumentsPage() {
         <>
           {isMobile ? (
             <Stack gap={2}>
-              {documents.data.items.map((document) => <AdminCard key={document.id} document={document} onDelete={setDeleteTarget} />)}
+              {documents.data.items.map((document) => <AdminCard key={document.id} document={document} onDelete={setDeleteTarget} onQr={setQrTarget} />)}
             </Stack>
           ) : (
             <Table className="admin-table">
@@ -134,7 +143,7 @@ export function AdminDocumentsPage() {
                     <TableCell>{formatDate(document.createdAt)}</TableCell>
                     <TableCell>{document.downloadCount}</TableCell>
                     <TableCell>
-                      <Actions document={document} onDelete={setDeleteTarget} />
+                      <Actions document={document} onDelete={setDeleteTarget} onQr={setQrTarget} />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -165,6 +174,7 @@ export function AdminDocumentsPage() {
           </Button>
         </DialogActions>
       </Dialog>
+      {qrTarget && <MaterialQrDialog material={qrTarget} onClose={() => setQrTarget(null)} />}
     </Stack>
   );
 }
@@ -179,25 +189,26 @@ function isDatePresetActive(filters: DocumentFilters, days: number) {
   return filters.createdFrom === preset.createdFrom && filters.createdTo === preset.createdTo;
 }
 
-function AdminCard({ document, onDelete }: { document: DocumentDto; onDelete: (document: DocumentDto) => void }) {
+function AdminCard({ document, onDelete, onQr }: MaterialActionProps) {
   return (
     <Card>
       <CardContent>
         <Stack gap={1}>
           <Typography variant="h6">{document.title}</Typography>
           <Typography color="text.secondary">{formatGradeLabel(document.grade, document.trainerGrades)} · {document.topic} · {documentTypeLabels[document.documentType]}</Typography>
-          <Actions document={document} onDelete={onDelete} />
+          <Actions document={document} onDelete={onDelete} onQr={onQr} />
         </Stack>
       </CardContent>
     </Card>
   );
 }
 
-function Actions({ document, onDelete }: { document: DocumentDto; onDelete: (document: DocumentDto) => void }) {
+function Actions({ document, onDelete, onQr }: MaterialActionProps) {
   return (
     <Stack direction="row" gap={0.5}>
       <IconButton aria-label="Переглянути" component={Link} to={`/materials/${document.id}`}><VisibilityIcon /></IconButton>
       <IconButton aria-label="Редагувати" component={Link} to={`/admin/documents/${document.id}/edit`}><EditIcon /></IconButton>
+      <IconButton aria-label="QR-код" title="QR-код" onClick={() => onQr(document)}><QrCodeIcon /></IconButton>
       <IconButton aria-label="Видалити" onClick={() => onDelete(document)}><DeleteIcon /></IconButton>
     </Stack>
   );

@@ -158,6 +158,32 @@ describe('AdminDocumentsPage', () => {
     expect(screen.getByRole('link', { name: 'Додати з AI' })).toHaveAttribute('href', '/admin/documents/ai');
     expect(screen.getByRole('link', { name: 'Змінити порядок' })).toHaveAttribute('href', '/admin/materials/order');
   });
+
+  it('opens the QR dialog for the selected row on a later page and returns focus on Escape', async () => {
+    const user = userEvent.setup();
+    const context = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+    const id = '12345678-1234-4234-8234-123456789abc';
+    vi.mocked(getDocuments).mockImplementation(async (filters) => ({
+      items: filters.page === 2 ? [{ ...createDocument(), id, title: 'Завдання з алгебри' }] : [createDocument()],
+      page: filters.page, pageSize: 12, totalCount: 13, totalPages: 2
+    }));
+    try {
+      renderPage(createQueryClient());
+      await screen.findByText('Пам’ятка з геометрії');
+      await user.click(screen.getByRole('button', { name: /2/ }));
+      await screen.findByText('Завдання з алгебри');
+      const trigger = screen.getByRole('button', { name: 'QR-код' });
+      await user.click(trigger);
+      const dialog = within(screen.getByRole('dialog', { name: 'QR-код матеріалу' }));
+      expect(dialog.getByText('Завдання з алгебри')).toBeVisible();
+      expect(dialog.getByRole('link')).toHaveAttribute('href', `https://morozovamath.com/materials/${id}`);
+      await user.keyboard('{Escape}');
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(trigger).toHaveFocus();
+    } finally {
+      context.mockRestore();
+    }
+  });
 });
 
 function renderPage(queryClient: QueryClient) {

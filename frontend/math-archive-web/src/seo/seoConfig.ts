@@ -3,6 +3,10 @@ import type { DocumentDto } from '../types/documents';
 export const siteUrl = 'https://morozovamath.com';
 export const siteName = 'Математика з Тетяною Морозовою';
 
+export function materialPath(id: string) {
+  return `/materials/${id}`;
+}
+
 export interface SeoMetadata {
   title: string;
   description: string;
@@ -54,7 +58,7 @@ export function getDocumentSeo(document: DocumentDto): SeoMetadata {
   return {
     title: createDocumentSeoTitle(document.title, document.topic, gradeLabel),
     description: createDocumentSeoDescription(document, gradeLabel),
-    canonicalPath: `/materials/${document.id}`,
+    canonicalPath: materialPath(document.id),
     type: 'article'
   };
 }

@@ -21,6 +21,7 @@
     "axios": "^1.10.0",
     "katex": "^0.16.47",
     "mathlive": "^0.111.1",
+    "qrcode.react": "^4.2.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-hook-form": "^7.60.0",
