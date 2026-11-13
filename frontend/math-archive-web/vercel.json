@@ -3,6 +3,10 @@
   "cleanUrls": true,
   "rewrites": [
     {
+      "source": "/materials/:id",
+      "destination": "/"
+    },
+    {
       "source": "/tests",
       "destination": "/"
     },

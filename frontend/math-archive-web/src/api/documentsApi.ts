@@ -1,5 +1,6 @@
 import type { DocumentDto, DocumentFilters, PagedResult } from '../types/documents';
 import { httpClient } from './httpClient';
+import { saveBlob } from '../utils/saveBlob';
 
 const generalGradeFilterValue = 'general';
 
@@ -84,17 +85,6 @@ export async function getDocumentOrder(grade: number) {
 export async function saveDocumentOrder(grade: number, documentIds: string[]) {
   const response = await httpClient.put<DocumentDto[]>(`/api/admin/classes/${grade}/documents/order`, { documentIds });
   return response.data;
-}
-
-function saveBlob(blob: Blob, fileName: string) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
 }
 
 function getDownloadFileName(contentDisposition: string | undefined) {

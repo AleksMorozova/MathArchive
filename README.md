@@ -287,6 +287,8 @@ pg_restore --clean --if-exists --no-owner --dbname="$DATABASE_CONNECTION_STRING"
 
 `/admin` redirects to `/admin/documents`. Admin pages other than login require authentication.
 
+In the materials list, use **QR-код** to copy a public material link or download its QR code as a PNG or SVG. The link uses the material ID and survives edits and file replacements. Vercel serves generated material pages where available and falls back to the React app for materials added after the build. Interactive trainers must be published before their QR codes can be generated.
+
 ## API Endpoints
 
 ### Public
